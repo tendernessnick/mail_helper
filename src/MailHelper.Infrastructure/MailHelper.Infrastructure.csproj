@@ -4,6 +4,14 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
+    <!-- 显式覆盖 EF Core 8.0.10 的传递依赖 2.1.6（GHSA-2m69-gcr7-jv3q High）：自检③红线 -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />
     <ProjectReference Include="..\MailHelper.Core.Services\MailHelper.Core.Services.csproj" />
   </ItemGroup>

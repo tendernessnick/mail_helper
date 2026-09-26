@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-26 |
-| 里程碑 | M0 已完成；M1 进行中（S1 已完成，S2 存储层待开工） |
-| 当前模块 | S2 存储层（EF Core 模型+迁移、FTS5、正文缓存 LRU、仓储幂等 upsert） |
+| 里程碑 | M0 已完成；M1 进行中（S1、S2 已完成，S3 认证待开工） |
+| 当前模块 | S3 认证（TokenService：MSAL 交互登录/静默刷新/DPAPI 缓存 + 假令牌提供器） |
 | 阻塞 | 无（CI 远端跑通仍待 GitHub 仓库，非关键路径） |
-| 下一步 | S2 按流水线推进：临时库集成测试先行（CRUD/FTS/幂等 upsert）→ EF 模型与迁移（04 §3.2 DDL 逐列）→ BodyCacheStore LRU → 六项自检 |
+| 下一步 | S3 按流水线推进：假令牌提供器 + 授权状态机测试先行 → MSAL.NET 封装（系统浏览器 + PKCE）→ DPAPI(CurrentUser+熵) 缓存 → 六项自检；真实登录验证属检查点① |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -72,13 +72,16 @@
 
 **S1 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 72/72 全绿（Core 70 + Services 1 + Integration 1），**MailHelper.Core 行覆盖 94.04%（600/638，排除 *.g.cs）**；③ `dotnet list package --vulnerable --include-transitive` 无易受攻击包（含 HtmlAgilityPack）；④ 错误处理矩阵：CLASS-001（正则编译失败/超时→跳过+禁用 24h）已实现并测试，规则解析失败→回退旧集已测试；⑤ Core 零日志输出，红线无风险（见 D-12）；⑥ 签名/评分模型/Schema 与 04 §2、03 §5.3、04 §7 逐项一致（CHG-003/004 为已登记最小偏差）。
 
-### S2 存储层（Sprint S1）
+### S2 存储层（Sprint S1）—— **已完成（2026-09-26）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S2-01 | 04 §3 | 待办 | — | EF 模型+迁移；DDL/四索引/FTS5 外部内容表+三触发器；WAL；启动 `integrity_check` 重建策略（EX-07） |
-| T-S2-02 | 03 §6 | 待办 | — | 正文磁盘缓存 `{sha1}.html` + LRU（默认 2GB 上限） |
-| T-S2-03 | FR-04 AC2 | 待办 | — | 仓储接口 + 主键幂等 upsert；临时库集成测试（CRUD/FTS/幂等） |
+| T-S2-01 | 04 §3 | **完成** | `Storage/Migrations/20260926111334_InitialCreate.cs`（7 表 + 4 索引含 partial + FTS5 虚表 + 三触发器，与 04 §3.2 DDL 逐列核对）；MailDatabaseTests 3/3 | EF Core 8.0.10 + SQLite；WAL 库级持久（测试断言 `journal_mode=wal`）；integrity_check → `*.corrupt.bak` 备份 → 重建 → 尽力恢复 rules/settings（EX-07/STORE-001，垃圾文件重建测试通过；「损坏但可读」的恢复路径为尽力而为 + JSON 兜底，EX-TC-06 完整验收留待 S4 系统测试强化）；FTS5 `tokenize='trigram'`（CHG-005） |
+| T-S2-02 | 03 §6 | **完成** | BodyCacheStoreTests 3/3 | `{accountId}/{sha1}.html` 路径规范（测试断言 sha1 文件名）；LRU 以 LastWriteTimeUtc 为据、读/写显式 touch（D-17）；目录穿越防护 |
+| T-S2-03 | FR-04 AC2 | **完成** | MailRepositoryTests 8/3 + AccountStoreTests 3 + SettingsStoreTests 1（合计 12/12） | 主键幂等 upsert（重放零重复，TC-008 等价）；已存在行仅更新同步字段、分类五字段保留（EX-08 测试覆盖）；批 100/事务；FTS 中英文检索（≥3 字符 trigram MATCH / <3 字符 LIKE 兜底）；deltaLink 断点持久化往返 |
+
+**S2 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **90/90 全绿**（Core 70 + Services 1 + Integration 19），MailHelper.Core 行覆盖 **83.57%**（600/718，新增领域记录主要经集成测试覆盖）；③ 漏洞扫描：发现 EF 传递依赖 SQLitePCLRaw 2.1.6 有 High 公告（GHSA-2m69-gcr7-jv3q）→ **显式升级 bundle 2.1.13 后全工程干净**；④ 错误处理矩阵：STORE-001（损坏自动重建）已实现并测试；⑤ 本模块零日志输出；⑥ 迁移/模型与 04 §3 逐列一致（CHG-002 的 DEFAULT 2 原样保留；CHG-005 trigram 为登记偏差）。
+**TDD 证据**：集成测试先行，红灯 `17 失败/19`（实现缺失）→ 实现后全绿。
 
 ### S3 认证（Sprint S1；真实登录=检查点①）
 
@@ -165,6 +168,7 @@
 | CHG-002 | 04 §3.2 `importance INTEGER NOT NULL DEFAULT 2` 按 §2.1 枚举数值（P2=1）对应 P1，与 02 章附录 A「其他默认 P2」矛盾 | 同步代码对 other 类别显式写 P2(=1)，不依赖 DDL DEFAULT；S2 迁移落地时在提交说明中标注 | 已登记，待批准 |
 | CHG-003 | 04 §2.1 引用了未定义类型：`IClassifier.ClassifyAsync(ClassifiedInput …)` 的 **ClassifiedInput**、`IMailProvider.TestAsync()` 的 **ConnectionTestResult** 均无定义（文档缺口，非矛盾） | 提案定义：`record ClassifiedInput(string Subject, string FromName, string FromAddress, string? BodyText, DateTime? ReceivedAtUtc)`（BodyText 为 TextNormalizer 预处理后文本）；`record ConnectionTestResult(bool IsSuccess, string? ErrorCode = null, string? Message = null)`。**已按最小偏差实现**，待批准后视作 04 §2.1 的补充定义 | 已实施（最小偏差），待批准 |
 | CHG-004 | 04 §2.3 `ClassifyRule.Category` 为非空 `MailCategory`，但 04 §7 示例规则 `P0-Deadline` 使用 `"category": null`（仅重要度线索、不投类别票的规则无法表达） | 提案改为 `MailCategory?`（null = 仅重要度线索）。**已按最小偏差实现**——语义为 03 §5.3 管线 H 节点所必需 | 已实施（最小偏差），待批准 |
+| CHG-005 | 04 §3.2 `fts5(subject, from_name, body_preview, …)` 未指定 tokenizer；SQLite 默认 unicode61 将连续 CJK 字符视为单个 token，中文子串检索（如搜「学费」命中「缴纳学费」）必然失效，与 02 章 FR-13/CON-04/NFR-12 及 06 章 TC-017「中英文关键词检索」矛盾 | 提案 `messages_fts` 增加 `tokenize='trigram'`（SQLite ≥3.34，Microsoft.Data.Sqlite 8.x 自带版本满足）。**已按最小偏差实施**；查询词 <3 字符时走 LIKE 兜底路径（正确性不依赖索引） | 已实施（最小偏差），待批准 |
 
 ## 5. 决策记录（文档未写明、自行拍板项，均有依据）
 
@@ -185,6 +189,16 @@
 | D-13 | 规则稳定 id = SHA256(name\|pattern) 前 16 字节 → Guid | 热重载后同规则 id 不变，CLASS-001 禁用状态得以延续 |
 | D-14 | 覆盖率度量排除 *.g.cs 源生成器产物（coverlet.runsettings ExcludeByFile + CI 脚本 obj 过滤双保险） | 80% 门禁（NFR-10）针对手写可维护代码；RegexGenerator 生成 ~2700 行不可控代码 |
 | D-15 | JSON importanceHint 数值语义按 04 §2.1 枚举数值（0=P3..3=P0）解释 | 唯一自洽解释（P0-Deadline hint=3 必须是 P0）；曾误按 P 级别解释，测试断言已纠正 |
+| D-16 | 04 §3.1 SYNC_STATE 实体的领域记录命名 SyncCheckpoint | 避免与 Core.Services.SyncState（状态机枚举）同名冲突；语义=同步断点 |
+| D-17 | 正文缓存 LRU 以文件 LastWriteTimeUtc 为依据（读/写时显式 touch），不建独立索引 | NTFS 默认不更新 LastAccessTime；显式 touch 简单可靠 |
+| D-18 | SaveAsync 后同步执行 LRU 清理（O(文件数) 求和） | 正文写入为低频用户触发操作，2GB/数万文件量级开销可接受 |
+| D-19 | ER 图非节选表（accounts/sync_state 等）时间列统一 INTEGER Unix 秒 | 与 messages DDL 风格一致（EX-09：一律 UTC）；ER 的 DATETIME 仅为示意 |
+| D-20 | 幂等 upsert 用「查存在→分插改→SaveChanges」两步法 | EF Core 无内建 upsert；SQLite 本地批量满足 PERF-04；原生 ON CONFLICT 留作性能不达标时的优化路径 |
+| D-21 | FTS 查询双路径：≥3 字符 trigram MATCH（rank 排序）；<3 字符（中文双字词常见）或 MATCH 异常时 LIKE 兜底 | trigram 对 <3 字符模式不可用；LIKE 正确性不依赖索引（CHG-005 配套） |
+| D-22 | FTS 查询词清洗（去 `"` 与 `*`）+ LIKE 通配符转义 | 防 MATCH 语法注入（SEC-04 意识） |
+| D-23 | EF 实体时间列一律 long Unix 秒、枚举列存原始 string/int，领域转换隔离在仓储层 | 实体与 DDL 一字不差；Core 不感知存储形态 |
+| D-24 | dotnet-ef 以**本地工具**安装（`.config/dotnet-tools.json` 随仓库）；SQLitePCLRaw.bundle 显式升 2.1.13 | 本地工具 CI 可 `dotnet tool restore`；2.1.6 传递依赖有 High 公告 GHSA-2m69-gcr7-jv3q（自检③红线） |
+| D-25 | 仓储连接策略：每操作独立 SQLite 连接（每连接 PRAGMA foreign_keys=ON + synchronous=NORMAL），连接与上下文同作用域释放 | synchronous 是连接级 PRAGMA；池化连接复用不保证 PRAGMA 生效 |
 
 ## 6. S0 文件清单（本次落盘）
 
