@@ -26,11 +26,12 @@ jobs:
       - name: Build (Release)
         run: dotnet build MailHelper.sln -c Release --no-restore
 
-      - name: Test (含 XPlat 覆盖率收集)
-        run: dotnet test MailHelper.sln -c Release --no-build --collect:"XPlat Code Coverage"
+      - name: Test (含 XPlat 覆盖率收集，排除 *.g.cs 生成代码)
+        run: dotnet test MailHelper.sln -c Release --no-build --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
-      # NFR-10 / G1：MailHelper.Core 行覆盖 ≥ 80%。
-      # S0 骨架阶段 Core 仅含枚举（无可执行行）时放行并输出 notice；S1 起严格执行（PROGRESS.md D-03）。
+      # NFR-10 / G1：MailHelper.Core 手写代码行覆盖 ≥ 80%。
+      # 按 cobertura <package name="MailHelper.Core"> 聚合；排除 obj 下源生成器产物。
+      # S0 骨架阶段 Core 仅含枚举（无可执行行）时放行并输出 notice；S1 起严格执行（PROGRESS.md D-03/D-14）。
       - name: Coverage gate (MailHelper.Core >= 80%)
         shell: pwsh
         run: |
@@ -40,12 +41,15 @@ jobs:
           $total = 0; $covered = 0
           foreach ($r in $reports) {
             [xml]$x = Get-Content -LiteralPath $r.FullName -Raw
-            $classes = $x.SelectNodes('//class') | Where-Object { $_.filename -match 'src[\\/]MailHelper\.Core[\\/]' }
-            foreach ($c in $classes) {
-              foreach ($l in $c.SelectNodes('.//line')) {
-                if ($l.branch -ne 'True') {
-                  $total++
-                  if ([double]$l.hits -gt 0) { $covered++ }
+            $packages = $x.SelectNodes('//package') | Where-Object { $_.name -eq 'MailHelper.Core' }
+            foreach ($p in $packages) {
+              foreach ($c in $p.SelectNodes('.//class')) {
+                if ($c.filename -match 'obj[\\/]') { continue }
+                foreach ($l in $c.SelectNodes('.//line')) {
+                  if ($l.branch -ne 'True') {
+                    $total++
+                    if ([double]$l.hits -gt 0) { $covered++ }
+                  }
                 }
               }
             }

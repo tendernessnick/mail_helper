@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-26 |
-| 里程碑 | M0（已完成，见 §7 里程碑报告；唯一未闭合项：CI 远端跑通待 GitHub 仓库） |
-| 当前模块 | S1 领域核心（待开工） |
-| 阻塞 | 无（BLK-001 已解除） |
-| 下一步 | S1：TextNormalizer 与 RuleEngine 测试先行（R-01~R-07 失败测试 → 实现 → 自检） |
+| 里程碑 | M0 已完成；M1 进行中（S1 已完成，S2 存储层待开工） |
+| 当前模块 | S2 存储层（EF Core 模型+迁移、FTS5、正文缓存 LRU、仓储幂等 upsert） |
+| 阻塞 | 无（CI 远端跑通仍待 GitHub 仓库，非关键路径） |
+| 下一步 | S2 按流水线推进：临时库集成测试先行（CRUD/FTS/幂等 upsert）→ EF 模型与迁移（04 §3.2 DDL 逐列）→ BodyCacheStore LRU → 六项自检 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -60,14 +60,17 @@
 | T-S0-04 | 验证（CI） | 阻塞（外部） | workflow 已就绪待触发 | 本地无 git 远端，无法跑 GitHub Actions；需用户提供仓库后 push 验证。非关键路径：本地已等价执行 build+test+门禁 |
 | T-S0-05 | 管理基线 | **完成** | 本文件存在 | PROGRESS.md 建立 |
 
-### S1 领域核心（Sprint S1）
+### S1 领域核心（Sprint S1）—— **已完成（2026-09-26）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S1-01 | FR-07 | 待办 | — | 枚举/RemoteMessage/IMailProvider/IClassifier 签名按 04 §2（四枚举种子已随 S0 落盘：`Core/Domain/Enums.cs`） |
-| T-S1-02 | FR-07 / 06 §4.3 | 待办 | — | TextNormalizer：HTML→纯文本、剥引文/签名；先写 R-01~R-07 失败测试再实现 |
-| T-S1-03 | FR-07/08 | 待办 | — | RuleEngine：规则 JSON 加载、热重载、加权评分、双阈值判定（top1≥3 且分差≥2） |
-| T-S1-04 | FR-07 | 待办 | — | 样本集试跑脚本（S5 完整评估流水线的前置桩） |
+| T-S1-01 | FR-07 | **完成** | DomainContractTests 通过；签名逐字对照 04 §2 | RemoteMessage/IMailProvider/IClassifier/ClassificationResult/ClassifyRule/RuleKind/RuleSource 落地；CHG-003/004 最小偏差已标注 |
+| T-S1-02 | FR-07 / 06 §4.3 | **完成** | TextNormalizerTests 11/11（含 R-06 引文剥离） | HTML→文本（剔 script/style）、`>`/From:/Sent:/中文头/`--` 剥离、空白折叠；HtmlAgilityPack 1.11.67（04 §2.2 指定） |
+| T-S1-03 | FR-07/08 | **完成** | RuleEngineTests 23/23（含 R-01~R-07 全部边界样例） | 加权评分（基准 10/8/6/3、×1.2/×1.5、cap 15）、双阈值（top1≥3 且 gap≥2）、发件人锁定、P0 保守双阈值、ReDoS 100ms 限时（CLASS-001：跳过+禁用 24h） |
+| T-S1-03b | 04 §2.3/§7 | **完成** | RuleSetParserTests 24/24 + FileRuleSetWatcherTests 3/3 | JSON Schema 按 04 §7（四种标准 Kind；CHG-001 印证为负例测试）；FileSystemWatcher+500ms 防抖热重载；解析失败保留旧集 |
+| T-S1-04 | FR-07 | **完成（范围调整）** | R-01~R-07 以 23 个用例逐条验证 | 完整 600 封样本语料 + labels.csv + 评估流水线统一并入 S5（避免提前引入 MailKit 解析 .eml）；S1 的「试跑」实质已由单测承担 |
+
+**S1 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 72/72 全绿（Core 70 + Services 1 + Integration 1），**MailHelper.Core 行覆盖 94.04%（600/638，排除 *.g.cs）**；③ `dotnet list package --vulnerable --include-transitive` 无易受攻击包（含 HtmlAgilityPack）；④ 错误处理矩阵：CLASS-001（正则编译失败/超时→跳过+禁用 24h）已实现并测试，规则解析失败→回退旧集已测试；⑤ Core 零日志输出，红线无风险（见 D-12）；⑥ 签名/评分模型/Schema 与 04 §2、03 §5.3、04 §7 逐项一致（CHG-003/004 为已登记最小偏差）。
 
 ### S2 存储层（Sprint S1）
 
@@ -160,6 +163,8 @@
 | --- | --- | --- | --- |
 | CHG-001 | 04 §7 示例片段中 `"kind": "SenderKeyword"` 未在 04 §2.3 RuleKind 四值枚举（SenderAddress/SenderDomain/SubjectRegex/SubjectKeyword）中定义 | 预置规则包（S5）仅使用四种标准 Kind；careers 类以 SenderDomain（专用子域）+ SubjectKeyword 组合表达。不扩枚举、不改文档 → 无代码偏差 | 已登记，待批准 |
 | CHG-002 | 04 §3.2 `importance INTEGER NOT NULL DEFAULT 2` 按 §2.1 枚举数值（P2=1）对应 P1，与 02 章附录 A「其他默认 P2」矛盾 | 同步代码对 other 类别显式写 P2(=1)，不依赖 DDL DEFAULT；S2 迁移落地时在提交说明中标注 | 已登记，待批准 |
+| CHG-003 | 04 §2.1 引用了未定义类型：`IClassifier.ClassifyAsync(ClassifiedInput …)` 的 **ClassifiedInput**、`IMailProvider.TestAsync()` 的 **ConnectionTestResult** 均无定义（文档缺口，非矛盾） | 提案定义：`record ClassifiedInput(string Subject, string FromName, string FromAddress, string? BodyText, DateTime? ReceivedAtUtc)`（BodyText 为 TextNormalizer 预处理后文本）；`record ConnectionTestResult(bool IsSuccess, string? ErrorCode = null, string? Message = null)`。**已按最小偏差实现**，待批准后视作 04 §2.1 的补充定义 | 已实施（最小偏差），待批准 |
+| CHG-004 | 04 §2.3 `ClassifyRule.Category` 为非空 `MailCategory`，但 04 §7 示例规则 `P0-Deadline` 使用 `"category": null`（仅重要度线索、不投类别票的规则无法表达） | 提案改为 `MailCategory?`（null = 仅重要度线索）。**已按最小偏差实现**——语义为 03 §5.3 管线 H 节点所必需 | 已实施（最小偏差），待批准 |
 
 ## 5. 决策记录（文档未写明、自行拍板项，均有依据）
 
@@ -172,6 +177,14 @@
 | D-05 | AnalysisLevel=latest + TreatWarningsAsErrors=true | 落实自检①「0 错误 0 警告」红线 |
 | D-06 | S0 种子内容 = 04 §2.1 四枚举 + SyncState 状态枚举（逐字转写）+ 骨架冒烟测试 | 骨架需最少可编译内容；签名零设计自由度，无偏离风险 |
 | D-07 | 分支采用 `main`（README/08 章 §1.1），初始提交前将 unborn HEAD 从 master 指向 main | 08 章分支策略 |
+| D-08 | ReDoS 防护选「限时 Regex（100ms）」而非 Re2.NET | 04 §2.3 给出两选项；零新增依赖优先（禁止事项 2） |
+| D-09 | 倍率截断上限 WeightCap=15 | 03 §5.3「上限截断」未给数值；取基准最高 10 × Feedback 1.5 = 15，随 JSON 可调 |
+| D-10 | confidence 公式：锁定=0.9；过双阈值= top2≤0 ? 1 : top1/(top1+top2)；模糊=该值×0.5；无命中=0。下游待确认阈值（S5 落地，默认 0.55）：过阈值结果恒 >0.55、模糊/无命中恒 <0.55 | 03 §5.3 仅规定 f(top1,top2) 依分差归一化到 [0,1]，公式为实现自由度 |
+| D-11 | SubjectKeyword/SubjectRegex 匹配范围=主题+预处理正文（Kind 命名保持 04 章签名不变） | 03 §5.3 管线 D 节点「主题+正文关键词/正则加权评分」 |
+| D-12 | Core 层不引日志依赖（Serilog 在 Infrastructure/服务层）；CLASS-001 禁用状态经 TemporarilyDisabledRuleIds 查询，S5 接 Serilog 时由服务层包装记录 | 架构约束：Core 无第三方 SDK；日志红线（04 §6）由上层统一执行 |
+| D-13 | 规则稳定 id = SHA256(name\|pattern) 前 16 字节 → Guid | 热重载后同规则 id 不变，CLASS-001 禁用状态得以延续 |
+| D-14 | 覆盖率度量排除 *.g.cs 源生成器产物（coverlet.runsettings ExcludeByFile + CI 脚本 obj 过滤双保险） | 80% 门禁（NFR-10）针对手写可维护代码；RegexGenerator 生成 ~2700 行不可控代码 |
+| D-15 | JSON importanceHint 数值语义按 04 §2.1 枚举数值（0=P3..3=P0）解释 | 唯一自洽解释（P0-Deadline hint=3 必须是 P0）；曾误按 P 级别解释，测试断言已纠正 |
 
 ## 6. S0 文件清单（本次落盘）
 

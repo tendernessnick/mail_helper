@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- 排除源生成器产物（RegexGenerator 等 *.g.cs）：NFR-10 的 80% 门禁针对手写可维护代码 -->
+          <ExcludeByFile>**/*.g.cs</ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
