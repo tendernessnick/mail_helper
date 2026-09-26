@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-26 |
-| 里程碑 | M0（进行中） |
-| 当前模块 | S0 工程骨架 —— 文件全部落盘，验证被 BLK-001 阻塞（流水线停在第 5 步六项自检之前） |
-| 阻塞 | **BLK-001：本机无 .NET 8 SDK**（详见 §2.2） |
-| 下一步 | 解除 BLK-001 → `dotnet build -c Release`（自检①）+ `dotnet test`（自检②）→ push 触发 CI → M0 收口出里程碑报告 |
+| 里程碑 | M0（已完成，见 §7 里程碑报告；唯一未闭合项：CI 远端跑通待 GitHub 仓库） |
+| 当前模块 | S1 领域核心（待开工） |
+| 阻塞 | 无（BLK-001 已解除） |
+| 下一步 | S1：TextNormalizer 与 RuleEngine 测试先行（R-01~R-07 失败测试 → 实现 → 自检） |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -26,22 +26,18 @@
 
 ## 2. 环境与阻塞
 
-### 2.1 环境自检（2026-09-26）
+### 2.1 环境自检（2026-09-26，SDK 安装后复核）
 
 | 项 | 结果 | 证据 |
 | --- | --- | --- |
 | git | ✅ 2.55.0.windows.5 | `git --version` |
 | .NET 运行时 | ✅ 8.0.28（NETCore / ASP.NET / WindowsDesktop） | `dotnet --list-runtimes` |
-| .NET SDK | ❌ **无任何 SDK** | `dotnet --list-sdks` 空输出；`C:\Program Files\dotnet\sdk` 目录不存在；VS 18 目录为空壳无 MSBuild |
+| .NET SDK | ✅ **8.0.425**（BLK-001 解除后） | `dotnet --list-sdks`；符合 global.json `latestFeature` 策略 |
 
-### 2.2 BLK-001（阻塞中）：本机缺少 .NET 8 SDK
+### 2.2 BLK-001（已解除）：本机缺少 .NET 8 SDK
 
-- **影响**：一切 `dotnet build/test/publish`；S0 六项自检无法执行；S1 起所有模块流水线验证无法进行。
-- **需要的动作（用户）**，任选其一：
-  1. `winget install Microsoft.DotNet.SDK.8`
-  2. Visual Studio Installer → 勾选「.NET 桌面开发」工作负载（含 SDK）
-  3. 明确授权本助手执行 winget 安装
-- **期间策略**：仅产出可评审工程文件与本记录，不宣称任何任务「完成」。
+- **影响**：一切 `dotnet build/test/publish`；S0 六项自检无法执行。
+- **处理记录**：2026-09-26 用户明确授权 winget 安装 → `winget install Microsoft.DotNet.SDK.8` 成功安装 8.0.425（安装日志：哈希验证通过、退出码 0）→ 随即完成 S0 全部自检。**已解除**。
 - **解除后动作**：会话恢复协议 → 验证 S0 → 进入 S1。
 
 ### 2.3 检查点登记（等待用户输入）
@@ -58,10 +54,10 @@
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S0-01 | 基础设施 | 进行中（阻塞） | 文件清单见 §6，全部落盘 | sln + 4 src 工程 + 3 测试工程 + Build.props + .editorconfig + global.json |
-| T-S0-02 | 基础设施 | 进行中（阻塞） | `.github/workflows/ci.yml` | build + test + 覆盖率门禁；release job 随 S12 落地 |
-| T-S0-03 | 验证 | 阻塞（BLK-001） | 待 SDK | `dotnet build -c Release` 0E0W + `dotnet test` 全绿（六项自检①②③） |
-| T-S0-04 | 验证 | 阻塞（BLK-001+push） | 待 SDK | CI workflow green |
+| T-S0-01 | 基础设施 | **完成** | §6 文件清单全部落盘；提交 22f72ee | sln + 4 src 工程 + 3 测试工程 + Build.props + .editorconfig + global.json |
+| T-S0-02 | 基础设施 | **完成** | `.github/workflows/ci.yml` | build + test + 覆盖率门禁；release job 随 S12 落地 |
+| T-S0-03 | 验证（六项自检） | **完成** | ① Release 构建「已成功生成 0 警告 0 错误」；② 测试 5/5 全绿（Core 3 + Services 1 + Integration 1）+ 3 份 cobertura 文件（Core 无可执行行按 D-03 放行）；③ 7 工程 `--vulnerable --include-transitive` 均报无易受攻击包；④⑤ S0 无错误码/日志代码 N/A；⑥ 结构与依赖方向同 04 §1 一致（App→Services→Core；Infrastructure→Core+Services；Core 零引用） | — |
+| T-S0-04 | 验证（CI） | 阻塞（外部） | workflow 已就绪待触发 | 本地无 git 远端，无法跑 GitHub Actions；需用户提供仓库后 push 验证。非关键路径：本地已等价执行 build+test+门禁 |
 | T-S0-05 | 管理基线 | **完成** | 本文件存在 | PROGRESS.md 建立 |
 
 ### S1 领域核心（Sprint S1）
@@ -194,9 +190,27 @@ PROGRESS.md
 
 ## 7. 里程碑报告
 
+### M0（S0）—— 2026-09-26 收口
+
+**完成项与证据**：
+- 工程可构建：`dotnet build MailHelper.sln -c Release` → 0 警告 0 错误（TreatWarningsAsErrors=true 生效，自检①）
+- 测试全绿：`dotnet test` → 5/5 通过（Core 3 + Services 1 + Integration 1），覆盖率收集成功（自检②；Core 骨架无可执行行，门禁按 D-03 放行，S1 起严格 ≥80%）
+- 无漏洞依赖：7 工程 `dotnet list package --vulnerable --include-transitive` 全部干净（自检③）
+- PROGRESS.md 建立并全程维护（T-S0-05）
+- 初始提交：22f72ee（分支 main，36 文件）
+
+**未完成项与原因**：
+- CI 远端跑通（T-S0-04）：本地无 git 远端/GitHub 仓库，workflow 已编写但无法触发。属外部依赖，需要用户动作（可选：提供 GitHub 仓库地址）。本地已等价执行 CI 的全部步骤逻辑。
+
+**与设计的偏差及处理**：
+- 无代码偏差。两处文档内部不一致已登记 CHG-001/CHG-002（见 §4），均以「不改 docs/、不扩签名」方式消化，待用户批复。
+- 过程性偏差：BLK-001（SDK 缺失）曾阻塞验证 ~1 小时，经用户授权 winget 安装 .NET SDK 8.0.425 解除。
+
+**下一步计划**：
+- S1 领域核心：按流水线推进——RemoteMessage/接口签名落地 → R-01~R-07 失败测试先行 → TextNormalizer 实现 → RuleEngine（加载/热重载/加权评分/双阈值）→ 样本试跑脚本 → 六项自检 + PROGRESS 更新 + Conventional Commit。
+
 | 里程碑 | 状态 | 报告 |
 | --- | --- | --- |
-| M0 | 进行中（阻塞于 BLK-001） | 待 SDK 到位：验证 S0 → 收口报告（完成项与证据/未完成与原因/偏差处理/下一步） |
 | M1（S1–S6） | 未开始 | — |
 | M2（S7–S11） | 未开始 | — |
 | M3（S12） | 未开始 | — |
