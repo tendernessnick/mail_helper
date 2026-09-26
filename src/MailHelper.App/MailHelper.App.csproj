@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 表示层（03 章 L1）：WPF + MVVM + 通用主机（总控指令四.1） -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />
+    <ProjectReference Include="..\MailHelper.Core.Services\MailHelper.Core.Services.csproj" />
+    <ProjectReference Include="..\MailHelper.Infrastructure\MailHelper.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

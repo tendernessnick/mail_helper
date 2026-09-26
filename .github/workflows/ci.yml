@@ -1,0 +1,66 @@
+name: ci
+
+# 08 章 §3 CI：PR 触发 build+test+覆盖率门禁；release job（publish/Velopack）随 S12 落地
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore MailHelper.sln
+
+      # 0 警告红线由仓库根 Directory.Build.props 的 TreatWarningsAsErrors=true 保证
+      - name: Build (Release)
+        run: dotnet build MailHelper.sln -c Release --no-restore
+
+      - name: Test (含 XPlat 覆盖率收集)
+        run: dotnet test MailHelper.sln -c Release --no-build --collect:"XPlat Code Coverage"
+
+      # NFR-10 / G1：MailHelper.Core 行覆盖 ≥ 80%。
+      # S0 骨架阶段 Core 仅含枚举（无可执行行）时放行并输出 notice；S1 起严格执行（PROGRESS.md D-03）。
+      - name: Coverage gate (MailHelper.Core >= 80%)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $reports = Get-ChildItem -Path . -Recurse -Filter 'coverage.cobertura.xml'
+          if (-not $reports) { Write-Error '未找到覆盖率文件'; exit 1 }
+          $total = 0; $covered = 0
+          foreach ($r in $reports) {
+            [xml]$x = Get-Content -LiteralPath $r.FullName -Raw
+            $classes = $x.SelectNodes('//class') | Where-Object { $_.filename -match 'src[\\/]MailHelper\.Core[\\/]' }
+            foreach ($c in $classes) {
+              foreach ($l in $c.SelectNodes('.//line')) {
+                if ($l.branch -ne 'True') {
+                  $total++
+                  if ([double]$l.hits -gt 0) { $covered++ }
+                }
+              }
+            }
+          }
+          if ($total -eq 0) {
+            Write-Host '::notice::MailHelper.Core 当前无可执行行（S0 骨架），覆盖率门禁自 S1 起严格执行 >= 80%'
+            exit 0
+          }
+          $rate = $covered / $total
+          Write-Host ("MailHelper.Core line coverage = {0:P2} ({1}/{2})" -f $rate, $covered, $total)
+          if ($rate -lt 0.80) { Write-Error 'MailHelper.Core 行覆盖率低于 80% 门禁（NFR-10/G1）'; exit 1 }
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: '**/coverage.cobertura.xml'
+          if-no-files-found: error

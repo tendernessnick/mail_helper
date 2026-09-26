@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 集成测试：WireMock.NET 按 04 章 §4 契约模拟 Graph（分页/429/401/deltaLink 失效），不出网 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="FluentAssertions" Version="6.12.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <!-- WireMock.NET 随 S4 引入（届时在 PROGRESS.md 记录版本理由） -->
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MailHelper.Core.Services\MailHelper.Core.Services.csproj" />
+    <ProjectReference Include="..\..\src\MailHelper.Infrastructure\MailHelper.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

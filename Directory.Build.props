@@ -1,0 +1,19 @@
+<Project>
+  <!-- 仓库级统一构建属性（04 章 §9 附录：版本统一于 Directory.Build.props） -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>MailHelper</Authors>
+    <Product>MailHelper</Product>
+    <Company>MailHelper</Company>
+    <Description>港校学生 Outlook 邮箱管理助手（本地分类、增量同步、重要度标记）</Description>
+    <Copyright>Copyright © MailHelper contributors</Copyright>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>12.0</LangVersion>
+    <!-- 自检①红线：0 错误 0 警告 -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

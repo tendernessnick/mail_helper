@@ -1,0 +1,34 @@
+# 构建产物
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+publish/
+*.pubxml.user
+
+# IDE
+.vs/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+
+# 测试与覆盖率
+TestResults/
+*.coverage
+artifacts/
+
+# 运行时与本地数据（永不入库：令牌/邮件数据红线，09 章 §4）
+*.db
+*.db-shm
+*.db-wal
+logs/
+tokens/
+bodies/
+
+# Office 锁文件与本会话目录
+~$*
+.zcode/
+
+# 系统
+Thumbs.db
+.DS_Store

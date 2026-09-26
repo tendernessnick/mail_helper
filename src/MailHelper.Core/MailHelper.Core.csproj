@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 领域层（03 章 L3）：模型、抽象接口、RuleEngine；不引用任何 UI 与第三方 SDK -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+</Project>

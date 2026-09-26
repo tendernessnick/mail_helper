@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 基础设施层（03 章 L4）：Graph/IMAP/MSAL/EF Core/文件与配置；实现 Core 定义的接口，经 DI 注入 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />
+    <ProjectReference Include="..\MailHelper.Core.Services\MailHelper.Core.Services.csproj" />
+  </ItemGroup>
+</Project>

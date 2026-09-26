@@ -1,0 +1,12 @@
+<Window x:Class="MailHelper.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MailHelper"
+        Height="720" Width="1200"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <!-- S0 骨架占位：三栏主界面随 S6 按 05 章落地 -->
+        <TextBlock Text="MailHelper — S0 工程骨架（主界面随 S6 落地）"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </Grid>
+</Window>

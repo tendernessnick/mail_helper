@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 应用服务层（03 章 L2）：SyncCoordinator / Classification / Feedback / Notification / Search -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />
+  </ItemGroup>
+</Project>
