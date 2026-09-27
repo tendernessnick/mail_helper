@@ -300,6 +300,21 @@ public class RuleEngineTests
     }
 
     [Fact]
+    public async Task P0DeadlineOnNonActionCategory_IsNotPromoted()
+    {
+        // D-41：订阅/公告类别的 final reminder 不构成 P0（P0 误报率红线，06 §4.1）
+        var engine = new RuleEngine(R.Set(
+            R.Make("Newsletter", RuleKind.SubjectKeyword, "newsletter|subscribe", MailCategory.Subscription, hint: Importance.P3),
+            R.Make("P0-Deadline", RuleKind.SubjectRegex, R.DeadlinePattern, null, hint: Importance.P0, weight: 6)));
+
+        var result = await engine.ClassifyAsync(
+            R.Input("Final reminder: renew your newsletter subscription", body: "subscribe now"), CancellationToken.None);
+
+        result.Category.Should().Be(MailCategory.Subscription);
+        result.Importance.Should().NotBe(Importance.P0);
+    }
+
+    [Fact]
     public async Task HintZero_YieldsP3()
     {
         var engine = new RuleEngine(R.Set(

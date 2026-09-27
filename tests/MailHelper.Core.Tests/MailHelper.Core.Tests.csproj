@@ -13,5 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MailHelper.Core\MailHelper.Core.csproj" />
+    <!-- 评估流水线复用 ClassificationService.DefaultReviewThreshold / RemoteMessageMapper.PreviewLength -->
+    <ProjectReference Include="..\..\src\MailHelper.Core.Services\MailHelper.Core.Services.csproj" />
   </ItemGroup>
 </Project>

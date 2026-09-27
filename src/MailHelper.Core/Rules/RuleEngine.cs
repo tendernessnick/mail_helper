@@ -193,9 +193,11 @@ public sealed class RuleEngine : IClassifier
 
         if (importance == Importance.P0)
         {
-            // P0 保守双阈值：P0 线索之外还需强类别证据或第二个独立 P0 规则；否则降 P1（宁可漏报为 P1）
+            // P0 保守双阈值：P0 线索之外还需「行动型类别」强证据或第二个独立 P0 规则；否则降 P1（宁可漏报为 P1）。
+            // 类别证据白名单（D-41）：订阅/公告类别的 final reminder 等措辞不构成 P0 依据（P0 误报率红线）
             var p0Signals = hints.Count(h => h == Importance.P0);
-            var strongEvidence = strongCategory && category != MailCategory.Other;
+            var strongEvidence = strongCategory && category
+                is MailCategory.Finance or MailCategory.Admin or MailCategory.Course;
             if (p0Signals + (strongEvidence ? 1 : 0) < 2)
             {
                 importance = Importance.P1;

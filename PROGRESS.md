@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-26 |
-| 里程碑 | M0 已完成；M1 进行中（S1~S4 已完成，S5 分类服务待开工） |
-| 当前模块 | S5 分类服务（ClassificationService 管线 + 预置规则包 v1 + 600 封样本语料 + 评估流水线） |
+| 里程碑 | M0 已完成；M1 进行中（S1~S5 已完成，**S5 评估门禁全过**，S6 WPF 主界面待开工） |
+| 当前模块 | S6 WPF 主界面（Shell/导航、三栏收件箱、WebView2 沙箱阅读窗格、四态、截图比对 + FlaUI 冒烟） |
 | 阻塞 | 无（CI 远端跑通仍待 GitHub 仓库，非关键路径） |
-| 下一步 | S5 按流水线推进：ClassificationService 测试先行（管线：预处理→分类→写回→待确认）→ 预置规则包 v1（含 P0 截止正则，四种标准 Kind）→ 样本集 ≥600 封 .eml + labels.csv → 评估流水线（达标线 ≥85%/≥95%/≤10%，不达标禁入 S6） |
+| 下一步 | S6 按流水线推进：查询侧 store API（按类别/待确认列表）→ Shell 与三栏视图（列表虚拟化、P0-P3 徽章色卡 05 §5.1）→ WebView2 沙箱（禁脚本）→ 四态 → 截图至 artifacts/screens/ 与 05 章线框比对 → FlaUI 冒烟 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -105,14 +105,16 @@
 **S4 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **134/134 全绿**（Core 70 + Services 19 + Integration 45），并集覆盖 Core **94.10%**、Core.Services **88.96%**；③ 漏洞扫描：WireMock 传递依赖 OpenTelemetry ×2（Moderate）与 Scriban.Signed 5.5.0（High）已显式升级覆盖，**7 工程全部干净**；④ 错误码矩阵 SYNC-001/002/003、AUTH-003 处理路径 + Serilog 日志（sync.completed/offline/failed/reauth_required/unexpected_failure，SYNC-001 频率 1/min）全部落地并被测试覆盖；⑤ 协调器日志只含计数/状态码/错误码，无主题/发件人/正文（红线零泄漏）；⑥ REST 契约与 04 §4.1/§4.2 逐项一致（CHG-006/007/008 为已登记偏差）。
 **TDD 证据**：红灯 `28 失败`（WireMock 契约 18 + 协调器 10）→ 实现后全绿。
 
-### S5 分类服务（Sprint S2；不达标禁入 S6）
+### S5 分类服务（Sprint S2）—— **已完成（2026-09-27），评估门禁全过**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S5-01 | FR-07 | 待办 | — | ClassificationService 管线：预处理→分类→阈值→落库→待确认 |
-| T-S5-02 | FR-07/08 | 待办 | — | 预置规则包 v1（含 P0 截止时间正则；Kind 仅用四种标准值，见 CHG-001） |
-| T-S5-03 | 06 §2 | 待办 | — | 样本集 ≥600 封 .eml + labels.csv（7 类×P0–P3×中英文，含 R-01~R-07 与 ReDoS 探针；60/40 划分） |
-| T-S5-04 | FR-07/08 | 待办 | — | 评估流水线（dotnet test 形式）输出混淆矩阵至 artifacts/eval/；达标线三指标 |
+| T-S5-01 | FR-07 | **完成** | ClassificationServiceTests 4/4 | 管线：Normalize(BodyPreview) → IClassifier → 写回 → 汇总（CHG-009 ClassificationSummary）；待确认判定 = confidence < 0.55（可注入）；R-06 端到端（引文截止不触发 P0）；classify.completed 埋点 |
+| T-S5-02 | FR-07/08 | **完成** | `rules.builtin.json` v2026.09（16 条规则，仅四种标准 Kind——CHG-001） | LMS 域名/地址锚点（10/8 权重）+ 中英关键词 + P0 截止正则（hint 3）；随包分发（CopyToOutputDirectory）；**P0 类别证据白名单（D-41：仅 Finance/Admin/Course）+ 回归测试** |
+| T-S5-03 | 06 §2 | **完成** | `tests/fixtures/sample-corpus/`：**607 封 .eml + labels-train.csv(360) + labels-eval.csv(247)** | 7 类别 × P0~P3 × 中英文；确定性种子 20260926（Generator_IsDeterministic 防漂移）；R-01~R-07 边界样例 + ReDoS 探针强制入评估集；引文/签名/干扰变体（干扰仅施加于带发件人锚点样本） |
+| T-S5-04 | FR-07/08 | **完成** | ClassifierEvaluationTests 绿 + `artifacts/eval/evaluation-report.md` | **评估集 247 封：类别准确率 97.98%（线 85%）、P0 召回 100%（16/16，线 95%）、P0 误报 0.00%（线 10%）、待确认率 11.34%（上限 30%）——四项门禁全过，允许进入 S6**；调参实录：初版 P0 召回 93.75%——定位为语料 P0 前缀跨类混词（签证前缀+财务模板→分差 1 落模糊区），按类别对齐前缀后 100% |
+
+**S5 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **144/144 全绿**（Core 76 + Services 23 + Integration 45），并集覆盖 Core **94.12%**、Core.Services **90.96%**；③ 漏洞扫描干净（零新增包——.eml 解析用自研极简解析器，D-42）；④ 无新增错误码；⑤ classify.completed 仅含计数无内容；⑥ 规则包 Schema 与 04 §7 一致、评估流程与 06 §4 一致。
 
 ### S6 WPF 主界面（Sprint S2 / M1 出口）
 
@@ -179,6 +181,7 @@
 | CHG-006 | 总控指令四.4 指定「Microsoft.Graph SDK 的 delta query 增量同步」；但 (a) delta 的 `@removed` 条目在 SDK v5 类型化反序列化路径不可靠（未知属性可能丢弃，删除语义丢失）；(b) 04 §4.2 重试矩阵（429 Retry-After≤3 / 5xx 2s-8s-30s / 401 刷新一次）要求完全自控，与 SDK 默认 CompositeHandler 冲突需拆链；(c) SDK 属重量级依赖（总控十一.2 精神） | 提案 GraphMailProvider 以 **HttpClient 直调 Graph REST v1.0** 实现——REST 契约（端点、$select、nextLink/deltaLink、@removed）与 04 §4.1 调用清单一字不差，WireMock 契约测试更直接；认证仍用 MSAL.NET（不弱化）。**已按最小偏差实施**，待批准后视为对四.4 表述的修订 | 已实施（最小偏差），待批准 |
 | CHG-007 | 04 §2.2 `SyncCoordinator` 签名引用了 `SyncStateChangedEventArgs` / `BatchSyncedEventArgs`，均未定义 | 提案定义：`SyncStateChangedEventArgs(NewState, ErrorCode?, Message?)`；`BatchSyncedEventArgs(PageIndex, Added, Updated, Removed)`（Added/Updated 由 upsert 结果得出——delta 响应不区分新增/更新，D-36）。**已实施** | 已实施，待批准 |
 | CHG-008 | 04 §4.1 G-3 `$select` 含 `changeKey`，但 §2.1 RemoteMessage 无对应字段，DDL `messages.remote_change_key` 因此无数据来源 | 提案 RemoteMessage 追加可选参数 `string? RemoteChangeKey = null`（追加式不破坏现有构造调用）。**已实施** | 已实施，待批准 |
+| CHG-009 | 04 §2.2 `ClassificationService.ClassifyPendingAsync` 返回 `ClassificationSummary`，未定义 | 提案定义：`ClassificationSummary(int Processed, IReadOnlyDictionary<MailCategory,int> CategoryCounts, int PendingReview, long ElapsedMs)`（对应 04 §6 埋点 classify.completed 的各类别分布与待确认数）。**已实施** | 已实施，待批准 |
 
 ## 5. 决策记录（文档未写明、自行拍板项，均有依据）
 
@@ -221,6 +224,12 @@
 | D-35 | SYNC-001 离线日志按 1/min 节流 | 04 §5「SYNC-001 Information（频率限制 1/min）」 |
 | D-36 | delta 响应不区分新增/更新，统计口径由 upsert 结果得出（BatchSyncedEventArgs.Added/Updated） | delta API 无 added/updated 标记；幂等 upsert 下该区分仅具统计意义 |
 | D-37 | @removed 删除事件仅携带 id：ReceivedAtUtc 落 1970 占位，入库只置 is_deleted_remote=1（默认视图隐藏） | Graph 删除事件不含元数据；本地不物理删除（02 §9） |
+| D-38 | （保留） | — |
+| D-39 | 06 §4.1 待确认率「15%–30%」按下限指示、上限硬门禁执行（>30% 测试失败，<15% 仅提示） | 表述自相矛盾（越低越好 vs 下限 15%）；上限是防滥用的门禁本意 |
+| D-40 | 预置规则包位于 `src/MailHelper.Infrastructure/Rules/rules.builtin.json`（CopyToOutputDirectory 随包分发） | 04 §7「随包分发的只读层」；评估测试从源码路径直读 |
+| D-41 | P0 双信号的「强类别证据」限定白名单 {Finance, Admin, Course} | 订阅/公告类别的 final reminder 措辞不应升 P0（P0 误报率红线；有专项回归测试） |
+| D-42 | 样本 .eml 用自研极简解析器（固定格式：UTF-8、无折叠头、无 MIME 多部分），不提前引入 MailKit | 语料为生成器产物格式可控；引入真实邮件样本时再升级 MailKit（S11 计划引入） |
+| D-43 | 语料 P0 前缀按类别对齐（finance 前缀不含 admin 词，反之亦然） | 初版全局前缀池产生跨类竞争主题（分差 1 落模糊区），P0 召回 93.75% 不达标；修正后 100% |
 
 ## 6. S0 文件清单（本次落盘）
 

@@ -1,0 +1,26 @@
+{
+  "version": "2026.09",
+  "rules": [
+    { "name": "LMS-Moodle-HKU",    "kind": "SenderDomain",   "pattern": "moodle.hku.hk",           "category": "course", "weight": 8 },
+    { "name": "LMS-Moodle-CUHK",   "kind": "SenderDomain",   "pattern": "moodle.cuhk.edu.hk",      "category": "course", "weight": 8 },
+    { "name": "LMS-Canvas-UST",    "kind": "SenderDomain",   "pattern": "canvas.ust.hk",           "category": "course", "weight": 8 },
+    { "name": "LMS-Blackboard-HKU","kind": "SenderDomain",   "pattern": "blackboard.hku.hk",       "category": "course", "weight": 8 },
+    { "name": "Canvas-Cloud",      "kind": "SenderAddress",  "pattern": "no-reply@instructure.com","category": "course", "weight": 10 },
+    { "name": "Course-Keywords",   "kind": "SubjectKeyword", "pattern": "assignment|quiz|midterm|final exam|lecture notes|coursework|lab session|作业|测验|期中考试|课件|实验课", "category": "course", "weight": 3 },
+
+    { "name": "Careers-Centre",    "kind": "SenderAddress",  "pattern": "careers@hku.hk",          "category": "career", "weight": 10 },
+    { "name": "Career-Keywords",   "kind": "SubjectKeyword", "pattern": "internship|interview|career fair|placement|resume|cv workshop|job opening|实习|面试|招聘会|简历|内推", "category": "career", "weight": 3, "importanceHint": 2 },
+
+    { "name": "Registry-Office",   "kind": "SenderAddress",  "pattern": "registry@hku.hk",         "category": "admin", "weight": 10 },
+    { "name": "Admin-Keywords",    "kind": "SubjectKeyword", "pattern": "student visa|visa label|immigration|iang|library notice|registration|orientation|student affairs|签证|入境事务|图书馆|选课注册|迎新|学生事务", "category": "admin", "weight": 3 },
+
+    { "name": "Finance-Office",    "kind": "SenderAddress",  "pattern": "finance@hku.hk",          "category": "finance", "weight": 10 },
+    { "name": "Finance-Keywords",  "kind": "SubjectKeyword", "pattern": "tuition|payment due|fee payment|invoice|outstanding fee|installment|缴费|学费|账单|付款", "category": "finance", "weight": 4, "importanceHint": 1 },
+
+    { "name": "Announce-Keywords", "kind": "SubjectKeyword", "pattern": "lecture series|seminar series|campus announcement|notice board|campus event|讲座系列|校园公告|活动预告", "category": "announce", "weight": 3 },
+
+    { "name": "Newsletter-Noise",  "kind": "SubjectKeyword", "pattern": "newsletter|unsubscribe|promotion|special deal|subscribe|mailing list|电子报|退订|优惠|订阅", "category": "subscription", "weight": 3, "importanceHint": 0 },
+
+    { "name": "P0-Deadline",       "kind": "SubjectRegex",   "pattern": "(final reminder|overdue|deadline[^\\r\\n]{0,20}(today|tomorrow)|(缴费|递交|提交)[^\\r\\n]{0,8}(截止|逾期))", "category": null, "weight": 6, "importanceHint": 3 }
+  ]
+}
