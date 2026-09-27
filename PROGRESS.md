@@ -7,11 +7,11 @@
 
 | 项 | 值 |
 | --- | --- |
-| 更新时间 | 2026-09-26 |
-| 里程碑 | M0 已完成；M1 进行中（S1~S5 已完成，**S5 评估门禁全过**，S6 WPF 主界面待开工） |
-| 当前模块 | S6 WPF 主界面（Shell/导航、三栏收件箱、WebView2 沙箱阅读窗格、四态、截图比对 + FlaUI 冒烟） |
-| 阻塞 | 无（CI 远端跑通仍待 GitHub 仓库，非关键路径） |
-| 下一步 | S6 按流水线推进：查询侧 store API（按类别/待确认列表）→ Shell 与三栏视图（列表虚拟化、P0-P3 徽章色卡 05 §5.1）→ WebView2 沙箱（禁脚本）→ 四态 → 截图至 artifacts/screens/ 与 05 章线框比对 → FlaUI 冒烟 |
+| 更新时间 | 2026-09-27 |
+| 里程碑 | **M1 收口（S1~S6 全部完成）**；M2 进行中（下一步 S7） |
+| 当前模块 | S7 通知与托盘（P0 逐封/P1 聚合、去重表、勿扰时段、托盘角标/菜单、关窗常驻） |
+| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——不阻塞 S7~S11 开发（WireMock/假令牌路径） |
+| 下一步 | S7 按流水线推进：通知决策（04 §8）→ INotificationService 测试先行 → Toast 去重与勿扰 → 托盘角标/关窗常驻 → 六项自检 → PROGRESS 更新 + 提交 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -116,14 +116,16 @@
 
 **S5 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **144/144 全绿**（Core 76 + Services 23 + Integration 45），并集覆盖 Core **94.12%**、Core.Services **90.96%**；③ 漏洞扫描干净（零新增包——.eml 解析用自研极简解析器，D-42）；④ 无新增错误码；⑤ classify.completed 仅含计数无内容；⑥ 规则包 Schema 与 04 §7 一致、评估流程与 06 §4 一致。
 
-### S6 WPF 主界面（Sprint S2 / M1 出口）
+### S6 WPF 主界面（Sprint S2 / M1 出口）—— **已完成（2026-09-27）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S6-01 | FR-12 | 待办 | — | Shell 与导航、三栏骨架、布局持久化 |
-| T-S6-02 | FR-12 / NFR-02 | 待办 | — | 列表虚拟化、重要度徽章色卡（05 §5.1）、空/加载/错误/离线四态 |
-| T-S6-03 | FR-12 AC2 | 待办 | — | WebView2 沙箱阅读窗格（禁脚本） |
-| T-S6-04 | 05 章比对 | 待办 | — | PowerShell 截屏至 artifacts/screens/ + 线框比对；FlaUI 点击级冒烟（引入理由：UI 验证需要） |
+| T-S6-01 | FR-12 | **完成** | MainWindow.xaml 三栏（LeftColumn 220 / MiddleColumn 3* / RightColumn 2* + GridSplitter×2）+ Onboarding 单窗双态（D-44）；`ui.column_widths` 布局持久化（Restore/Save，05 §3.3）；类别导航（全部/待确认 + 7 类）未读徽章联动 | CommunityToolkit.Mvvm（[ObservableProperty]/[RelayCommand]）；查询侧 InboxQuery API 测试先行 6/6 |
+| T-S6-02 | FR-12 / NFR-02 | **完成** | 列表虚拟化（Recycling）；色卡像素级验证：截图中 #D13438/#F7630C/#0078D4/#8A8886 四色精确检出（05 §5.1）；四态=空（CountToEmptyVis）/加载（IsBusy ProgressBar）/错误（登录/同步失败红字）/离线（状态栏「离线 · 错误码」） | 徽章 AutomationId="unread-badge" + CountToUnreadNameConverter 供 UIA 实时探测（D-45） |
+| T-S6-03 | FR-12 AC2 | **完成** | WebView2 沙箱六项禁用（脚本/对话框/WebMessage/HostObjects/加速键）；外链拦截：仅放行 `data:`，http(s) 一律 Cancel（09 §5，D-48）；**RISK-04 降级**：初始化失败显示明确提示替代白屏（Task 与事件两条失败路径均兜住） | 正文渲染排队模式 `_pendingHtml`（D-46）：CoreWebView2 未就绪时暂存，初始化完成后渲染 |
+| T-S6-04 | 05 章比对 | **完成** | `artifacts/screens/s6-inbox.png`（2560×1520 完整窗口）；FlaUI 全链路冒烟：DEV 启动→隐私勾选→连接→同步+分类→列表加载≥15→点击首封→未读徽章 20→19→截图留档；**UIA 几何实测 nav=[220 DIP] list=[623 DIP] 阅读窗格=剩余**，与 05 §3.2 线框 220/3*/2* 一致 | FlaUI 引入理由已在总控六登记；测试宿主 PerMonitorV2 DPI 感知修复截图不完整问题（D-47） |
+
+**S6 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **151/151 全绿**（Core 76 + Services 23 + Integration 52），并集覆盖 Core **94.23%**（359/381）、Core.Services **90.96%**；③ 漏洞扫描：发现 FlaUI 4.0.0 传递依赖 System.Drawing.Common 5.0.2 **Critical**（GHSA-rxg9-xrhp-64gj）→ 显式升级 8.0.7 覆盖后 **7 工程全部干净**；④ 错误码矩阵：UI-000 全局兜底（App 三异常 handler → %TEMP%\mailhelper-crash.log）+ AUTH-001/002/003（登录失败提示/预案入口/重登）+ SYNC-001/003（状态栏离线与失败文案）均可在 UI 呈现；⑤ 日志红线：App 层零 Serilog 输出，崩溃日志仅异常类型+堆栈，无正文/令牌/主题；⑥ 文档一致性：三栏几何/色卡/键盘（Ctrl+F、Ctrl+R）/四态与 05 §3.2、§5.1、§6、§7 逐项核对一致。
 
 ### S7 通知与托盘（Sprint S3）
 
@@ -230,6 +232,11 @@
 | D-41 | P0 双信号的「强类别证据」限定白名单 {Finance, Admin, Course} | 订阅/公告类别的 final reminder 措辞不应升 P0（P0 误报率红线；有专项回归测试） |
 | D-42 | 样本 .eml 用自研极简解析器（固定格式：UTF-8、无折叠头、无 MIME 多部分），不提前引入 MailKit | 语料为生成器产物格式可控；引入真实邮件样本时再升级 MailKit（S11 计划引入） |
 | D-43 | 语料 P0 前缀按类别对齐（finance 前缀不含 admin 词，反之亦然） | 初版全局前缀池产生跨类竞争主题（分差 1 落模糊区），P0 召回 93.75% 不达标；修正后 100% |
+| D-44 | 单窗双态：Onboarding 面板与三栏主界面同窗以 IsOnboarding 可见性切换，不做独立向导窗口 | 05 §3.1/§3.2 未规定窗体形态；单窗切换实现最简且状态天然共享 |
+| D-45 | 未读徽章暴露 AutomationId="unread-badge" + CountToUnreadNameConverter（名称="未读数N"）供 UIA 实时读取 | FlaUI 点击级冒烟需可稳定探测的自动化属性；ListBoxItem Name 默认是 VM 类型名不可用 |
+| D-46 | WebView2 渲染排队模式：CoreWebView2 未就绪时 `_pendingHtml` 暂存，CoreWebView2InitializationCompleted(IsSuccess) 后渲染 | EnsureCoreWebView2Async 是异步的，选中小即渲染会抛 InvalidOperationException（Windows 事件日志实测取证）；初始化失败走 RISK-04 降级提示 |
+| D-47 | FlaUI 测试宿主 P/Invoke 声明 PerMonitorV2 DPI 感知 | 非 DPI 感知宿主拿到虚拟化矩形：GDI 截图只覆盖 200% 缩放物理窗口的左上角（截图像素与 UIA DIP 几何整体错位，S6 实际踩坑并修复）；声明后 UIA/像素坐标一致（×2 严格对应） |
+| D-48 | 外链拦截 v1：NavigationStarting 一律取消 http(s) 导航，仅放行 `data:`（NavigateToString 正文） | 09 §5「外链点击前确认」的保守实现；确认对话框随 S9 设置页评估 |
 
 ## 6. S0 文件清单（本次落盘）
 
@@ -267,8 +274,30 @@ PROGRESS.md
 **下一步计划**：
 - S1 领域核心：按流水线推进——RemoteMessage/接口签名落地 → R-01~R-07 失败测试先行 → TextNormalizer 实现 → RuleEngine（加载/热重载/加权评分/双阈值）→ 样本试跑脚本 → 六项自检 + PROGRESS 更新 + Conventional Commit。
 
+### M1（S1–S6）—— 2026-09-27 收口
+
+**完成项与证据**（对照 07 §1 出口标准）：
+- OAuth 登录：MSAL PKCE + 系统浏览器 + DPAPI(CurrentUser+熵) 缓存；AuthService 状态机 8/8（AUTH-001/002/003 全路径）；ClientId 占位符防护（真实验证=检查点①）
+- Graph 增量/全量同步：delta 分页/断点续传（EX-05 语义）、退避矩阵（429 Retry-After / 5xx 2s-8s-30s / 401 强刷 / 410 全量回退）、`@removed` 删除感知——WireMock 契约 12/12 + 协调器 10/10（真 SQLite 临时库）
+- 规则引擎分类：RuleEngine 加权评分+双阈值+发件人锁定+ReDoS 限时；预置规则包 v2026.09；**评估门禁四项全过**（247 封评估集：准确率 97.98%、P0 召回 100%、误报 0%、待确认 11.34%，报告在 artifacts/eval/）
+- 三栏浏览：三栏+虚拟化+色卡+四态+WebView2 沙箱+布局持久化；FlaUI 全链路冒烟（登录→同步→分类→浏览→已读联动→截图）；截图与 05 §3.2 线框几何/色卡一致
+- 本地数据落库：SQLite(WAL) 幂等 upsert（EX-08 分类字段保留）、FTS5 trigram 中英检索、正文磁盘缓存 LRU、损坏自动重建（STORE-001）
+- **核心单测 ≥80%：MailHelper.Core 并集行覆盖 94.23%、Core.Services 90.96%（门禁 G1 达标）**；测试 151/151 全绿；7 工程漏洞扫描干净
+
+**未完成项与原因**：
+- 出口标准「真实测试租户端到端跑通」：阻塞于**检查点①**（Azure 多租户应用注册 ClientId）与**检查点②**（真实学校测试账号），均待用户提供。按总控指令九，检查点①之前 Graph 相关代码一律基于 WireMock 与假令牌开发——属计划内路径而非偏差；用户提供 ClientId 后即可无缝切换真实通道（Bootstrapper 双模式已就绪）。
+- CI 远端跑通（T-S0-04）：仍待 GitHub 仓库；本地已等价执行 CI 全部步骤。
+
+**与设计的偏差及处理**：
+- CHG-001~009 全部「已实施（最小偏差）+ 显著标注 + 待批准」，无静默偏差；其中 CHG-006（HttpClient 直调 Graph REST 替代 SDK）影响面最大，已在 S4 论证三点理由。
+- 过程性修复：测试宿主 DPI 感知（D-47，截图完整性）、System.Drawing.Common 5.0.2→8.0.7（Critical 顾问，自检③红线）。
+
+**下一步计划**：
+- S7 通知与托盘（FR-14）：按 04 §8 通知决策表——P0 逐封即时、P1 聚合（≥3 封/15 分钟窗口）、message_id 去重、勿扰时段；托盘角标/菜单/关窗常驻。测试先行，Toast 效果的真实系统验证列入检查点②。
+
 | 里程碑 | 状态 | 报告 |
 | --- | --- | --- |
-| M1（S1–S6） | 未开始 | — |
+| M0（S0） | **完成** | 见上 |
+| M1（S1–S6） | **完成（真实租户 E2E 待检查点①②）** | 见上 |
 | M2（S7–S11） | 未开始 | — |
 | M3（S12） | 未开始 | — |

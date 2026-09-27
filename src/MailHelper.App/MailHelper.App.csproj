@@ -8,6 +8,7 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />

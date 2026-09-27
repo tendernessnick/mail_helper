@@ -1,6 +1,7 @@
 using MailHelper.Core;
 using MailHelper.Core.Abstractions;
 using MailHelper.Core.Domain;
+using Microsoft.EntityFrameworkCore;
 
 namespace MailHelper.Infrastructure.Storage;
 
@@ -37,6 +38,13 @@ public sealed class AccountRepository : IAccountStore
         {
             var row = await db.Accounts.FindAsync(new object[] { accountId }, ct);
             return row is null ? null : ToDomain(row);
+        }, ct);
+
+    public async Task<IReadOnlyList<Account>> FindAllAsync(CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            var rows = await db.Accounts.AsNoTracking().OrderBy(a => a.CreatedAtUtc).ToListAsync(ct);
+            return (IReadOnlyList<Account>)rows.Select(ToDomain).ToList();
         }, ct);
 
     public async Task<SyncCheckpoint?> GetCheckpointAsync(string accountId, CancellationToken ct) =>

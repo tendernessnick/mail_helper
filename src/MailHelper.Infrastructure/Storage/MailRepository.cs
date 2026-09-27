@@ -111,6 +111,79 @@ public sealed class MailRepository : IMessageStore
         return await SearchByLikeAsync(accountId, sanitized, limit, ct);
     }
 
+    public async Task<IReadOnlyList<MailMessage>> GetInboxAsync(string accountId, InboxQuery query, CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            var rows = db.Messages.AsNoTracking()
+                .Where(m => m.AccountId == accountId && !m.IsDeletedRemote);
+
+            if (query.Category is { } category)
+            {
+                var categoryText = CategoryToString(category);
+                rows = rows.Where(m => m.Category == categoryText);
+            }
+
+            if (query.UnreadOnly)
+            {
+                rows = rows.Where(m => !m.IsRead);
+            }
+
+            if (query.MinimumImportance is { } importance)
+            {
+                rows = rows.Where(m => m.Importance >= (int)importance);
+            }
+
+            if (query.NeedsReviewOnly)
+            {
+                rows = rows.Where(m => m.ClassifiedAtUtc != null && m.Confidence < query.ReviewThreshold);
+            }
+
+            rows = rows
+                .OrderByDescending(m => m.Importance)
+                .ThenByDescending(m => m.ReceivedAtUtc)
+                .Take(query.Limit);
+
+            var list = await rows.ToListAsync(ct);
+            return (IReadOnlyList<MailMessage>)list.Select(ToDomain).ToList();
+        }, ct);
+
+    public async Task<IReadOnlyDictionary<MailCategory, int>> GetUnreadCountsAsync(string accountId, CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            var groups = await db.Messages.AsNoTracking()
+                .Where(m => m.AccountId == accountId && !m.IsDeletedRemote && !m.IsRead)
+                .GroupBy(m => m.Category)
+                .Select(g => new { Category = g.Key, Count = g.Count() })
+                .ToListAsync(ct);
+
+            var result = Enum.GetValues<MailCategory>().ToDictionary(c => c, _ => 0);
+            foreach (var group in groups)
+            {
+                result[ParseCategory(group.Category)] = group.Count;
+            }
+
+            return (IReadOnlyDictionary<MailCategory, int>)result;
+        }, ct);
+
+    public async Task<int> GetNeedsReviewCountAsync(string accountId, double reviewThreshold, CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+            await db.Messages.AsNoTracking()
+                .CountAsync(m => m.AccountId == accountId
+                    && !m.IsDeletedRemote
+                    && m.ClassifiedAtUtc != null
+                    && m.Confidence < reviewThreshold, ct), ct);
+
+    public async Task MarkReadAsync(string messageId, CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            var row = await db.Messages.FindAsync(new object[] { messageId }, ct);
+            if (row is not null && !row.IsRead)
+            {
+                row.IsRead = true;
+                await db.SaveChangesAsync(ct);
+            }
+        }, ct);
+
     private async Task<IReadOnlyList<MailMessage>> SearchByMatchAsync(string accountId, string query, int limit, CancellationToken ct) =>
         await MailDatabase.WithDbAsync(_dbPath, async db =>
         {

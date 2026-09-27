@@ -1,6 +1,16 @@
+using MailHelper.Core;
 using MailHelper.Core.Domain;
 
 namespace MailHelper.Core.Abstractions;
+
+/// <summary>收件箱查询（FR-12：类别/重要度/未读过滤 + 待确认队列入口）。</summary>
+public sealed record InboxQuery(
+    MailCategory? Category = null,
+    bool NeedsReviewOnly = false,
+    Importance? MinimumImportance = null,
+    bool UnreadOnly = false,
+    double ReviewThreshold = 0.55,
+    int Limit = 200);
 
 /// <summary>邮件事实表仓储（03 章 L3 存储扩展点；Infrastructure 以 EF Core 8 + SQLite 实现，FTS 原生 SQL 隔离在实现内）。</summary>
 public interface IMessageStore
@@ -17,6 +27,18 @@ public interface IMessageStore
 
     /// <summary>FTS5 全文检索（FR-13）：主题/发件人/正文预览；语法解析（from:/cat:/p:）在 S10 SearchService。</summary>
     Task<IReadOnlyList<MailMessage>> SearchFtsAsync(string accountId, string query, int limit, CancellationToken ct);
+
+    /// <summary>收件箱列表查询（FR-12）：默认排序 importance DESC → received DESC，排除远端已删。</summary>
+    Task<IReadOnlyList<MailMessage>> GetInboxAsync(string accountId, InboxQuery query, CancellationToken ct);
+
+    /// <summary>各类别未读数（左栏徽章）。</summary>
+    Task<IReadOnlyDictionary<MailCategory, int>> GetUnreadCountsAsync(string accountId, CancellationToken ct);
+
+    /// <summary>待确认队列计数（FR-09 侧栏入口红点）。</summary>
+    Task<int> GetNeedsReviewCountAsync(string accountId, double reviewThreshold, CancellationToken ct);
+
+    /// <summary>标记已读（仅本地，UC-04 后置条件）。</summary>
+    Task MarkReadAsync(string messageId, CancellationToken ct);
 }
 
 /// <summary>账户与同步断点仓储。</summary>
@@ -25,6 +47,9 @@ public interface IAccountStore
     Task UpsertAccountAsync(Account account, CancellationToken ct);
 
     Task<Account?> FindAccountAsync(string accountId, CancellationToken ct);
+
+    /// <summary>全部账户（v1 单账户；V1.2 多账户演进预留）。</summary>
+    Task<IReadOnlyList<Account>> FindAllAsync(CancellationToken ct);
 
     Task<SyncCheckpoint?> GetCheckpointAsync(string accountId, CancellationToken ct);
 
