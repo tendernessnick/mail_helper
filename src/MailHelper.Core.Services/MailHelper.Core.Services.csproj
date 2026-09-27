@@ -4,6 +4,10 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <!-- D-32：微软官方日志抽象（非第三方 SDK 语义），Serilog 实现位于 Infrastructure -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />
   </ItemGroup>
 </Project>

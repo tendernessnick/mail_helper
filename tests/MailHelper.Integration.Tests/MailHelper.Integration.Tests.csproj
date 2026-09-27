@@ -8,9 +8,13 @@
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
     <PackageReference Include="FluentAssertions" Version="6.12.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <!-- 显式覆盖 WireMock.NET 1.25.0 传递依赖（GHSA-g94r-2vxg-569j / GHSA-q834-8qmm-v933 / Scriban GHSA-24c8-4792-22hx） -->
+    <PackageReference Include="OpenTelemetry.Api" Version="1.19.1" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
+    <PackageReference Include="Scriban.Signed" Version="7.5.0" />
+    <PackageReference Include="WireMock.NET" Version="1.25.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
-    <!-- WireMock.NET 随 S4 引入（届时在 PROGRESS.md 记录版本理由） -->
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MailHelper.Core.Services\MailHelper.Core.Services.csproj" />

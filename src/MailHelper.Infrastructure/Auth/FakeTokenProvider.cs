@@ -11,11 +11,16 @@ public sealed class FakeTokenProvider : ITokenProvider
 
     public AuthResult? SilentResult { get; set; }
 
+    /// <summary>forceRefresh 时的静默结果（模拟 401 后刷新得到新令牌；未设置则回落 SilentResult）。</summary>
+    public AuthResult? RefreshedSilentResult { get; set; }
+
     public TimeSpan? InteractiveDelay { get; set; }
 
     public int SignInCalls { get; private set; }
 
     public int SilentCalls { get; private set; }
+
+    public int ForceRefreshedCalls { get; private set; }
 
     public int SignOutCalls { get; private set; }
 
@@ -32,10 +37,18 @@ public sealed class FakeTokenProvider : ITokenProvider
         return InteractiveResult ?? AuthResult.Fail(AuthErrorCodes.ReauthRequired, "FakeTokenProvider 未配置 InteractiveResult");
     }
 
-    public Task<AuthResult> AcquireTokenSilentAsync(CancellationToken ct)
+    public Task<AuthResult> AcquireTokenSilentAsync(bool forceRefresh, CancellationToken ct)
     {
         SilentCalls++;
-        return Task.FromResult(SilentResult ?? AuthResult.Fail(AuthErrorCodes.ReauthRequired, "FakeTokenProvider 未配置 SilentResult"));
+        if (forceRefresh)
+        {
+            ForceRefreshedCalls++;
+            return Task.FromResult(RefreshedSilentResult ?? SilentResult
+                ?? AuthResult.Fail(AuthErrorCodes.ReauthRequired, "FakeTokenProvider 未配置 SilentResult"));
+        }
+
+        return Task.FromResult(SilentResult
+            ?? AuthResult.Fail(AuthErrorCodes.ReauthRequired, "FakeTokenProvider 未配置 SilentResult"));
     }
 
     public Task SignOutAsync(CancellationToken ct)

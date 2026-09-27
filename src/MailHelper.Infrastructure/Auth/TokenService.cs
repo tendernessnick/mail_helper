@@ -80,7 +80,7 @@ public sealed class TokenService : ITokenProvider
         }
     }
 
-    public async Task<AuthResult> AcquireTokenSilentAsync(CancellationToken ct)
+    public async Task<AuthResult> AcquireTokenSilentAsync(bool forceRefresh, CancellationToken ct)
     {
         if (_isPlaceholder)
         {
@@ -95,7 +95,9 @@ public sealed class TokenService : ITokenProvider
                 return AuthResult.Fail(AuthErrorCodes.ReauthRequired, "无已缓存账户，需要登录");
             }
 
-            var result = await _app.AcquireTokenSilent(Scopes, account).ExecuteAsync(ct);
+            var result = await _app.AcquireTokenSilent(Scopes, account)
+                .WithForceRefresh(forceRefresh) // D-31：401 后强制刷新，绕过未过期缓存令牌
+                .ExecuteAsync(ct);
             return AuthResult.Ok(Map(result));
         }
         catch (Exception ex)

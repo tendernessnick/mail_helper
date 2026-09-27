@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-26 |
-| 里程碑 | M0 已完成；M1 进行中（S1、S2、S3 已完成，S4 Graph 同步待开工） |
-| 当前模块 | S4 Graph 同步（GraphMailProvider delta 分页/断点续传 + SyncCoordinator 状态机/限流退避 + WireMock 契约测试 EX-TC-01~08 + Serilog 日志接入） |
+| 里程碑 | M0 已完成；M1 进行中（S1~S4 已完成，S5 分类服务待开工） |
+| 当前模块 | S5 分类服务（ClassificationService 管线 + 预置规则包 v1 + 600 封样本语料 + 评估流水线） |
 | 阻塞 | 无（CI 远端跑通仍待 GitHub 仓库，非关键路径） |
-| 下一步 | S4 按流水线推进：WireMock 契约测试先行（分页/429/401/deltaLink 失效）→ GraphMailProvider → SyncCoordinator → Serilog 基础设施与 sync.completed 埋点 → 六项自检 |
+| 下一步 | S5 按流水线推进：ClassificationService 测试先行（管线：预处理→分类→写回→待确认）→ 预置规则包 v1（含 P0 截止正则，四种标准 Kind）→ 样本集 ≥600 封 .eml + labels.csv → 评估流水线（达标线 ≥85%/≥95%/≤10%，不达标禁入 S6） |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -93,13 +93,17 @@
 **S3 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **106/106 全绿**（Core 70 + Services 9 + Integration 27），**MailHelper.Core 并集行覆盖 93.77%（346/369）、Core.Services 100%**；③ 漏洞扫描干净（新增 MSAL 4.90.1 / ProtectedData 8.0.0）；④ 错误处理矩阵 AUTH-001/002/003 处理路径全部实现并被测试覆盖（Serilog 日志接入随 S4，D-30）；⑤ 模块零日志输出（令牌/账号信息结构上不进任何日志）；⑥ DPAPI+熵、PKCE、系统浏览器、common、登出撤销与 09 §3 逐项一致。
 **TDD 证据**：红灯 `16 失败`（AuthService 8 + 认证基础设施 8）→ 实现后全绿。
 
-### S4 Graph 同步（Sprint S1）
+### S4 Graph 同步（Sprint S1）—— **已完成（2026-09-26）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S4-01 | FR-04/05 | 待办 | — | GraphMailProvider：delta 分页($top=100)、deltaLink 断点、正文按需单封拉取（P0 候选例外）、@removed 删除语义 |
-| T-S4-02 | FR-04 | 待办 | — | SyncCoordinator：PeriodicTimer、状态机、429(Retry-After,≤3)/5xx(2s/8s/30s)/401(静默刷新一次)退避 |
-| T-S4-03 | 06 §6 | 待办 | — | WireMock.NET 契约测试覆盖 EX-TC-01~08 |
+| T-S4-01 | FR-04/05 | **完成** | GraphMailProviderTests 12/12（WireMock 契约，不出网） | delta 分页（nextLink→deltaLink）、断点 URL 直传、`@removed`→Removed、字段映射（$select 逐项）、P0 候选单封拉正文入缓存（04 §4.1 例外）、G-1 /me 健康检查。**CHG-006：以 HttpClient 直调 REST 实现**（非 Graph SDK——@removed 反序列化不可靠/退避矩阵自控/依赖最小化） |
+| T-S4-02 | FR-04/EX-03 | **完成** | ExTc01 ×2 + ExTc02 ×2 + ExTc03 + ExTc04 全绿 | 退避矩阵（04 §4.2）：429 按 Retry-After（≤30s 封顶）/5xx 指数 2s-8s-30s（测试注入 5ms），最多 3 次重试；401 → 强制刷新一次重试（不消耗退避次数），仍 401 → AUTH-003；410 → 自动全量（SYNC-003）；网络不可达 → SYNC-001 |
+| T-S4-03 | FR-04/05 | **完成** | SyncCoordinatorTests 10/10（真 SQLite 临时库 + FakeMailProvider） | 状态机 Idle→Syncing→(Idle\|Offline\|Error\|ReauthRequired)；批 100 入库 + BatchSynced 进度事件；断点仅在整轮成功后推进（EX-05 中断→旧断点续传 + 已接收部分尽力入库）；失败写 last_sync_status；预览截 500（02 §9）；RunPeriodicAsync 周期循环取消优雅退出；**Serilog sync.completed 落文件断言（总控第 6 步验证方式）** |
+| T-S4-04 | 04 §6/09 §5 | **完成** | LogSanitizerTests 6/6 | 脱敏工具：主题截 40+指纹 8 位、发件人仅域名；Serilog 滚动文件工厂（日切/14 天/10MB） |
+
+**S4 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **134/134 全绿**（Core 70 + Services 19 + Integration 45），并集覆盖 Core **94.10%**、Core.Services **88.96%**；③ 漏洞扫描：WireMock 传递依赖 OpenTelemetry ×2（Moderate）与 Scriban.Signed 5.5.0（High）已显式升级覆盖，**7 工程全部干净**；④ 错误码矩阵 SYNC-001/002/003、AUTH-003 处理路径 + Serilog 日志（sync.completed/offline/failed/reauth_required/unexpected_failure，SYNC-001 频率 1/min）全部落地并被测试覆盖；⑤ 协调器日志只含计数/状态码/错误码，无主题/发件人/正文（红线零泄漏）；⑥ REST 契约与 04 §4.1/§4.2 逐项一致（CHG-006/007/008 为已登记偏差）。
+**TDD 证据**：红灯 `28 失败`（WireMock 契约 18 + 协调器 10）→ 实现后全绿。
 
 ### S5 分类服务（Sprint S2；不达标禁入 S6）
 
@@ -172,6 +176,9 @@
 | CHG-003 | 04 §2.1 引用了未定义类型：`IClassifier.ClassifyAsync(ClassifiedInput …)` 的 **ClassifiedInput**、`IMailProvider.TestAsync()` 的 **ConnectionTestResult** 均无定义（文档缺口，非矛盾） | 提案定义：`record ClassifiedInput(string Subject, string FromName, string FromAddress, string? BodyText, DateTime? ReceivedAtUtc)`（BodyText 为 TextNormalizer 预处理后文本）；`record ConnectionTestResult(bool IsSuccess, string? ErrorCode = null, string? Message = null)`。**已按最小偏差实现**，待批准后视作 04 §2.1 的补充定义 | 已实施（最小偏差），待批准 |
 | CHG-004 | 04 §2.3 `ClassifyRule.Category` 为非空 `MailCategory`，但 04 §7 示例规则 `P0-Deadline` 使用 `"category": null`（仅重要度线索、不投类别票的规则无法表达） | 提案改为 `MailCategory?`（null = 仅重要度线索）。**已按最小偏差实现**——语义为 03 §5.3 管线 H 节点所必需 | 已实施（最小偏差），待批准 |
 | CHG-005 | 04 §3.2 `fts5(subject, from_name, body_preview, …)` 未指定 tokenizer；SQLite 默认 unicode61 将连续 CJK 字符视为单个 token，中文子串检索（如搜「学费」命中「缴纳学费」）必然失效，与 02 章 FR-13/CON-04/NFR-12 及 06 章 TC-017「中英文关键词检索」矛盾 | 提案 `messages_fts` 增加 `tokenize='trigram'`（SQLite ≥3.34，Microsoft.Data.Sqlite 8.x 自带版本满足）。**已按最小偏差实施**；查询词 <3 字符时走 LIKE 兜底路径（正确性不依赖索引） | 已实施（最小偏差），待批准 |
+| CHG-006 | 总控指令四.4 指定「Microsoft.Graph SDK 的 delta query 增量同步」；但 (a) delta 的 `@removed` 条目在 SDK v5 类型化反序列化路径不可靠（未知属性可能丢弃，删除语义丢失）；(b) 04 §4.2 重试矩阵（429 Retry-After≤3 / 5xx 2s-8s-30s / 401 刷新一次）要求完全自控，与 SDK 默认 CompositeHandler 冲突需拆链；(c) SDK 属重量级依赖（总控十一.2 精神） | 提案 GraphMailProvider 以 **HttpClient 直调 Graph REST v1.0** 实现——REST 契约（端点、$select、nextLink/deltaLink、@removed）与 04 §4.1 调用清单一字不差，WireMock 契约测试更直接；认证仍用 MSAL.NET（不弱化）。**已按最小偏差实施**，待批准后视为对四.4 表述的修订 | 已实施（最小偏差），待批准 |
+| CHG-007 | 04 §2.2 `SyncCoordinator` 签名引用了 `SyncStateChangedEventArgs` / `BatchSyncedEventArgs`，均未定义 | 提案定义：`SyncStateChangedEventArgs(NewState, ErrorCode?, Message?)`；`BatchSyncedEventArgs(PageIndex, Added, Updated, Removed)`（Added/Updated 由 upsert 结果得出——delta 响应不区分新增/更新，D-36）。**已实施** | 已实施，待批准 |
+| CHG-008 | 04 §4.1 G-3 `$select` 含 `changeKey`，但 §2.1 RemoteMessage 无对应字段，DDL `messages.remote_change_key` 因此无数据来源 | 提案 RemoteMessage 追加可选参数 `string? RemoteChangeKey = null`（追加式不破坏现有构造调用）。**已实施** | 已实施，待批准 |
 
 ## 5. 决策记录（文档未写明、自行拍板项，均有依据）
 
@@ -207,6 +214,13 @@
 | D-28 | 未列举的 MSAL 异常统一映射 AUTH-003（需重新登录语义） | 04 §5 仅定义 AUTH-001~003；宁可保守要求重登 |
 | D-29 | 覆盖率门禁升级为**并集语义 + filename 前缀归一化**（`tools/coverage-gate.ps1`，CI 同脚本） | 发现各测试工程 cobertura 的 filename 前缀不一致（'Rules\x.cs' vs 'MailHelper.Core\Rules\x.cs'），简单累加会把行覆盖低估近半（46.88% 假值）；并集后 Core 93.77% |
 | D-30 | AUTH-00x 的 Serilog 日志接入随 S4 统一落地 | S3 以 AuthResult.ErrorCode 结构化承载错误码；模块零日志输出，红线零风险 |
+| D-31 | ITokenProvider.AcquireTokenSilentAsync 增加 forceRefresh 参数；Graph 通道 401 后用它强制刷新一次（该次重试不消耗退避次数） | MSAL 默认对未过期缓存令牌直接复用，401 后必须 ForceRefresh 才有意义（04 §4.2「静默刷新一次」） |
+| D-32 | Core.Services 引用 Microsoft.Extensions.Logging.Abstractions（ILogger<T>） | 微软官方抽象库，非第三方 SDK 语义（总控四.2 约束的精神是不引第三方实现）；Serilog 实现只在 Infrastructure |
+| D-33 | Inbox 文件夹用 well-known 别名 `/me/mailFolders/inbox`（G-2 的定位往返省略） | Graph v1.0 长期支持别名；契约测试覆盖该路径 |
+| D-34 | 非列举的 HTTP 错误（400/403/404 等）统一抛 SYNC-002，message 含状态码 | 04 §5 未为这些场景定义独立错误码；宁可保守终止本轮 |
+| D-35 | SYNC-001 离线日志按 1/min 节流 | 04 §5「SYNC-001 Information（频率限制 1/min）」 |
+| D-36 | delta 响应不区分新增/更新，统计口径由 upsert 结果得出（BatchSyncedEventArgs.Added/Updated） | delta API 无 added/updated 标记；幂等 upsert 下该区分仅具统计意义 |
+| D-37 | @removed 删除事件仅携带 id：ReceivedAtUtc 落 1970 占位，入库只置 is_deleted_remote=1（默认视图隐藏） | Graph 删除事件不含元数据；本地不物理删除（02 §9） |
 
 ## 6. S0 文件清单（本次落盘）
 

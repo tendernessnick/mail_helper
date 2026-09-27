@@ -47,7 +47,7 @@ public sealed class AuthService
 
     public async Task<AuthResult> GetTokenAsync(CancellationToken ct)
     {
-        var result = await _provider.AcquireTokenSilentAsync(ct);
+        var result = await _provider.AcquireTokenSilentAsync(forceRefresh: false, ct);
 
         lock (_gate)
         {
