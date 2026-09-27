@@ -8,8 +8,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.90.1" />
     <!-- 显式覆盖 EF Core 8.0.10 的传递依赖 2.1.6（GHSA-2m69-gcr7-jv3q High）：自检③红线 -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />

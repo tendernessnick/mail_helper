@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-26 |
-| 里程碑 | M0 已完成；M1 进行中（S1、S2 已完成，S3 认证待开工） |
-| 当前模块 | S3 认证（TokenService：MSAL 交互登录/静默刷新/DPAPI 缓存 + 假令牌提供器） |
+| 里程碑 | M0 已完成；M1 进行中（S1、S2、S3 已完成，S4 Graph 同步待开工） |
+| 当前模块 | S4 Graph 同步（GraphMailProvider delta 分页/断点续传 + SyncCoordinator 状态机/限流退避 + WireMock 契约测试 EX-TC-01~08 + Serilog 日志接入） |
 | 阻塞 | 无（CI 远端跑通仍待 GitHub 仓库，非关键路径） |
-| 下一步 | S3 按流水线推进：假令牌提供器 + 授权状态机测试先行 → MSAL.NET 封装（系统浏览器 + PKCE）→ DPAPI(CurrentUser+熵) 缓存 → 六项自检；真实登录验证属检查点① |
+| 下一步 | S4 按流水线推进：WireMock 契约测试先行（分页/429/401/deltaLink 失效）→ GraphMailProvider → SyncCoordinator → Serilog 基础设施与 sync.completed 埋点 → 六项自检 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -83,12 +83,15 @@
 **S2 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **90/90 全绿**（Core 70 + Services 1 + Integration 19），MailHelper.Core 行覆盖 **83.57%**（600/718，新增领域记录主要经集成测试覆盖）；③ 漏洞扫描：发现 EF 传递依赖 SQLitePCLRaw 2.1.6 有 High 公告（GHSA-2m69-gcr7-jv3q）→ **显式升级 bundle 2.1.13 后全工程干净**；④ 错误处理矩阵：STORE-001（损坏自动重建）已实现并测试；⑤ 本模块零日志输出；⑥ 迁移/模型与 04 §3 逐列一致（CHG-002 的 DEFAULT 2 原样保留；CHG-005 trigram 为登记偏差）。
 **TDD 证据**：集成测试先行，红灯 `17 失败/19`（实现缺失）→ 实现后全绿。
 
-### S3 认证（Sprint S1；真实登录=检查点①）
+### S3 认证（Sprint S1）—— **已完成（2026-09-26）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S3-01 | FR-01 | 待办 | — | TokenService：系统浏览器交互登录 / 静默刷新 / DPAPI(CurrentUser+熵) 缓存 |
-| T-S3-02 | FR-01 | 待办 | — | 假令牌提供器；授权状态机单元测试 |
+| T-S3-01 | FR-01 | **完成** | TokenService 编译通过 + DpapiFileProtector 3/3 + AuthErrorMapper 5/5 | MSAL.NET 4.90.1：授权码+PKCE（公共客户端默认）、系统浏览器（WithUseEmbeddedWebView(false)）、common 多租户、`mailhelper://auth` 深链（协议注册随 S12）、DPAPI(CurrentUser+熵) 缓存序列化回调、登出撤销+删缓存（AC3）。**交互登录单测不覆盖（真实浏览器依赖）——真实验证=检查点①**；ClientId 占位符防护（AZURE_CLIENT_ID 未配置时返回明确错误而非撞云） |
+| T-S3-02 | FR-01/EX-01/EX-02 | **完成** | AuthServiceTests 8/8 全绿（假令牌提供器 FakeTokenProvider 驱动） | 状态机 SignedOut→SigningIn→(SignedIn\|ReauthRequired)；AUTH-001 取消回 SignedOut、AUTH-002 走预案向导入口、AUTH-003 标记 ReauthRequired（EX-02）；登录重入拒绝；StateChanged 事件序列验证；恢复路径（重登后静默成功回 SignedIn） |
+
+**S3 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **106/106 全绿**（Core 70 + Services 9 + Integration 27），**MailHelper.Core 并集行覆盖 93.77%（346/369）、Core.Services 100%**；③ 漏洞扫描干净（新增 MSAL 4.90.1 / ProtectedData 8.0.0）；④ 错误处理矩阵 AUTH-001/002/003 处理路径全部实现并被测试覆盖（Serilog 日志接入随 S4，D-30）；⑤ 模块零日志输出（令牌/账号信息结构上不进任何日志）；⑥ DPAPI+熵、PKCE、系统浏览器、common、登出撤销与 09 §3 逐项一致。
+**TDD 证据**：红灯 `16 失败`（AuthService 8 + 认证基础设施 8）→ 实现后全绿。
 
 ### S4 Graph 同步（Sprint S1）
 
@@ -199,6 +202,11 @@
 | D-23 | EF 实体时间列一律 long Unix 秒、枚举列存原始 string/int，领域转换隔离在仓储层 | 实体与 DDL 一字不差；Core 不感知存储形态 |
 | D-24 | dotnet-ef 以**本地工具**安装（`.config/dotnet-tools.json` 随仓库）；SQLitePCLRaw.bundle 显式升 2.1.13 | 本地工具 CI 可 `dotnet tool restore`；2.1.6 传递依赖有 High 公告 GHSA-2m69-gcr7-jv3q（自检③红线） |
 | D-25 | 仓储连接策略：每操作独立 SQLite 连接（每连接 PRAGMA foreign_keys=ON + synchronous=NORMAL），连接与上下文同作用域释放 | synchronous 是连接级 PRAGMA；池化连接复用不保证 PRAGMA 生效 |
+| D-26 | 认证契约（ITokenProvider/AuthService/AuthResult/AuthState/AuthErrorCodes）为自行设计 | 04 章对 MOD-04 只有职责描述无签名；属设计自由度（非文档矛盾），不走 CHG；错误码字符串常量落 Core 供两层共用 |
+| D-27 | MSAL 实现类名沿用工程书 TokenService；交互登录不做单测 | 真实浏览器/云依赖，真实验证=检查点①（总控指令九）；ClientId 占位符防护防误连云 |
+| D-28 | 未列举的 MSAL 异常统一映射 AUTH-003（需重新登录语义） | 04 §5 仅定义 AUTH-001~003；宁可保守要求重登 |
+| D-29 | 覆盖率门禁升级为**并集语义 + filename 前缀归一化**（`tools/coverage-gate.ps1`，CI 同脚本） | 发现各测试工程 cobertura 的 filename 前缀不一致（'Rules\x.cs' vs 'MailHelper.Core\Rules\x.cs'），简单累加会把行覆盖低估近半（46.88% 假值）；并集后 Core 93.77% |
+| D-30 | AUTH-00x 的 Serilog 日志接入随 S4 统一落地 | S3 以 AuthResult.ErrorCode 结构化承载错误码；模块零日志输出，红线零风险 |
 
 ## 6. S0 文件清单（本次落盘）
 

@@ -13,5 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MailHelper.Core.Services\MailHelper.Core.Services.csproj" />
+    <!-- 测试引用 Infrastructure 仅用于 FakeTokenProvider 测试替身（测试工程可自由引用） -->
+    <ProjectReference Include="..\..\src\MailHelper.Infrastructure\MailHelper.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

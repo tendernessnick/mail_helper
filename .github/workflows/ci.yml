@@ -29,38 +29,11 @@ jobs:
       - name: Test (含 XPlat 覆盖率收集，排除 *.g.cs 生成代码)
         run: dotnet test MailHelper.sln -c Release --no-build --collect:"XPlat Code Coverage" --settings coverlet.runsettings
 
-      # NFR-10 / G1：MailHelper.Core 手写代码行覆盖 ≥ 80%。
-      # 按 cobertura <package name="MailHelper.Core"> 聚合；排除 obj 下源生成器产物。
-      # S0 骨架阶段 Core 仅含枚举（无可执行行）时放行并输出 notice；S1 起严格执行（PROGRESS.md D-03/D-14）。
+      # NFR-10 / G1：MailHelper.Core 行覆盖 ≥ 80%（并集语义：任一测试工程命中即算覆盖；
+      # 归一化各报告 filename 前缀差异；排除 obj 下源生成器产物，D-14）
       - name: Coverage gate (MailHelper.Core >= 80%)
         shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $reports = Get-ChildItem -Path . -Recurse -Filter 'coverage.cobertura.xml'
-          if (-not $reports) { Write-Error '未找到覆盖率文件'; exit 1 }
-          $total = 0; $covered = 0
-          foreach ($r in $reports) {
-            [xml]$x = Get-Content -LiteralPath $r.FullName -Raw
-            $packages = $x.SelectNodes('//package') | Where-Object { $_.name -eq 'MailHelper.Core' }
-            foreach ($p in $packages) {
-              foreach ($c in $p.SelectNodes('.//class')) {
-                if ($c.filename -match 'obj[\\/]') { continue }
-                foreach ($l in $c.SelectNodes('.//line')) {
-                  if ($l.branch -ne 'True') {
-                    $total++
-                    if ([double]$l.hits -gt 0) { $covered++ }
-                  }
-                }
-              }
-            }
-          }
-          if ($total -eq 0) {
-            Write-Host '::notice::MailHelper.Core 当前无可执行行（S0 骨架），覆盖率门禁自 S1 起严格执行 >= 80%'
-            exit 0
-          }
-          $rate = $covered / $total
-          Write-Host ("MailHelper.Core line coverage = {0:P2} ({1}/{2})" -f $rate, $covered, $total)
-          if ($rate -lt 0.80) { Write-Error 'MailHelper.Core 行覆盖率低于 80% 门禁（NFR-10/G1）'; exit 1 }
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools/coverage-gate.ps1 -Assembly MailHelper.Core -MinRate 0.80
 
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
