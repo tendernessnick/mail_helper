@@ -1,6 +1,7 @@
 using System.IO;
 using MailHelper.App.ViewModels;
 using MailHelper.Core;
+using MailHelper.App.Notifications;
 using MailHelper.Core.Abstractions;
 using MailHelper.Core.Domain;
 using MailHelper.Core.Rules;
@@ -90,6 +91,12 @@ internal static class Bootstrapper
                     sp.GetRequiredService<IMessageStore>(),
                     "acc-1",
                     sp.GetRequiredService<ILogger<ClassificationService>>()));
+
+                // —— 通知（FR-14：04 §8 决策 + 04 §4 Toast 实现）——
+                services.AddSingleton(_ => new NotificationRepository(dbPath));
+                services.AddSingleton<INotificationStore>(sp => sp.GetRequiredService<NotificationRepository>());
+                services.AddSingleton<IToastSender>(_ => new ToastSender());
+                services.AddSingleton<NotificationService>();
 
                 // —— UI ——
                 services.AddSingleton(sp => new MainViewModel(

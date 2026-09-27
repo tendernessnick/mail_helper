@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-27 |
-| 里程碑 | **M1 收口（S1~S6 全部完成）**；M2 进行中（下一步 S7） |
-| 当前模块 | S7 通知与托盘（P0 逐封/P1 聚合、去重表、勿扰时段、托盘角标/菜单、关窗常驻） |
-| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——不阻塞 S7~S11 开发（WireMock/假令牌路径） |
-| 下一步 | S7 按流水线推进：通知决策（04 §8）→ INotificationService 测试先行 → Toast 去重与勿扰 → 托盘角标/关窗常驻 → 六项自检 → PROGRESS 更新 + 提交 |
+| 里程碑 | M2 进行中（S1~S7 已完成；下一步 S8） |
+| 当前模块 | S8 待确认队列与反馈闭环（FR-09 队列入口、FR-11 改判 + FeedbackService 半自动规则、TC-014 端到端） |
+| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——不阻塞 S8~S11 开发（WireMock/假令牌路径） |
+| 下一步 | S8 按流水线推进：classification_feedback 表仓储 → FeedbackService（发件人半自动规则 ×1.5、上限 15）测试先行 → 改判入口 UI（阅读窗格「改为…」）→ TC-014 端到端 → 六项自检 → 提交 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -127,12 +127,14 @@
 
 **S6 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **151/151 全绿**（Core 76 + Services 23 + Integration 52），并集覆盖 Core **94.23%**（359/381）、Core.Services **90.96%**；③ 漏洞扫描：发现 FlaUI 4.0.0 传递依赖 System.Drawing.Common 5.0.2 **Critical**（GHSA-rxg9-xrhp-64gj）→ 显式升级 8.0.7 覆盖后 **7 工程全部干净**；④ 错误码矩阵：UI-000 全局兜底（App 三异常 handler → %TEMP%\mailhelper-crash.log）+ AUTH-001/002/003（登录失败提示/预案入口/重登）+ SYNC-001/003（状态栏离线与失败文案）均可在 UI 呈现；⑤ 日志红线：App 层零 Serilog 输出，崩溃日志仅异常类型+堆栈，无正文/令牌/主题；⑥ 文档一致性：三栏几何/色卡/键盘（Ctrl+F、Ctrl+R）/四态与 05 §3.2、§5.1、§6、§7 逐项核对一致。
 
-### S7 通知与托盘（Sprint S3）
+### S7 通知与托盘（Sprint S3）—— **已完成（2026-09-27）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S7-01 | FR-14 | 待办 | — | P0 逐封 / P1 聚合(≥3 封)、message_id 去重表、勿扰时段 |
-| T-S7-02 | FR-14 | 待办 | — | 托盘角标/菜单/关窗常驻（真实系统通知效果验证列入检查点②） |
+| T-S7-01 | FR-14 | **完成** | NotificationServiceTests 12/12（真 SQLite + FakeToastSender + FixedTimeProvider）：P0 逐封（launch=mailhelper://message/{id}，AC1）、P1≥3 聚合「x 封重要邮件」、P2/P3 静默、message_id 去重（AC2）、勿扰 queued/结束补发摘要、P0 开关、首轮静默（D-50）、TC-018 混合批次、notify.sent 埋点（Serilog 文件断言且无主题/发件人）；NotificationRepositoryTests 3/3（过滤/queued→flushed 流转/重放幂等）；协调器 SyncRoundCompleted 3/3（整轮一次携带全部 newMails/首轮标志/失败轮不触发） | 04 §8 决策逐条落地；CHG-010（同步完成事件 newMails 载体） |
+| T-S7-02 | FR-14 | **完成** | 托盘 H.NotifyIcon.Wpf（04 §4 指定）：角标图标 WPF 渲染→PNG→ICO 容器封装（DrawText 动态数字，>99 显示 99）；菜单=打开主界面/立即同步/设置（S9 占位禁用）/退出；未读总数联动角标（UnreadTotal）；关窗→Hide+一次性气泡提示（AC3）；退出走托盘菜单置 forceClose；单实例 Mutex+命名管道唤起（EX-TC-07）；Toast 点击直达（OnActivated 解析 launch → SelectMailByIdAsync，真实弹窗=检查点②）；**TC-019 已并入 UI 冒烟**：关窗→进程驻留→管道唤起→窗口重现 | ToastSender 落 App 层（D-52）；ICO 封装规避 System.Drawing.Common 新依赖 |
+
+**S7 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **169/169 全绿**（Core 76 + Services 38 + Integration 55），并集覆盖 Core **94.26%**（361/383）、Core.Services **92.36%**（290/314）；③ 漏洞扫描：新增 Microsoft.Toolkit.Uwp.Notifications 7.1.3（04 §4 指定）与 H.NotifyIcon.Wpf 2.3.0（04 §4 指定）后 **7 工程全部干净**；④ 错误码矩阵：无新增错误码（04 §5 无 notify 码）；toast.send_failed Warning 降级不阻断；通知侧异常经 UI-000 兜底（crash log）且不影响同步轮；⑤ 日志红线：notify.sent/notify.queued/toast.* 仅计数与布尔，测试断言日志不含主题/发件人；⑥ 文档一致性：04 §8 四条决策逐条实现并测试、04 §4 技术栈按指定采用；notify.quiet_hours 值格式文档未定义（「Should」疑笔误）→ D-49 拍板。
 
 ### S8 待确认队列与反馈闭环（Sprint S3）
 
@@ -184,6 +186,7 @@
 | CHG-007 | 04 §2.2 `SyncCoordinator` 签名引用了 `SyncStateChangedEventArgs` / `BatchSyncedEventArgs`，均未定义 | 提案定义：`SyncStateChangedEventArgs(NewState, ErrorCode?, Message?)`；`BatchSyncedEventArgs(PageIndex, Added, Updated, Removed)`（Added/Updated 由 upsert 结果得出——delta 响应不区分新增/更新，D-36）。**已实施** | 已实施，待批准 |
 | CHG-008 | 04 §4.1 G-3 `$select` 含 `changeKey`，但 §2.1 RemoteMessage 无对应字段，DDL `messages.remote_change_key` 因此无数据来源 | 提案 RemoteMessage 追加可选参数 `string? RemoteChangeKey = null`（追加式不破坏现有构造调用）。**已实施** | 已实施，待批准 |
 | CHG-009 | 04 §2.2 `ClassificationService.ClassifyPendingAsync` 返回 `ClassificationSummary`，未定义 | 提案定义：`ClassificationSummary(int Processed, IReadOnlyDictionary<MailCategory,int> CategoryCounts, int PendingReview, long ElapsedMs)`（对应 04 §6 埋点 classify.completed 的各类别分布与待确认数）。**已实施** | 已实施，待批准 |
+| CHG-010 | 04 §8.1「同步完成事件携带 newMails」：现有 `BatchSyncedEventArgs`（CHG-007）仅含计数，无邮件列表载体；且逐批通知会造成一轮多批的碎片化弹窗 | 提案 SyncCoordinator **追加** `SyncRoundCompleted` 事件（整轮成功推进断点后触发一次）：`SyncRoundCompletedEventArgs(NewMails, IsInitialRound, DurationMs)`——NewMails=本轮全部入库邮件（更新与新增一并交给 notification_log 去重，恰为 04 §8.4 的 NOT EXISTS 语义）；失败/取消轮不触发。既有事件与签名零改动。**已实施** | 已实施，待批准 |
 
 ## 5. 决策记录（文档未写明、自行拍板项，均有依据）
 
@@ -237,6 +240,10 @@
 | D-46 | WebView2 渲染排队模式：CoreWebView2 未就绪时 `_pendingHtml` 暂存，CoreWebView2InitializationCompleted(IsSuccess) 后渲染 | EnsureCoreWebView2Async 是异步的，选中小即渲染会抛 InvalidOperationException（Windows 事件日志实测取证）；初始化失败走 RISK-04 降级提示 |
 | D-47 | FlaUI 测试宿主 P/Invoke 声明 PerMonitorV2 DPI 感知 | 非 DPI 感知宿主拿到虚拟化矩形：GDI 截图只覆盖 200% 缩放物理窗口的左上角（截图像素与 UIA DIP 几何整体错位，S6 实际踩坑并修复）；声明后 UIA/像素坐标一致（×2 严格对应） |
 | D-48 | 外链拦截 v1：NavigationStarting 一律取消 http(s) 导航，仅放行 `data:`（NavigateToString 正文） | 09 §5「外链点击前确认」的保守实现；确认对话框随 S9 设置页评估 |
+| D-49 | `notify.quiet_hours` 值格式 = `"HH:mm-HH:mm"` 字符串（可跨午夜），null/空=未启用；非法格式记 Warning 按未启用 | 04 §7 表格值列写「（Should）」疑为笔误、格式未定义；跨午夜为勿扰时段（如 23:00-07:00）的常见语义 |
+| D-50 | 首轮同步静默：IsInitialRound（同步前无断点）时通知仅登记 notification_log 不弹 Toast | 首装全量同步动辄数百封 P0/P1，全部弹窗伤信任（RISK-06 精神）；登记后由 message_id 去重保证后续增量不重发 |
+| D-51 | notification_log.level 值域 = {P0, P1, queued, flushed}：flushed=已随勿扰结束摘要补发，保留参与去重但不再计入待补发 | 04 §8.3 仅定义 queued；补发摘要后若清行会削弱去重（勿扰中入队→补发→同邮件更新再通知），置 flushed 最小且安全 |
+| D-52 | ToastSender 落在 App 层（非 Infrastructure）：Toolkit Toast 桌面 API 完整形态仅在 windows TFM 资产提供；App TFM 随之升为 net8.0-windows10.0.17763.0，Infrastructure 保持 net8.0 | 04 §4 指定技术而非所在工程；Infrastructure 保持跨 TFM 可测性（Services.Tests 引用其 Fake 与仓储）；分层方向仍为 App→Services→Core，无逆向依赖 |
 
 ## 6. S0 文件清单（本次落盘）
 

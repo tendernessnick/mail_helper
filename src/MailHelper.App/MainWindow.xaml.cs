@@ -13,6 +13,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly ISettingsStore _settings;
     private string? _pendingHtml; // CoreWebView2 完成初始化前排队的正文
+    private bool _forceClose; // 托盘「退出」置位；普通关窗 = 驻留托盘（FR-14 AC3 / TC-019）
 
     public MainWindow(MainViewModel viewModel, ISettingsStore settings)
     {
@@ -36,7 +37,18 @@ public partial class MainWindow : Window
 
             await viewModel.InitializeAsync(CancellationToken.None);
         };
-        Closing += async (_, _) => await SaveLayoutAsync();
+        Closing += (_, e) =>
+        {
+            _ = SaveLayoutAsync(); // 布局保存不阻断退出（05 §3.3）
+            if (_forceClose)
+            {
+                return; // 真退出（托盘菜单）
+            }
+
+            e.Cancel = true;
+            Hide(); // 关窗常驻：同步与通知照常（FR-14 AC3）
+            App.Tray?.ShowMinimizedHint();
+        };
 
         _viewModel.SelectedMailHtmlNeeded += async (_, mail) => await RenderMailAsync(mail);
 
@@ -76,6 +88,21 @@ public partial class MainWindow : Window
         ReaderFallback.Text = "阅读组件（WebView2 Runtime）初始化失败，邮件正文无法渲染。"
             + "请安装 Microsoft Edge WebView2 Runtime 后重启应用；正文已安全缓存在本机。";
         ReaderFallback.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>托盘/管道唤起（EX-TC-07）：恢复显示并前置。</summary>
+    internal void ShowFromTray()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    /// <summary>托盘「退出」：置真退出标志后走 Closing 保存布局并关闭。</summary>
+    internal void QuitFromTray()
+    {
+        _forceClose = true;
+        Close();
     }
 
     /// <summary>WebView2 沙箱（FR-12 AC2 / SEC-03：渲染不执行任何脚本）。</summary>

@@ -163,6 +163,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool isSearchMode;
 
+    /// <summary>全部未读数（托盘角标数据源，FR-14 角标计数）。</summary>
+    [ObservableProperty]
+    private int unreadTotal;
+
     public event EventHandler<MailItemViewModel?>? SelectedMailHtmlNeeded;
 
     partial void OnSelectedMailChanged(MailItemViewModel? value)
@@ -324,6 +328,7 @@ public partial class MainViewModel : ObservableObject
         await _dispatcher.InvokeAsync(() =>
         {
             ReplaceMails(messages);
+            UnreadTotal = unread.Values.Sum(); // 托盘角标（FR-14）
             foreach (var item in Categories)
             {
                 item.Count = item.IsNeedsReviewEntry
@@ -331,6 +336,31 @@ public partial class MainViewModel : ObservableObject
                     : item.Category is { } c ? unread[c]
                     : messages.Count(m => !m.IsRead);
             }
+        });
+    }
+
+    /// <summary>Toast 点击直达（FR-14 AC1，launch=mailhelper://message/{id}）：切回全部收件箱并选中该邮件。</summary>
+    public async Task SelectMailByIdAsync(string messageId, CancellationToken ct)
+    {
+        if (_accountId is null)
+        {
+            return;
+        }
+
+        var allCategory = Categories.First(c => c.Category is null && !c.IsNeedsReviewEntry);
+        if (SelectedCategory != allCategory)
+        {
+            SelectedCategory = allCategory; // 触发 LoadInboxAsync
+            await Task.Delay(50, ct); // 等列表刷新（LoadInboxAsync 内部 invoke 队列）
+        }
+        else
+        {
+            await LoadInboxAsync(ct);
+        }
+
+        await _dispatcher.InvokeAsync(() =>
+        {
+            SelectedMail = Mails.FirstOrDefault(m => m.Id == messageId) ?? SelectedMail;
         });
     }
 

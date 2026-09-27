@@ -42,6 +42,9 @@ public sealed class SyncCoordinator
 
     public event EventHandler<BatchSyncedEventArgs>? BatchSynced;
 
+    /// <summary>整轮成功后触发一次（CHG-010：04 §8.1 newMails 载体；失败/取消轮不触发）。</summary>
+    public event EventHandler<SyncRoundCompletedEventArgs>? SyncRoundCompleted;
+
     public async Task SyncNowAsync(bool fullIfNoLink = true, CancellationToken ct = default)
     {
         lock (_gate)
@@ -67,6 +70,8 @@ public sealed class SyncCoordinator
         var pageIndex = 0;
         var added = 0;
         var removed = 0;
+        var wasInitialRound = checkpoint is null; // 首轮判定（D-50）：同步前无断点
+        var roundMails = new List<MailMessage>(_batchSize);
         var buffer = new List<MailMessage>(_batchSize);
 
         async Task FlushAsync()
@@ -76,6 +81,7 @@ public sealed class SyncCoordinator
             added += inserted;
             removed += removedInBatch;
             pageIndex++;
+            roundMails.AddRange(buffer); // CHG-010：整轮 newMails 累积
             RaiseBatchSynced(new BatchSyncedEventArgs(pageIndex, inserted, buffer.Count - inserted, removedInBatch));
             buffer.Clear();
         }
@@ -109,6 +115,8 @@ public sealed class SyncCoordinator
             _logger.LogInformation(
                 "sync.completed pages={Pages} latency_ms={LatencyMs} added={Added} updated={Updated} removed={Removed}",
                 pageIndex, sw.ElapsedMilliseconds, added, added, removed);
+            SyncRoundCompleted?.Invoke(this,
+                new SyncRoundCompletedEventArgs(roundMails, wasInitialRound, sw.ElapsedMilliseconds));
             RaiseStateChanged(SyncState.Idle);
         }
         catch (MailProviderException ex)

@@ -186,4 +186,55 @@ public class SyncCoordinatorTests : IDisposable
         content.Should().Contain("sync.completed");
         content.Should().Contain("added=2");
     }
+
+    [Fact]
+    public async Task RoundCompleted_FiresOnce_WithAllMails_AndInitialFlag()
+    {
+        // 04 §8.1「同步完成事件携带 newMails」（CHG-010）：整轮成功后触发一次，携带全部入库邮件
+        var provider = new FakeMailProvider { CompletedLink = "dl-new" };
+        provider.Pages.Add(new[] { Msg("m1"), Msg("m2") });
+        provider.Pages.Add(new[] { Msg("m3") });
+        var rounds = new List<SyncRoundCompletedEventArgs>();
+        var coordinator = NewCoordinator(provider, batchSize: 2);
+        coordinator.SyncRoundCompleted += (_, e) => rounds.Add(e);
+
+        await coordinator.SyncNowAsync(ct: CancellationToken.None);
+
+        rounds.Should().HaveCount(1); // 整轮一次（非每批）
+        rounds[0].NewMails.Select(m => m.Id).Should().BeEquivalentTo("m1", "m2", "m3");
+        rounds[0].IsInitialRound.Should().BeTrue(); // 同步前无断点 = 首轮（D-50 静默依据）
+    }
+
+    [Fact]
+    public async Task RoundCompleted_IncrementalRound_FlagsFalse()
+    {
+        await SaveCheckpointAsync("dl-old");
+        var provider = new FakeMailProvider { CompletedLink = "dl-new" };
+        provider.Pages.Add(new[] { Msg("m1") });
+        var rounds = new List<SyncRoundCompletedEventArgs>();
+        var coordinator = NewCoordinator(provider);
+        coordinator.SyncRoundCompleted += (_, e) => rounds.Add(e);
+
+        await coordinator.SyncNowAsync(ct: CancellationToken.None);
+
+        rounds.Single().IsInitialRound.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RoundCompleted_NotFired_OnFailure()
+    {
+        var provider = new FakeMailProvider
+        {
+            ThrowAfterPages = new MailProviderException("SYNC-001", "网络中断"),
+        };
+        provider.Pages.Add(new[] { Msg("m1") });
+        var fired = 0;
+        var coordinator = NewCoordinator(provider);
+        coordinator.SyncRoundCompleted += (_, _) => fired++;
+
+        await coordinator.SyncNowAsync(ct: CancellationToken.None);
+
+        coordinator.State.Should().Be(SyncState.Offline);
+        fired.Should().Be(0); // 失败轮不触发通知（避免半轮数据弹通知后又续传重复）
+    }
 }

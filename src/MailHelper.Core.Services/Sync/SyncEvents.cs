@@ -1,3 +1,5 @@
+using MailHelper.Core.Domain;
+
 namespace MailHelper.Core.Services;
 
 /// <summary>同步状态变更（04 章 §2.2 引用未定义 → CHG-007 提案定义）。
@@ -37,4 +39,23 @@ public sealed class BatchSyncedEventArgs : EventArgs
     public int Updated { get; }
 
     public int Removed { get; }
+}
+
+/// <summary>整轮同步成功完成（CHG-010：04 §8.1「同步完成事件携带 newMails」的载体——
+/// NewMails=本轮全部入库邮件（新增与更新，通知侧由 notification_log 去重）；
+/// IsInitialRound=同步前无断点（首轮，D-50 通知静默的依据）。</summary>
+public sealed class SyncRoundCompletedEventArgs : EventArgs
+{
+    public SyncRoundCompletedEventArgs(IReadOnlyList<MailMessage> newMails, bool isInitialRound, long durationMs)
+    {
+        NewMails = newMails;
+        IsInitialRound = isInitialRound;
+        DurationMs = durationMs;
+    }
+
+    public IReadOnlyList<MailMessage> NewMails { get; }
+
+    public bool IsInitialRound { get; }
+
+    public long DurationMs { get; }
 }

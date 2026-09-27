@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using FluentAssertions;
 using FlaUI.Core.AutomationElements;
@@ -25,10 +26,16 @@ public class UiSmokeTests
 
         var dataDir = Path.Combine(Path.GetTempPath(), "mh-ui-" + Guid.NewGuid().ToString("N"));
         var repoRoot = FindRepoRoot();
-        var exePath = Path.Combine(repoRoot, "src", "MailHelper.App", "bin", "Release", "net8.0-windows", "MailHelper.App.exe");
-        File.Exists(exePath).Should().BeTrue($"应先构建 App：{exePath}");
+        // TFM 输出目录可能带 Windows SDK 后缀（net8.0-windows / net8.0-windows10.0.x）：通配取最新构建
+        var exePath = Directory.GetFiles(
+                Path.Combine(repoRoot, "src", "MailHelper.App", "bin", "Release"),
+                "MailHelper.App.exe", SearchOption.AllDirectories)
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .FirstOrDefault();
+        exePath.Should().NotBeNull("应先构建 App（dotnet build MailHelper.sln -c Release）");
+        var exePathFull = Path.GetFullPath(exePath!);
 
-        var psi = new ProcessStartInfo(exePath)
+        var psi = new ProcessStartInfo(exePathFull)
         {
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -163,6 +170,42 @@ public class UiSmokeTests
                 return digits.Length > 0 && int.TryParse(digits, out var count) && count < 20 ? count : null;
             }, TimeSpan.FromSeconds(10), "未读徽章减少");
             unreadAfter.Should().BeLessThan(20, "点击一封已读后，全部收件箱未读数应从 20 减少");
+
+            // TC-019 关窗常驻（FR-14 AC3）：关窗 → 进程驻留 → 命名管道唤起 → 窗口重现
+            Retry<object?>(() =>
+            {
+                var window = FindWindow(automation, process);
+                window?.Close(); // WM_CLOSE → 触发 Hide 而非退出
+                return new object();
+            }, TimeSpan.FromSeconds(10), "关闭主窗口");
+            var closeDeadline = DateTime.UtcNow + TimeSpan.FromSeconds(3);
+            while (DateTime.UtcNow < closeDeadline)
+            {
+                process.Refresh();
+                if (IsWindowGone(automation, process))
+                {
+                    break;
+                }
+
+                Thread.Sleep(200);
+            }
+
+            process.Refresh();
+            process.HasExited.Should().BeFalse("关窗后进程应驻留托盘（FR-14 AC3）");
+
+            using (var client = new NamedPipeClientStream(".", "MailHelper-SingleInstance-Pipe", PipeDirection.Out))
+            {
+                client.Connect(2000); // EX-TC-07：二次启动路径同款管道
+                var payload = System.Text.Encoding.UTF8.GetBytes("SHOW");
+                client.Write(payload, 0, payload.Length);
+                client.Flush();
+            }
+
+            Retry<object?>(() =>
+            {
+                var window = FindWindow(automation, process);
+                return window is not null && !window.Properties.IsOffscreen.Value ? new object() : null;
+            }, TimeSpan.FromSeconds(10), "管道唤起后窗口重现");
         }
         finally
         {
@@ -209,6 +252,18 @@ public class UiSmokeTests
 
     [DllImport("user32.dll")]
     private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+
+    private static bool IsWindowGone(UIA3Automation automation, Process process)
+    {
+        try
+        {
+            return FindWindow(automation, process) is null;
+        }
+        catch (COMException)
+        {
+            return false;
+        }
+    }
 
     private static AutomationElement? Find(Process[] app, UIA3Automation automation, Func<Window, AutomationElement?> probe)
     {
