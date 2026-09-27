@@ -10,6 +10,7 @@ using MailHelper.Infrastructure.Auth;
 using MailHelper.Infrastructure.Logging;
 using MailHelper.Infrastructure.Storage;
 using MailHelper.Infrastructure.Sync;
+using MailHelper.Infrastructure.SystemIntegration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -105,6 +106,39 @@ internal static class Bootstrapper
                 services.AddSingleton<IRulesStore>(sp => sp.GetRequiredService<RuleRepository>());
                 services.AddSingleton<FeedbackService>();
 
+                // —— 设置 / 规则管理 / 语言（S9：FR-03/04/10、NFR-12）——
+                services.AddSingleton<SettingsService>();
+                services.AddSingleton(sp => new RuleManagementService(
+                    sp.GetRequiredService<IRulesStore>(),
+                    sp.GetRequiredService<RuleEngine>(),
+                    sp.GetRequiredService<IMessageStore>(),
+                    "acc-1",
+                    sp.GetRequiredService<ILogger<RuleManagementService>>()));
+                services.AddSingleton<LanguageService>();
+
+                // —— 页面视图模型（05 §2 Shell 导航）——
+                services.AddSingleton<RulesViewModel>();
+                services.AddSingleton(sp => new SettingsViewModel(
+                    sp.GetRequiredService<SettingsService>(),
+                    sp.GetRequiredService<AuthService>(),
+                    sp.GetRequiredService<IAccountStore>(),
+                    onSyncIntervalChanged: RestartPeriodicSync,
+                    setAutostartAsync: enabled =>
+                    {
+                        var autostart = new AutostartService(
+                            @"Software\Microsoft\Windows\CurrentVersion\Run", "MailHelper");
+                        if (enabled)
+                        {
+                            autostart.Enable();
+                        }
+                        else
+                        {
+                            autostart.Disable();
+                        }
+
+                        return Task.CompletedTask;
+                    }));
+
                 // —— UI ——
                 services.AddSingleton(sp => new MainViewModel(
                     sp.GetRequiredService<AuthService>(),
@@ -118,8 +152,15 @@ internal static class Bootstrapper
                     sp.GetRequiredService<ILogger<MainViewModel>>(),
                     devMode));
                 services.AddSingleton<MainWindow>();
+                services.AddSingleton<RulesPage>();
+                services.AddSingleton<SettingsPage>();
             })
             .Build();
+
+    /// <summary>FR-04 周期同步热更新：设置页改间隔后重启循环（App 持 CTS）。</summary>
+    internal static void RestartPeriodicSync(int intervalMinutes) => PeriodicSyncChanged?.Invoke(intervalMinutes);
+
+    internal static event Action<int>? PeriodicSyncChanged;
 
     /// <summary>规则引擎装配：内置规则包（随包 JSON，缺失/损坏回退空集，09 §2）∪ rules 表用户/反馈规则
     /// （FR-11：反馈规则重启后持续生效）。Id 全局唯一不冲突；同发件人规则并存时反馈 ×1.5 权重胜出。</summary>

@@ -86,6 +86,9 @@ public interface IRulesStore
 
     /// <summary>按 Id 幂等 upsert（FR-11：反馈生成的发件人规则）。</summary>
     Task UpsertAsync(ClassifyRule rule, CancellationToken ct);
+
+    /// <summary>按 Id 删除（S9：用户规则删除 / 反馈规则撤销学习；不存在时 no-op）。</summary>
+    Task DeleteAsync(Guid id, CancellationToken ct);
 }
 
 /// <summary>改判反馈仓储（classification_feedback 表；S8 写入 + 计数，历史查看随 S9 规则管理页）。</summary>

@@ -170,6 +170,32 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private int unreadTotal;
 
+    // —— 视图导航（05 §2 Shell：收件箱/规则/设置）——
+    [ObservableProperty]
+    private bool isInboxView = true;
+
+    [ObservableProperty]
+    private bool isRulesView;
+
+    [ObservableProperty]
+    private bool isSettingsView;
+
+    [RelayCommand]
+    private void ShowInbox() => SwitchView(0);
+
+    [RelayCommand]
+    private void ShowRules() => SwitchView(1);
+
+    [RelayCommand]
+    private void ShowSettings() => SwitchView(2);
+
+    private void SwitchView(int view)
+    {
+        IsInboxView = view == 0;
+        IsRulesView = view == 1;
+        IsSettingsView = view == 2;
+    }
+
     public event EventHandler<MailItemViewModel?>? SelectedMailHtmlNeeded;
 
     partial void OnSelectedMailChanged(MailItemViewModel? value)

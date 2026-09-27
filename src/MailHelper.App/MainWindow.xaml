@@ -14,6 +14,30 @@
         <app:CountToEmptyVisibilityConverter x:Key="CountToEmptyVis" />
         <app:NullToCollapsedConverter x:Key="NullToCollapsed" />
         <app:CountToUnreadNameConverter x:Key="UnreadName" />
+        <app:InverseBoolConverter x:Key="InverseBool" />
+        <Style x:Key="NavTab" TargetType="RadioButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#E1DFDD" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#EDEBE9" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <app:InverseBoolToVisibilityConverter x:Key="InverseBoolVis" />
 
         <!-- 邮件行（05 §3.2 中栏）：左缘 3px 色条 + 未读点 + 主题/摘要 + 徽章 + 时间 -->
         <DataTemplate x:Key="MailItemTemplate" DataType="{x:Type vm:MailItemViewModel}">
@@ -90,8 +114,19 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- 顶栏：搜索 + 状态徽章 -->
+            <!-- 顶栏：导航（05 §2 Shell）+ 搜索 -->
             <DockPanel Grid.Row="0" Background="#F3F2F1" Margin="0">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="10,0,4,0" VerticalAlignment="Center">
+                    <RadioButton Content="收件箱" GroupName="Nav" IsChecked="True" Margin="0,0,4,0"
+                                 Padding="12,5" Style="{StaticResource NavTab}"
+                                 Command="{Binding ShowInboxCommand}" />
+                    <RadioButton Content="规则" GroupName="Nav" Margin="0,0,4,0"
+                                 Padding="12,5" Style="{StaticResource NavTab}"
+                                 Command="{Binding ShowRulesCommand}" />
+                    <RadioButton Content="设置" GroupName="Nav"
+                                 Padding="12,5" Style="{StaticResource NavTab}"
+                                 Command="{Binding ShowSettingsCommand}" />
+                </StackPanel>
                 <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                          Width="360" Margin="12,8,4,8" VerticalContentAlignment="Center"
                          AutomationProperties.Name="搜索框">
@@ -108,8 +143,8 @@
                            DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,12,0" />
             </DockPanel>
 
-            <!-- 三栏 -->
-            <Grid Grid.Row="1">
+            <!-- 收件箱（三栏，05 §3.2） -->
+            <Grid Grid.Row="1" Visibility="{Binding IsInboxView, Converter={StaticResource BoolToVis}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="LeftColumn" Width="220" MinWidth="160" />
                     <ColumnDefinition Width="Auto" />
@@ -207,6 +242,12 @@
                     </Border>
                 </Grid>
             </Grid>
+
+            <!-- 规则管理（FR-10 / 05 §3.3）与设置（FR-03 / 05 §3.4）：DI 页面经代码后置挂载 -->
+            <ContentControl Grid.Row="1" x:Name="RulesHost"
+                            Visibility="{Binding IsRulesView, Converter={StaticResource BoolToVis}}" />
+            <ContentControl Grid.Row="1" x:Name="SettingsHost"
+                            Visibility="{Binding IsSettingsView, Converter={StaticResource BoolToVis}}" />
 
             <!-- 状态栏（05 §3.2 底部：同步状态/离线态） -->
             <Border Grid.Row="2" Background="#F3F2F1" Padding="12,5">

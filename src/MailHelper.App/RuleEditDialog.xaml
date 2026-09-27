@@ -1,0 +1,36 @@
+<Window x:Class="MailHelper.App.RuleEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="规则编辑" Width="440" Height="420"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="#FAF9F8">
+    <StackPanel Margin="20">
+        <TextBlock Text="规则编辑" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,16" />
+
+        <TextBlock Text="类型" Margin="0,0,0,4" />
+        <ComboBox x:Name="KindBox" Margin="0,0,0,12" SelectedIndex="0">
+            <ComboBoxItem Content="发件人地址" Tag="SenderAddress" />
+            <ComboBoxItem Content="发件人域名" Tag="SenderDomain" />
+            <ComboBoxItem Content="主题关键词" Tag="SubjectKeyword" />
+            <ComboBoxItem Content="主题正则" Tag="SubjectRegex" />
+        </ComboBox>
+
+        <TextBlock Text="模式" Margin="0,0,0,4" />
+        <TextBox x:Name="PatternBox" Margin="0,0,0,12" />
+
+        <TextBlock Text="目标类别" Margin="0,0,0,4" />
+        <ComboBox x:Name="CategoryBox" Margin="0,0,0,12" SelectedIndex="1" />
+        <TextBlock Text="重要度建议" Margin="0,0,0,4" />
+        <ComboBox x:Name="ImportanceBox" Margin="0,0,0,12" SelectedIndex="0" />
+
+        <TextBlock Text="权重（0–15）" Margin="0,0,0,4" />
+        <TextBox x:Name="WeightBox" Margin="0,0,0,12" />
+
+        <CheckBox x:Name="EnabledBox" Content="启用" IsChecked="True" Margin="0,0,0,20" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="保存" Width="90" Height="30" Click="OnSaveClick" />
+            <Button Content="取消" Width="90" Height="30" Margin="10,0,0,0" IsCancel="True" />
+        </StackPanel>
+    </StackPanel>
+</Window>

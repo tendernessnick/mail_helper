@@ -92,3 +92,13 @@ public sealed class NullToCollapsedConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+/// <summary>bool 取反（规则管理页：内置行禁用编辑/隐藏删除，05 §3.3）。</summary>
+public sealed class InverseBoolConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is bool b ? !b : value;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        => value is bool b ? !b : value;
+}

@@ -56,6 +56,43 @@ public sealed class RuleEngine : IClassifier
         }
     }
 
+    /// <summary>S9 规则管理：移除单条规则（不存在时 no-op）；反馈规则「撤销学习」用。</summary>
+    public void Remove(Guid id)
+    {
+        lock (_writeGate)
+        {
+            var current = _compiled;
+            var rules = current.Ordered.Select(c => c.Rule)
+                .Where(r => r.Id != id)
+                .ToList();
+            _compiled = Compile(new RuleSet(current.Version, current.Scoring, rules));
+        }
+    }
+
+    /// <summary>当前活动规则集快照（S9 规则管理读取；含内置与动态规则）。</summary>
+    public IReadOnlyList<ClassifyRule> CurrentRules
+    {
+        get
+        {
+            lock (_writeGate)
+            {
+                return _compiled.Ordered.Select(c => c.Rule).ToList();
+            }
+        }
+    }
+
+    /// <summary>S9 试跑预览：单条规则（草稿）对单封输入的命中判定；独立于活动规则集与禁用状态。</summary>
+    public bool Matches(ClassifiedInput input, ClassifyRule rule)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        ArgumentNullException.ThrowIfNull(rule);
+        var compiled = Compile(new RuleSet("match", new RuleScoring(), [rule])).Ordered.Single();
+        var subject = input.Subject ?? string.Empty;
+        var body = input.BodyText ?? string.Empty;
+        var haystack = body.Length == 0 ? subject : subject + "\n" + body;
+        return Matches(compiled, input, haystack, out _);
+    }
+
     /// <summary>因正则编译失败/匹配超时（CLASS-001）被临时禁用的规则 id。</summary>
     public IReadOnlyList<Guid> TemporarilyDisabledRuleIds =>
         _disabledUntilUtc

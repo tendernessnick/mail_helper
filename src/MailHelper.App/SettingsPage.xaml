@@ -1,0 +1,94 @@
+<UserControl x:Class="MailHelper.App.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:MailHelper.App.ViewModels">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20,16" MaxWidth="640" HorizontalAlignment="Left">
+
+            <!-- 账户（FR-03） -->
+            <TextBlock Text="账户" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <Border Background="White" CornerRadius="6" Padding="14,10" BorderBrush="#E1DFDD" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Text="邮箱" Foreground="#6B6B6B" FontSize="11" />
+                    <TextBlock Text="{Binding AccountEmail}" Margin="0,0,0,8" />
+                    <TextBlock Text="接入通道" Foreground="#6B6B6B" FontSize="11" />
+                    <TextBlock Text="{Binding Channel}" Margin="0,0,0,8" />
+                    <TextBlock Text="上次同步" Foreground="#6B6B6B" FontSize="11" />
+                    <TextBlock Text="{Binding LastSync}" Margin="0,0,0,10" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="登出（保留本地缓存）" Padding="10,5" Command="{Binding LogoutCommand}" />
+                        <Button Content="清除本地数据…" Padding="10,5" Margin="10,0,0,0" Click="OnClearDataClick" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 同步 -->
+            <TextBlock Text="同步" FontSize="16" FontWeight="SemiBold" Margin="0,18,0,8" />
+            <Border Background="White" CornerRadius="6" Padding="14,10" BorderBrush="#E1DFDD" BorderThickness="1">
+                <StackPanel>
+                    <DockPanel Margin="0,2">
+                        <TextBlock Text="同步间隔（分钟，1–60）" Width="220" VerticalAlignment="Center" />
+                        <TextBox Text="{Binding IntervalMinutes, UpdateSourceTrigger=LostFocus}" Width="80"
+                                 HorizontalAlignment="Left" />
+                    </DockPanel>
+                    <CheckBox Content="启动时立即同步" IsChecked="{Binding SyncOnStartup, Mode=TwoWay}" Margin="0,8,0,2" />
+                </StackPanel>
+            </Border>
+
+            <!-- 通知（FR-14 设置项） -->
+            <TextBlock Text="通知" FontSize="16" FontWeight="SemiBold" Margin="0,18,0,8" />
+            <Border Background="White" CornerRadius="6" Padding="14,10" BorderBrush="#E1DFDD" BorderThickness="1">
+                <StackPanel>
+                    <CheckBox Content="P0 紧急通知（逐封弹窗）" IsChecked="{Binding NotifyP0, Mode=TwoWay}" Margin="0,2" />
+                    <CheckBox Content="P1 重要通知（≥3 封聚合）" IsChecked="{Binding NotifyP1, Mode=TwoWay}" Margin="0,8,0,2" />
+                    <DockPanel Margin="0,8,0,2">
+                        <TextBlock Text="勿扰时段（如 23:00-07:00，留空禁用）" Width="280" VerticalAlignment="Center" />
+                        <TextBox Text="{Binding QuietHours, UpdateSourceTrigger=LostFocus}" Width="140"
+                                 HorizontalAlignment="Left" />
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 外观（NFR-12） -->
+            <TextBlock Text="外观" FontSize="16" FontWeight="SemiBold" Margin="0,18,0,8" />
+            <Border Background="White" CornerRadius="6" Padding="14,10" BorderBrush="#E1DFDD" BorderThickness="1">
+                <StackPanel>
+                    <DockPanel Margin="0,2">
+                        <TextBlock Text="语言（重启后完全生效）" Width="220" VerticalAlignment="Center" />
+                        <ComboBox x:Name="LanguageBox" Width="140" HorizontalAlignment="Left"
+                                  SelectedIndex="0" SelectionChanged="OnLanguageChanged">
+                            <ComboBoxItem Content="跟随系统" Tag="auto" />
+                            <ComboBoxItem Content="简体中文" Tag="zh-CN" />
+                            <ComboBoxItem Content="English" Tag="en" />
+                        </ComboBox>
+                    </DockPanel>
+                    <DockPanel Margin="0,8,0,2">
+                        <TextBlock Text="主题" Width="220" VerticalAlignment="Center" />
+                        <ComboBox x:Name="ThemeBox" Width="140" HorizontalAlignment="Left"
+                                  SelectedIndex="0" SelectionChanged="OnThemeChanged">
+                            <ComboBoxItem Content="跟随系统" Tag="auto" />
+                            <ComboBoxItem Content="浅色" Tag="light" />
+                            <ComboBoxItem Content="深色" Tag="dark" />
+                        </ComboBox>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 高级 -->
+            <TextBlock Text="高级" FontSize="16" FontWeight="SemiBold" Margin="0,18,0,8" />
+            <Border Background="White" CornerRadius="6" Padding="14,10" BorderBrush="#E1DFDD" BorderThickness="1"
+                    Margin="0,0,0,20">
+                <StackPanel>
+                    <CheckBox x:Name="AutostartBox" Content="开机自启" Margin="0,2" Checked="OnAutostartChecked" Unchecked="OnAutostartUnchecked" />
+                    <CheckBox Content="诊断日志（Debug 级，含完整发件人地址）" IsChecked="{Binding Diagnostics, Mode=TwoWay}"
+                              Margin="0,8,0,2" />
+                    <DockPanel Margin="0,8,0,2">
+                        <TextBlock Text="正文缓存上限（MB）" Width="220" VerticalAlignment="Center" />
+                        <TextBox Text="{Binding BodyLimitMb, UpdateSourceTrigger=LostFocus}" Width="100"
+                                 HorizontalAlignment="Left" />
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

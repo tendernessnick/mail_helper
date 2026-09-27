@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-27 |
-| 里程碑 | M2 进行中（S1~S8 已完成；下一步 S9） |
-| 当前模块 | S9 规则编辑器、设置页、账户管理、中英双语（FR-10/03/06/13、NFR-12） |
-| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——不阻塞 S9~S11 开发（WireMock/假令牌路径） |
-| 下一步 | S9 按流水线推进：规则编辑器（四种类型 + 试跑预览最近 100 封）→ 设置页（同步/通知/外观/高级）→ 账户管理与登出 → zh-CN/en 资源 → 六项自检 → 提交 |
+| 里程碑 | M2 进行中（S1~S9 已完成；下一步 S10 全文搜索） |
+| 当前模块 | S10 全文搜索 UI（FR-13：FTS 接入 UI + from:/cat:/p: 语法；NFR-03 万级 P95<500ms） |
+| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——不阻塞 S10/S11 开发 |
+| 下一步 | S10 按流水线推进：SearchService（语法解析 from:/cat:/p:）测试先行 → FTS 查询扩展 → 顶栏搜索接线 → PERF-02/03 万级计时 → 六项自检 → 提交 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -146,13 +146,15 @@
 
 **S8 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **183/183 全绿**（Core 79 + Services 46 + Integration 58），并集覆盖 Core **94.57%**（435/460）、Core.Services **93.22%**（330/354）；③ 漏洞扫描 7 工程干净（零新增包）；④ 错误码矩阵：无新增错误码；改判目标邮件不存在返回 false 静默处理；EX-08 语义（同步不覆盖人工改判）既有测试保持；⑤ 日志红线：feedback.rule_upserted 仅含发件人域名+类别，测试断言完整地址不落日志；⑥ 文档一致性：FeedbackService 签名与 04 §2.2 原文一致、classification_feedback/rules 表 DDL 按 04 §3.2、反馈规则 ×1.5/用户 ×1.2 由 S1 既有评分承担、半自动规则进 rules 表供 S9 规则管理页展示（FR-11 完整闭环）。
 
-### S9 规则编辑器、设置、账户、i18n（Sprint S4）
+### S9 规则编辑器、设置、账户、i18n（Sprint S4）—— **已完成（2026-09-27）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S9-01 | FR-10 | 待办 | — | 规则编辑器（四种类型）+ 试跑预览（最近 100 封） |
-| T-S9-02 | FR-03/06 | 待办 | — | 设置页（同步/通知/外观/高级）、账户管理、登出、开机自启注册表 |
-| T-S9-03 | NFR-12 | 待办 | — | zh-CN / en 双语资源文件 |
+| T-S9-01 | FR-10 | **完成** | RuleManagementServiceTests 9/9：保存（Source 强制 User/正则保存前校验可编译/权重 0–15/内置只读）、删除（用户+反馈；内置拒绝）、启停（内置禁用落表同 Id 行，重启合并持续生效）、试跑预览（最近 100 封仅命中项）；RuleEngine 追加 Remove/CurrentRules/Matches；UI：顶栏导航 Tab（收件箱/规则/设置，05 §2）+ RulesPage（列表/筛选四档/启停/删除/编辑弹窗/预览结果） | TC-013 等价验证（新建→预览→保存→新邮件分类）由服务测试+引擎即时生效承担 |
+| T-S9-02 | FR-03/04/06 | **完成** | SettingsServiceTests 4/4（默认值对 04 §7 全表/间隔钳制 1–60/勿扰往返/通知开关独立）；AutostartServiceTests 2/2（TC-020：Run 键写删同步、幂等）；**FR-04 补口：RunPeriodicAsync 于 App 启动挂载**（S4 遗留——此前仅手动同步），间隔变更热重启循环；SettingsPage 五分组（账户邮箱/通道/上次同步/登出/清除本地数据带确认；同步；通知 P0/P1/勿扰；外观语言/主题；高级自启/诊断/缓存上限）；登出=AuthService.SignOutAsync（撤令牌保缓存） | 主题切换渲染打磨随 M3（设置值已持久化，D-56）；清除数据删数据目录后提示重启 |
+| T-S9-03 | NFR-12 | **完成** | LanguageServiceTests 4/4：zh/en 查找、缺键回落、auto 跟随系统文化；双语字典（Strings.Zh/En 80+ 键）+ LanguageService（ui.language → CultureInfo）；设置页语言切换（重启后完全生效，D-56） | D-55：i18n 用编译期字典（内嵌资源在本构建链不可靠，弃 JSON/resx） |
+
+**S9 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **202/202 全绿**（Core 79 + Services 63 + Integration 60），并集覆盖 Core **95.10%**（485/510）、Core.Services **94.62%**（563/595）；③ 漏洞扫描 7 工程干净（零新增包）；④ 错误码矩阵：无新增错误码；RuleValidationException（正则不可编译/模式为空/内置只读）保存时拦截并向用户提示；⑤ 日志红线：rule.saved/deleted/builtin_disabled 仅含 id/kind/category（09 §1.4 规则禁用可审计），无发件人/正文；⑥ 文档一致性：FR-03/04/10 逐项落地、05 §3.3/§3.4 线框布局一致、04 §7 配置键逐键对齐、TC-020 注册表行为实测。
 
 ### S10 全文搜索（Sprint S4）
 
@@ -248,6 +250,9 @@
 | D-52 | ToastSender 落在 App 层（非 Infrastructure）：Toolkit Toast 桌面 API 完整形态仅在 windows TFM 资产提供；App TFM 随之升为 net8.0-windows10.0.17763.0，Infrastructure 保持 net8.0 | 04 §4 指定技术而非所在工程；Infrastructure 保持跨 TFM 可测性（Services.Tests 引用其 Fake 与仓储）；分层方向仍为 App→Services→Core，无逆向依赖 |
 | D-53 | 反馈规则稳定 Id = SHA256("feedback\|"+小写发件人地址) 前 16 字节（手法同 D-13）：同发件人重复改判覆盖同一行而非堆积 | 04 §2.2「生成或加权规则」未定义加权口径；覆盖式 + 引擎 ×1.5 权重已表达强化语义，且防 rules 表膨胀；Priority=0 先于内置规则 |
 | D-54 | IMessageStore 追加 GetByIdAsync（改判前置读取旧类别/重要度/发件人）；ClassificationFeedback 领域记录 new_importance 存解析后的具体值 | 04 §2.1 接口清单本就少于实现（S6 追加查询方法先例）；04 §2.2 ApplyCorrectionAsync 的 newImportance 可空 → 服务内解析为具体值落库，表 DDL 列非空 |
+| D-55 | i18n 文案用编译期 C# 字典（Strings.Zh/En）而非 resx/内嵌 JSON：本构建链上 EmbeddedResource 资源名不可靠、resx 代码生成依赖 VS | NFR-12 只要求双语界面与走查；字典随程序集分发零部署风险、可 diff；键缺失三级回落（en→zh→键名）有测试 |
+| D-56 | 语言/主题变更「重启后完全生效」（设置页文案明示）：WPF 已渲染字符串不做运行时热替换 | NFR-12 验收为双语走查而非热切换；热替换需全量 DynamicResource 改造，收益不成本，列 M3 打磨项 |
+| D-57 | FR-04 定时同步在 S9 补挂载（App 启动即启动 RunPeriodicAsync 循环，间隔变更热重启）；S4 已有循环实现与测试但无宿主挂载 | 定时同步为 M 级需求；S4 完成的是协调器能力，S9 设置页落地使其可达（间隔来自 sync.interval_minutes，1–60 钳制） |
 
 ## 6. S0 文件清单（本次落盘）
 

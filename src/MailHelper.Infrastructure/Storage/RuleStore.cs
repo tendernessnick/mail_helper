@@ -20,6 +20,13 @@ public sealed class RuleRepository : IRulesStore
             return rows.Select(ToDomain).ToList();
         }, ct);
 
+    public async Task DeleteAsync(Guid id, CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            var key = id.ToString();
+            await db.Rules.Where(r => r.Id == key).ExecuteDeleteAsync(ct);
+        }, ct);
+
     public async Task UpsertAsync(ClassifyRule rule, CancellationToken ct) =>
         await MailDatabase.WithDbAsync(_dbPath, async db =>
         {

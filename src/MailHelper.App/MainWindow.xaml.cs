@@ -17,12 +17,18 @@ public partial class MainWindow : Window
     private string? _pendingHtml; // CoreWebView2 完成初始化前排队的正文
     private bool _forceClose; // 托盘「退出」置位；普通关窗 = 驻留托盘（FR-14 AC3 / TC-019）
 
-    public MainWindow(MainViewModel viewModel, ISettingsStore settings)
+    public MainWindow(
+        MainViewModel viewModel,
+        ISettingsStore settings,
+        RulesPage rulesPage,
+        SettingsPage settingsPage)
     {
         InitializeComponent();
         _viewModel = viewModel;
         _settings = settings;
         DataContext = viewModel;
+        RulesHost.Content = rulesPage; // DI 页面挂载（UserControl 带 ctor 注入，不能在 XAML 实例化）
+        SettingsHost.Content = settingsPage;
 
         Loaded += async (_, _) =>
         {
