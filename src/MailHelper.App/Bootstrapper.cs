@@ -63,8 +63,8 @@ internal static class Bootstrapper
 
                 services.AddSingleton<AuthService>();
 
-                // —— 规则与分类 ——
-                services.AddSingleton(_ => LoadRuleEngine());
+                // —— 规则与分类（内置 JSON + rules 表用户/反馈规则合并）——
+                services.AddSingleton(_ => LoadRuleEngine(dbPath));
                 services.AddSingleton<IClassifier>(sp => sp.GetRequiredService<RuleEngine>());
 
                 // —— 同步（DEV 假通道带种子数据 / 真实 Graph REST）——
@@ -98,11 +98,19 @@ internal static class Bootstrapper
                 services.AddSingleton<IToastSender>(_ => new ToastSender());
                 services.AddSingleton<NotificationService>();
 
+                // —— 反馈闭环（FR-11）——
+                services.AddSingleton(_ => new FeedbackRepository(dbPath));
+                services.AddSingleton<IFeedbackStore>(sp => sp.GetRequiredService<FeedbackRepository>());
+                services.AddSingleton(_ => new RuleRepository(dbPath));
+                services.AddSingleton<IRulesStore>(sp => sp.GetRequiredService<RuleRepository>());
+                services.AddSingleton<FeedbackService>();
+
                 // —— UI ——
                 services.AddSingleton(sp => new MainViewModel(
                     sp.GetRequiredService<AuthService>(),
                     sp.GetRequiredService<SyncCoordinator>(),
                     sp.GetRequiredService<ClassificationService>(),
+                    sp.GetRequiredService<FeedbackService>(),
                     sp.GetRequiredService<IMessageStore>(),
                     sp.GetRequiredService<ISettingsStore>(),
                     sp.GetRequiredService<IBodyCache>(),
@@ -113,9 +121,11 @@ internal static class Bootstrapper
             })
             .Build();
 
-    /// <summary>预置规则包加载：随包文件优先，缺失/损坏回退空规则集（09 §2 回退策略）。</summary>
-    private static RuleEngine LoadRuleEngine()
+    /// <summary>规则引擎装配：内置规则包（随包 JSON，缺失/损坏回退空集，09 §2）∪ rules 表用户/反馈规则
+    /// （FR-11：反馈规则重启后持续生效）。Id 全局唯一不冲突；同发件人规则并存时反馈 ×1.5 权重胜出。</summary>
+    private static RuleEngine LoadRuleEngine(string dbPath)
     {
+        RuleSet builtin = RuleSet.Empty;
         var candidates = new[]
         {
             Path.Combine(AppContext.BaseDirectory, "rules.builtin.json"),
@@ -125,10 +135,16 @@ internal static class Bootstrapper
         {
             if (RuleSetParser.TryParseFile(path, out var ruleSet, out _) && ruleSet is not null)
             {
-                return new RuleEngine(ruleSet);
+                builtin = ruleSet;
+                break;
             }
         }
 
-        return new RuleEngine(RuleSet.Empty);
+        var storedRules = new RuleRepository(dbPath)
+            .GetAllAsync(CancellationToken.None).GetAwaiter().GetResult()
+            .Where(r => r.Enabled && r.Source is RuleSource.User or RuleSource.Feedback);
+        var merged = new RuleSet(builtin.Version, builtin.Scoring,
+            builtin.Rules.Concat(storedRules).ToList());
+        return new RuleEngine(merged);
     }
 }

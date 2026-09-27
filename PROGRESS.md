@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-27 |
-| 里程碑 | M2 进行中（S1~S7 已完成；下一步 S8） |
-| 当前模块 | S8 待确认队列与反馈闭环（FR-09 队列入口、FR-11 改判 + FeedbackService 半自动规则、TC-014 端到端） |
-| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——不阻塞 S8~S11 开发（WireMock/假令牌路径） |
-| 下一步 | S8 按流水线推进：classification_feedback 表仓储 → FeedbackService（发件人半自动规则 ×1.5、上限 15）测试先行 → 改判入口 UI（阅读窗格「改为…」）→ TC-014 端到端 → 六项自检 → 提交 |
+| 里程碑 | M2 进行中（S1~S8 已完成；下一步 S9） |
+| 当前模块 | S9 规则编辑器、设置页、账户管理、中英双语（FR-10/03/06/13、NFR-12） |
+| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——不阻塞 S9~S11 开发（WireMock/假令牌路径） |
+| 下一步 | S9 按流水线推进：规则编辑器（四种类型 + 试跑预览最近 100 封）→ 设置页（同步/通知/外观/高级）→ 账户管理与登出 → zh-CN/en 资源 → 六项自检 → 提交 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -136,13 +136,15 @@
 
 **S7 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **169/169 全绿**（Core 76 + Services 38 + Integration 55），并集覆盖 Core **94.26%**（361/383）、Core.Services **92.36%**（290/314）；③ 漏洞扫描：新增 Microsoft.Toolkit.Uwp.Notifications 7.1.3（04 §4 指定）与 H.NotifyIcon.Wpf 2.3.0（04 §4 指定）后 **7 工程全部干净**；④ 错误码矩阵：无新增错误码（04 §5 无 notify 码）；toast.send_failed Warning 降级不阻断；通知侧异常经 UI-000 兜底（crash log）且不影响同步轮；⑤ 日志红线：notify.sent/notify.queued/toast.* 仅计数与布尔，测试断言日志不含主题/发件人；⑥ 文档一致性：04 §8 四条决策逐条实现并测试、04 §4 技术栈按指定采用；notify.quiet_hours 值格式文档未定义（「Should」疑笔误）→ D-49 拍板。
 
-### S8 待确认队列与反馈闭环（Sprint S3）
+### S8 待确认队列与反馈闭环（Sprint S3）—— **已完成（2026-09-27）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S8-01 | FR-09 | 待办 | — | 置信度阈值 + 待确认队列 + 侧栏入口计数 |
-| T-S8-02 | FR-11 | 待办 | — | 改判入口 + FeedbackService 半自动发件人规则（×1.5 权重上限） |
-| T-S8-03 | FR-11/TC-014 | 待办 | — | 端到端：改判后同发件人新邮件自动归新类别 |
+| T-S8-01 | FR-09 | **完成** | 置信度阈值（confidence<0.55→待确认，S5）与「待确认」侧栏入口/计数/队列视图（S6 InboxQuery.NeedsReviewOnly + GetNeedsReviewCountAsync）已闭环；S8 改判后 LoadInboxAsync 联动移出队列 | 本任务大部分在 S5/S6 铺垫，S8 补齐改判联动 |
+| T-S8-02 | FR-11 | **完成** | FeedbackServiceTests 8/8：改判立即生效（ClassifiedBy=user、confidence=1.0）、写 classification_feedback、upsert 发件人规则（source=Feedback、稳定 id=SHA256(feedback\|地址) 同发件人覆盖）、引擎即时生效（RuleEngine.Upsert 写侧串行+原子引用）、带重要度建议、未知邮件返回 false、日志仅域名（红线断言）；RuleEngineTests 追加 3 用例（Upsert 即时生效/同 Id 覆盖/与 Swap 组合）；RuleStoreTests 3/3（roundtrip/幂等 upsert/反馈行幂等）；UI「改为…」菜单（阅读窗格底栏）+ VM ApplyCorrectionAsync | 04 §2.2 签名原文一致；规则名保留完整发件人（规则管理页可见，S9） |
+| T-S8-03 | FR-11/TC-014 | **完成** | TC014_AfterCorrection_NewMailFromSameSender_GoesToNewCategory：改判→入库同发件人新邮件（未分类）→ClassifyPendingAsync 管线→断言归入新类别、维持基准重要度 | 端到端走真实管线（真 SQLite+真 RuleEngine+ClassificationService）；启动合并：Bootstrapper LoadRuleEngine ∪ rules 表 User/Feedback 规则（重启持续生效） |
+
+**S8 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **183/183 全绿**（Core 79 + Services 46 + Integration 58），并集覆盖 Core **94.57%**（435/460）、Core.Services **93.22%**（330/354）；③ 漏洞扫描 7 工程干净（零新增包）；④ 错误码矩阵：无新增错误码；改判目标邮件不存在返回 false 静默处理；EX-08 语义（同步不覆盖人工改判）既有测试保持；⑤ 日志红线：feedback.rule_upserted 仅含发件人域名+类别，测试断言完整地址不落日志；⑥ 文档一致性：FeedbackService 签名与 04 §2.2 原文一致、classification_feedback/rules 表 DDL 按 04 §3.2、反馈规则 ×1.5/用户 ×1.2 由 S1 既有评分承担、半自动规则进 rules 表供 S9 规则管理页展示（FR-11 完整闭环）。
 
 ### S9 规则编辑器、设置、账户、i18n（Sprint S4）
 
@@ -244,6 +246,8 @@
 | D-50 | 首轮同步静默：IsInitialRound（同步前无断点）时通知仅登记 notification_log 不弹 Toast | 首装全量同步动辄数百封 P0/P1，全部弹窗伤信任（RISK-06 精神）；登记后由 message_id 去重保证后续增量不重发 |
 | D-51 | notification_log.level 值域 = {P0, P1, queued, flushed}：flushed=已随勿扰结束摘要补发，保留参与去重但不再计入待补发 | 04 §8.3 仅定义 queued；补发摘要后若清行会削弱去重（勿扰中入队→补发→同邮件更新再通知），置 flushed 最小且安全 |
 | D-52 | ToastSender 落在 App 层（非 Infrastructure）：Toolkit Toast 桌面 API 完整形态仅在 windows TFM 资产提供；App TFM 随之升为 net8.0-windows10.0.17763.0，Infrastructure 保持 net8.0 | 04 §4 指定技术而非所在工程；Infrastructure 保持跨 TFM 可测性（Services.Tests 引用其 Fake 与仓储）；分层方向仍为 App→Services→Core，无逆向依赖 |
+| D-53 | 反馈规则稳定 Id = SHA256("feedback\|"+小写发件人地址) 前 16 字节（手法同 D-13）：同发件人重复改判覆盖同一行而非堆积 | 04 §2.2「生成或加权规则」未定义加权口径；覆盖式 + 引擎 ×1.5 权重已表达强化语义，且防 rules 表膨胀；Priority=0 先于内置规则 |
+| D-54 | IMessageStore 追加 GetByIdAsync（改判前置读取旧类别/重要度/发件人）；ClassificationFeedback 领域记录 new_importance 存解析后的具体值 | 04 §2.1 接口清单本就少于实现（S6 追加查询方法先例）；04 §2.2 ApplyCorrectionAsync 的 newImportance 可空 → 服务内解析为具体值落库，表 DDL 列非空 |
 
 ## 6. S0 文件清单（本次落盘）
 

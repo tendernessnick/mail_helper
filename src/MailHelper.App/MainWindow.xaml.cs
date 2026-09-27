@@ -1,5 +1,7 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using MailHelper.App.ViewModels;
 using MailHelper.Core.Abstractions;
@@ -88,6 +90,27 @@ public partial class MainWindow : Window
         ReaderFallback.Text = "阅读组件（WebView2 Runtime）初始化失败，邮件正文无法渲染。"
             + "请安装 Microsoft Edge WebView2 Runtime 后重启应用；正文已安全缓存在本机。";
         ReaderFallback.Visibility = Visibility.Visible;
+    }
+
+    /// <summary>改判入口（FR-11/TC-014）：弹出类别菜单，选择后走反馈闭环。</summary>
+    private void OnChangeCategoryClick(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel.SelectedMail is null)
+        {
+            return;
+        }
+
+        var menu = new ContextMenu();
+        foreach (var (category, label, _) in ViewModels.MainViewModel.CategoryLabels)
+        {
+            var item = new MenuItem { Header = label };
+            item.Click += (_, _) => _ = _viewModel.ApplyCorrectionAsync(category, CancellationToken.None);
+            menu.Items.Add(item);
+        }
+
+        menu.PlacementTarget = sender as UIElement;
+        menu.Placement = PlacementMode.Bottom;
+        menu.IsOpen = true;
     }
 
     /// <summary>托盘/管道唤起（EX-TC-07）：恢复显示并前置。</summary>

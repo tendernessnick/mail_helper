@@ -62,6 +62,13 @@ public sealed class MailRepository : IMessageStore
             return (IReadOnlyList<MailMessage>)rows.Select(ToDomain).ToList();
         }, ct);
 
+    public async Task<MailMessage?> GetByIdAsync(string messageId, CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            var row = await db.Messages.AsNoTracking().FirstOrDefaultAsync(m => m.Id == messageId, ct);
+            return row is null ? null : ToDomain(row);
+        }, ct);
+
     public async Task ApplyClassificationRangeAsync(IReadOnlyList<ClassificationWrite> writes, CancellationToken ct) =>
         await MailDatabase.WithDbAsync(_dbPath, async db =>
         {

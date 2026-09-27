@@ -351,4 +351,51 @@ public class RuleEngineTests
         var result = await classifier.ClassifyAsync(R.Input("Interview invitation"), CancellationToken.None);
         result.Category.Should().Be(MailCategory.Career);
     }
+
+    // ———— S8 反馈闭环：动态规则注入（FR-11 / 04 §2.2 FeedbackService 依赖）————
+
+    [Fact]
+    public async Task Upsert_NewRule_AppliesImmediately()
+    {
+        var engine = new RuleEngine(R.Set()); // 空集起步
+
+        engine.Upsert(R.Make("FeedbackRule", RuleKind.SenderAddress, "bursary@hku.hk", MailCategory.Finance,
+            source: RuleSource.Feedback));
+
+        var result = await engine.ClassifyAsync(R.Input("Anything", from: "bursary@hku.hk"), CancellationToken.None);
+        result.Category.Should().Be(MailCategory.Finance); // FR-11：改判生成的规则即时生效
+    }
+
+    [Fact]
+    public async Task Upsert_SameId_ReplacesInsteadOfDuplicate()
+    {
+        var id = Guid.NewGuid();
+        var original = R.Make("FeedbackRule", RuleKind.SenderAddress, "bursary@hku.hk", MailCategory.Finance,
+            source: RuleSource.Feedback, id: id);
+        var engine = new RuleEngine(R.Set(original));
+
+        var updated = R.Make("FeedbackRule", RuleKind.SenderAddress, "bursary@hku.hk", MailCategory.Career,
+            source: RuleSource.Feedback, id: id); // 用户又改判到另一类别：同 id 覆盖
+        engine.Upsert(updated);
+
+        var toFinance = await engine.ClassifyAsync(R.Input("x", from: "bursary@hku.hk"), CancellationToken.None);
+        toFinance.Category.Should().Be(MailCategory.Career); // 新类别生效
+    }
+
+    [Fact]
+    public async Task Swap_AfterUpsert_KeepsUpsertedRule()
+    {
+        var engine = new RuleEngine(R.Set(
+            R.Make("Base", RuleKind.SubjectKeyword, "tuition", MailCategory.Finance)));
+        engine.Upsert(R.Make("FeedbackRule", RuleKind.SenderAddress, "bursary@hku.hk", MailCategory.Finance,
+            source: RuleSource.Feedback));
+
+        engine.Swap(R.Set(
+            R.Make("Base", RuleKind.SubjectKeyword, "tuition", MailCategory.Finance),
+            R.Make("FeedbackRule", RuleKind.SenderAddress, "bursary@hku.hk", MailCategory.Finance,
+                source: RuleSource.Feedback)));
+
+        var result = await engine.ClassifyAsync(R.Input("tuition", from: "bursary@hku.hk"), CancellationToken.None);
+        result.Category.Should().Be(MailCategory.Finance); // Swap 与 Upsert 组合不互斥
+    }
 }

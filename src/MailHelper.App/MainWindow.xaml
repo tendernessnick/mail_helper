@@ -195,8 +195,15 @@
                     <TextBlock x:Name="ReaderFallback" Grid.Row="1" Visibility="Collapsed"
                                Margin="14,12" TextWrapping="Wrap" Foreground="#8A8886" />
                     <Border Grid.Row="2" Background="#FAF9F8" Padding="10,6">
-                        <TextBlock Text="分类不对？「改为…」入口随 S8 反馈闭环开放；外链在本窗格内不可跳转（安全设置）"
-                                   FontSize="11" Foreground="#8A8886" />
+                        <DockPanel>
+                            <Button x:Name="ChangeCategoryButton" DockPanel.Dock="Left" Content="改为…"
+                                    Padding="8,2" Margin="0,0,8,0" FontSize="11"
+                                    Click="OnChangeCategoryClick"
+                                    Visibility="{Binding SelectedMail, Converter={StaticResource NullToCollapsed}}" />
+                            <TextBlock Text="改判立即生效并自动学习同发件人规则；外链在本窗格内不可跳转（安全设置）"
+                                       FontSize="11" Foreground="#8A8886" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
                     </Border>
                 </Grid>
             </Grid>

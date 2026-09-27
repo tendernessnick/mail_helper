@@ -19,6 +19,7 @@ public sealed class RuleEngine : IClassifier
     private static readonly TimeSpan DisableDuration = TimeSpan.FromHours(24);
 
     private readonly ConcurrentDictionary<Guid, DateTime> _disabledUntilUtc = new();
+    private readonly object _writeGate = new();
     private volatile CompiledRuleSet _compiled;
 
     public string Name => EngineName;
@@ -33,7 +34,26 @@ public sealed class RuleEngine : IClassifier
     public void Swap(RuleSet ruleSet)
     {
         ArgumentNullException.ThrowIfNull(ruleSet);
-        _compiled = Compile(ruleSet);
+        lock (_writeGate)
+        {
+            _compiled = Compile(ruleSet);
+        }
+    }
+
+    /// <summary>S8 反馈闭环（FR-11）：单条规则幂等更新——同 Id 替换、否则追加，即时生效。
+    /// 写侧串行化避免与 Swap/其他 Upsert 竞争丢更新；读侧仍为无锁原子引用。</summary>
+    public void Upsert(ClassifyRule rule)
+    {
+        ArgumentNullException.ThrowIfNull(rule);
+        lock (_writeGate)
+        {
+            var current = _compiled;
+            var rules = current.Ordered.Select(c => c.Rule)
+                .Where(r => r.Id != rule.Id)
+                .Append(rule)
+                .ToList();
+            _compiled = Compile(new RuleSet(current.Version, current.Scoring, rules));
+        }
     }
 
     /// <summary>因正则编译失败/匹配超时（CLASS-001）被临时禁用的规则 id。</summary>
@@ -253,7 +273,7 @@ public sealed class RuleEngine : IClassifier
             .OrderBy(r => r.Rule.Priority)
             .ThenByDescending(r => r.EffectiveWeight)
             .ToList();
-        return new CompiledRuleSet(ruleSet.Scoring, ordered);
+        return new CompiledRuleSet(ruleSet.Version, ruleSet.Scoring, ordered);
     }
 
     private bool IsDisabled(Guid id)
@@ -274,5 +294,5 @@ public sealed class RuleEngine : IClassifier
 
     private sealed record CompiledRule(ClassifyRule Rule, Regex? Regex, string[] Keywords, double EffectiveWeight);
 
-    private sealed record CompiledRuleSet(RuleScoring Scoring, IReadOnlyList<CompiledRule> Ordered);
+    private sealed record CompiledRuleSet(string? Version, RuleScoring Scoring, IReadOnlyList<CompiledRule> Ordered);
 }

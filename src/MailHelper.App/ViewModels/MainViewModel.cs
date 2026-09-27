@@ -90,6 +90,7 @@ public partial class MainViewModel : ObservableObject
     private readonly AuthService _auth;
     private readonly SyncCoordinator _sync;
     private readonly ClassificationService _classifier;
+    private readonly FeedbackService _feedback;
     private readonly IMessageStore _store;
     private readonly ISettingsStore _settings;
     private readonly IBodyCache _bodyCache;
@@ -104,6 +105,7 @@ public partial class MainViewModel : ObservableObject
         AuthService auth,
         SyncCoordinator sync,
         ClassificationService classifier,
+        FeedbackService feedback,
         IMessageStore store,
         ISettingsStore settings,
         IBodyCache bodyCache,
@@ -114,6 +116,7 @@ public partial class MainViewModel : ObservableObject
         _auth = auth;
         _sync = sync;
         _classifier = classifier;
+        _feedback = feedback;
         _store = store;
         _settings = settings;
         _bodyCache = bodyCache;
@@ -388,6 +391,32 @@ public partial class MainViewModel : ObservableObject
         });
     }
 
+    /// <summary>改判（FR-11/TC-014 入口）：立即生效并由反馈闭环自动生成发件人规则。</summary>
+    public async Task ApplyCorrectionAsync(MailCategory newCategory, CancellationToken ct)
+    {
+        if (SelectedMail is not { } mail)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            if (await _feedback.ApplyCorrectionAsync(mail.Id, newCategory, null, ct))
+            {
+                SyncStatusText = $"已改判为「{LabelOf(newCategory)}」；同发件人后续邮件将自动归入该类别";
+                await LoadInboxAsync(ct); // 徽章/当前视图联动（如「待确认」队列移除该邮件）
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private static string LabelOf(MailCategory category) =>
+        Array.Find(CategoryLabels, pair => pair.Category == category).Label;
+
     /// <summary>阅读窗格内容：优先正文缓存 HTML，缺失时回退纯文本预览（04 §4.1 按需拉正文本期不做）。</summary>
     public async Task<string?> BuildReaderHtmlAsync(MailItemViewModel mail, CancellationToken ct)
     {
@@ -404,7 +433,7 @@ public partial class MainViewModel : ObservableObject
         return $"<html><body style=\"font-family:Segoe UI,'Microsoft YaHei';font-size:14px;color:#201F1E;\"><pre style=\"white-space:pre-wrap;font-family:inherit\">{text}</pre></body></html>";
     }
 
-    private static readonly (MailCategory Category, string Label, string Icon)[] CategoryLabels =
+    public static readonly (MailCategory Category, string Label, string Icon)[] CategoryLabels =
     {
         (MailCategory.Course, "课程学习", "📚"),
         (MailCategory.Career, "职业发展", "💼"),

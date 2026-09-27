@@ -1,5 +1,6 @@
 using MailHelper.Core;
 using MailHelper.Core.Domain;
+using MailHelper.Core.Rules;
 
 namespace MailHelper.Core.Abstractions;
 
@@ -18,6 +19,9 @@ public interface IMessageStore
     /// <summary>按主键幂等 upsert（FR-04 AC2）：新行插入（other/P2 待分类）；已存在行仅更新同步字段，
     /// 分类五字段保留——EX-08：人工改判不被同步覆盖。返回新增行数。批 100/事务（04 §4.2）。</summary>
     Task<int> UpsertRangeAsync(string accountId, IReadOnlyList<MailMessage> messages, CancellationToken ct);
+
+    /// <summary>按主键取单封（S8 改判前置：读旧类别/旧重要度/发件人）。</summary>
+    Task<MailMessage?> GetByIdAsync(string messageId, CancellationToken ct);
 
     /// <summary>取未分类邮件批次（classified_at_utc IS NULL），按接收时间升序。</summary>
     Task<IReadOnlyList<MailMessage>> GetPendingClassificationAsync(string accountId, int batchSize, CancellationToken ct);
@@ -72,4 +76,22 @@ public interface IBodyCache
 
     /// <summary>读取正文（同时刷新 LRU 访问时间）；不存在返回 null。</summary>
     Task<string?> ReadAsync(string relativePath, CancellationToken ct);
+}
+
+/// <summary>用户/反馈规则仓储（rules 表；04 §3.2 DDL。内置规则包仍走 JSON 只读层，D-40）。</summary>
+public interface IRulesStore
+{
+    /// <summary>全部规则行（含 Builtin 行；启用过滤交由引擎/调用方）。</summary>
+    Task<IReadOnlyList<ClassifyRule>> GetAllAsync(CancellationToken ct);
+
+    /// <summary>按 Id 幂等 upsert（FR-11：反馈生成的发件人规则）。</summary>
+    Task UpsertAsync(ClassifyRule rule, CancellationToken ct);
+}
+
+/// <summary>改判反馈仓储（classification_feedback 表；S8 写入 + 计数，历史查看随 S9 规则管理页）。</summary>
+public interface IFeedbackStore
+{
+    Task AddAsync(ClassificationFeedback feedback, CancellationToken ct);
+
+    Task<int> CountAsync(CancellationToken ct);
 }
