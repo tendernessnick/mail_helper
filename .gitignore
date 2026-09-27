@@ -15,7 +15,9 @@ publish/
 # 测试与覆盖率
 TestResults/
 *.coverage
-artifacts/
+artifacts/*
+!artifacts/eval/
+!artifacts/screens/
 
 # 运行时与本地数据（永不入库：令牌/邮件数据红线，09 章 §4）
 *.db
