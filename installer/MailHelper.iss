@@ -33,7 +33,8 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 Source: "..\artifacts\publish\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 ; 内置规则包（04 §7 随包分发只读层）
 Source: "..\src\MailHelper.Infrastructure\Rules\rules.builtin.json"; DestDir: "{app}"; Flags: ignoreversion
-; WebView2 在线引导器（约 2MB；离线完整包约 120MB 可替换，08 §4.2）
+; WebView2 离线完整包（约 187MB；编译前从官方链接下载至本目录：
+; https://go.microsoft.com/fwlink/?linkid=2099617，08 §4.2）
 Source: "..\installer\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: NeedWebView2
 
 [Icons]
