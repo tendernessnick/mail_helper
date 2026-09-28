@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-27 |
-| 里程碑 | M2 进行中（S1~S10 已完成；下一步 S11 IMAP 兜底） |
-| 当前模块 | S11 IMAP 兜底通道（FR-02：MailKit XOAUTH2、UIDVALIDITY+UID 水位增量；真实连通=检查点②） |
-| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——S11 逻辑层可先以 WireMock/Fake 推进 |
-| 下一步 | S11 按流水线推进：ImapMailProvider 测试先行（XOAUTH2 SASL、UID 水位增量、统一 RemoteMessage 输出）→ Bootstrapper 通道切换 → 六项自检 → 提交 |
+| 里程碑 | **M2 功能完整（S1~S11 全部完成）**；下一步 S12 打包发布（M3） |
+| 当前模块 | S12 打包发布（dotnet publish 单文件、Inno Setup+WebView2 引导、Velopack、SHA256；门禁 G1~G7） |
+| 阻塞 | 检查点①（Azure ClientId）与②（真实租户端到端/IMAP 连通）仍待用户——S12 打包不阻塞 |
+| 下一步 | S12 按流水线推进：publish 单文件自包含 win-x64 → Inno Setup 脚本（WebView2 引导）+ Velopack 通道 → 干净环境安装验证 → SHA256 + 发布检查单 → 六项自检 → M3 收口报告 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -165,11 +165,13 @@
 
 **S10 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **218/218 全绿**（Core 79 + Services 78 + Integration 61），并集覆盖 Core **95.15%**（490/515）、Core.Services **94.69%**（589/622）；③ 漏洞扫描 7 工程干净（零新增包）；④ 错误码矩阵：无新增错误码；FTS MATCH 异常落 LIKE 兜底（D-21 既有语义，组合查询继承）；⑤ 日志红线：搜索不落日志（查询词属用户输入非邮件内容，且零日志输出）；⑥ 文档一致性：FR-13（<500ms/万级）、MOD-09（语法解析+FTS 查询）、D-21/D-22 双路径与防注入、PERF-03 口径逐项一致。
 
-### S11 IMAP 兜底通道（Sprint S4；真实连通=检查点②）
+### S11 IMAP 兜底通道（Sprint S4；真实连通=检查点②）—— **已完成（2026-09-28）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S11-01 | FR-02 | 待办 | — | MailKit XOAUTH2、UIDVALIDITY+UID 水位增量、统一 RemoteMessage 输出 |
+| T-S11-01 | FR-02 | **完成** | ImapMailProviderTests 12/12（FakeImapAdapter 驱动不出网）：首轮全量（imap:email:INBOX:uid 复合键/全部 Added）、断点 URI 编解码往返、增量仅拉水位之上、UIDVALIDITY 变更→全量重置（SYNC-003 等价）、InternetMessageId 去尖括号、预览截 500、分页批次、Complete 断点=最大 UID、认证失败强刷重试后 SYNC-004（D-31 重试语义）、网络失败 SYNC-001、静默失败 AUTH-003、TestAsync；Bootstrapper 按账户 Channel 自动选择通道（Imap=TokenService 传 IMAP scope）；TokenService scopes 参数化（默认 User.Read+Mail.Read 不变） | IImapClientAdapter 抽象 + ImapKitClientAdapter(MailKit)——网络路径单测不覆盖，真实连通=检查点②（先例 D-27）；MailKit 4.16.0（GHSA-9j88-vvj5-vhgr CVE-2026-41319 修复版）；多文件夹/删除感知=V1.x（03 §5.4 v1.0 接受） |
+
+**S11 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **230/230 全绿**（Core 79 + Services 78 + Integration 73），并集覆盖 Core **95.15%**（490/515）、Core.Services **95.02%**（591/622）；③ 漏洞扫描：MailKit 4.8.0→**4.16.0**（Moderate 公告 GHSA-9j88-vvj5-vhgr 修复版）后 **7 工程全部干净**；④ 错误码矩阵：SYNC-004（IMAP 认证失败→通道页提示）、SYNC-001（连接失败→离线）、AUTH-003（令牌失效→重登）、SYNC-003 等价（UIDVALIDITY 变更全量）全部实现并被测试；⑤ 日志红线：sync.imap_resync 仅含 uidvalidity 数值，无邮件内容；⑥ 文档一致性：04 §4.3（服务器/端口/XOAUTH2/scope/UID SEARCH 语义/ENVELOPE+FLAGS+BODYSTRUCTURE 组装）、03 §5.4（统一 RemoteMessage 输出、无远端删除感知）、FR-02 AC（通道切换、内容层一致）逐项落地。
 
 ### S12 打包发布（Sprint S5 / M3）
 
@@ -256,6 +258,11 @@
 | D-56 | 语言/主题变更「重启后完全生效」（设置页文案明示）：WPF 已渲染字符串不做运行时热替换 | NFR-12 验收为双语走查而非热切换；热替换需全量 DynamicResource 改造，收益不成本，列 M3 打磨项 |
 | D-57 | FR-04 定时同步在 S9 补挂载（App 启动即启动 RunPeriodicAsync 循环，间隔变更热重启）；S4 已有循环实现与测试但无宿主挂载 | 定时同步为 M 级需求；S4 完成的是协调器能力，S9 设置页落地使其可达（间隔来自 sync.interval_minutes，1–60 钳制） |
 | D-58 | 搜索语法语义：from:/cat:/p: 空格分词、前缀大小写不敏感；cat: 取英文枚举名；p:N→Importance(3-N)；前缀值非法整 token 留作自由文本；重复前缀首个生效 | 总控 S10 给出 from:/cat:/p: 记法、03 章 MOD-09 未定义细则；「非法值当普通词」符合用户直觉且可测试；Importance 枚举 P0=3 故 p:N 映射 3-N |
+| D-59 | IMAP 断点复用 SyncCheckpoint.delta_link 字段，编码 `imap://INBOX?uidvalidity={v}&lastuid={u}`；解析非法/缺失一律视为无断点（全量，安全侧） | 04 §2.1 CompleteAsync「IMAP 返回 UID 水位标记」未定格式；TEXT 字段通用承载使协调器 EX-05 断点语义零改动 |
+| D-60 | IMAP ProviderMessageId = `imap:{登录邮箱}:INBOX:{uid}`；通道层不含 accountId（协调器入库时经 RemoteMessageMapper 关联） | 04 §3.1 注释「imap:accountId:folder:uid」中 accountId 在通道层不可得；登录邮箱全局唯一且稳定，入库后 id 语义等价 |
+| D-61 | FR-02 AC2「两通道同步结果一致」解释为内容层一致（邮件集合/字段语义一致）；messages.id 因 Graph id 与 IMAP 复合键结构不同必然不同 | Graph id 为 Exchange GUID、IMAP 为 UID 复合键，结构一致性不可实现；幂等 upsert 保证通道内一致（FR-04 AC2） |
+| D-62 | v1 IMAP 仅同步 INBOX 文件夹 | 03 §5.4「每文件夹记录水位」在 v1 收敛为 INBOX；多文件夹随 V1.x 演进；IImapClientAdapter 接口已按文件夹粒度预留 |
+| D-63 | MailKit 4.16.0（而非较旧稳定版）：4.8.0~4.15.x 含 Moderate 公告 GHSA-9j88-vvj5-vhgr（CVE-2026-41319 STARTTLS 响应注入） | 自检③红线：dotnet list package --vulnerable 无高危/无 Moderate 残留；4.16.0 为公告修复版 |
 
 ## 6. S0 文件清单（本次落盘）
 

@@ -68,16 +68,41 @@ internal static class Bootstrapper
                 services.AddSingleton(_ => LoadRuleEngine(dbPath));
                 services.AddSingleton<IClassifier>(sp => sp.GetRequiredService<RuleEngine>());
 
-                // —— 同步（DEV 假通道带种子数据 / 真实 Graph REST）——
+                // —— 同步（DEV 假通道带种子数据 / 真实 Graph REST 或 IMAP 兜底，按账户通道 FR-02）——
                 if (devMode)
                 {
                     services.AddSingleton<IMailProvider>(_ => DevSeed.BuildMailProvider());
                 }
                 else
                 {
-                    services.AddSingleton<IMailProvider>(sp => new GraphMailProvider(
-                        sp.GetRequiredService<ITokenProvider>(),
-                        options: new GraphHttpOptions()));
+                    var channel = new AccountRepository(dbPath)
+                        .FindAllAsync(CancellationToken.None).GetAwaiter().GetResult()
+                        .FirstOrDefault()?.Channel ?? ChannelKind.Graph;
+                    if (channel == ChannelKind.Imap)
+                    {
+                        // FR-02 AC1 预案 2：Graph 被拒时切换 IMAP XOAUTH2（MailKit，04 §4.3）
+                        services.AddSingleton<IMailProvider>(sp =>
+                        {
+                            var accountEmail = new AccountRepository(dbPath)
+                                .FindAllAsync(CancellationToken.None).GetAwaiter().GetResult()
+                                .First(a => a.Channel == ChannelKind.Imap).Email;
+                            var imapTokens = new TokenService(
+                                TokenService.PlaceholderClientId, // 检查点①：ClientId 待配置
+                                Path.Combine(dataDir, "tokens"),
+                                [ImapMailProvider.ImapScope]);
+                            return new ImapMailProvider(
+                                imapTokens,
+                                () => new ImapKitClientAdapter(),
+                                accountEmail,
+                                sp.GetRequiredService<ILogger<ImapMailProvider>>());
+                        });
+                    }
+                    else
+                    {
+                        services.AddSingleton<IMailProvider>(sp => new GraphMailProvider(
+                            sp.GetRequiredService<ITokenProvider>(),
+                            options: new GraphHttpOptions()));
+                    }
                 }
 
                 services.AddSingleton(sp => new SyncCoordinator(

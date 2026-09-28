@@ -20,9 +20,11 @@ public sealed class TokenService : ITokenProvider
     private readonly string _cachePath;
     private readonly DpapiFileProtector _protector;
     private readonly bool _isPlaceholder;
+    private readonly string[] _scopes;
 
-    public TokenService(string clientId, string? cacheDirectory = null)
+    public TokenService(string clientId, string? cacheDirectory = null, string[]? scopes = null)
     {
+        _scopes = scopes ?? Scopes; // S11：IMAP 通道传 https://outlook.office365.com/IMAP.AccessAsUser.All（04 §4.3）
         _isPlaceholder = string.IsNullOrWhiteSpace(clientId) || clientId.Trim().Equals(PlaceholderClientId, StringComparison.OrdinalIgnoreCase);
 
         cacheDirectory ??= Path.Combine(
@@ -64,7 +66,7 @@ public sealed class TokenService : ITokenProvider
 
         try
         {
-            var result = await _app.AcquireTokenInteractive(Scopes)
+            var result = await _app.AcquireTokenInteractive(_scopes)
                 .WithUseEmbeddedWebView(false) // 系统浏览器（09 §3）
                 .WithSystemWebViewOptions(new SystemWebViewOptions
                 {
@@ -95,7 +97,7 @@ public sealed class TokenService : ITokenProvider
                 return AuthResult.Fail(AuthErrorCodes.ReauthRequired, "无已缓存账户，需要登录");
             }
 
-            var result = await _app.AcquireTokenSilent(Scopes, account)
+            var result = await _app.AcquireTokenSilent(_scopes, account)
                 .WithForceRefresh(forceRefresh) // D-31：401 后强制刷新，绕过未过期缓存令牌
                 .ExecuteAsync(ct);
             return AuthResult.Ok(Map(result));
