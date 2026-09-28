@@ -74,7 +74,32 @@
 | --- | --- | --- | --- |
 | v1.0 | 2026-09-26 | 项目发起人 | 初稿，覆盖立项至运维全流程，待评审 |
 
+## 构建与运行
+
+```bash
+dotnet restore MailHelper.sln
+dotnet build MailHelper.sln -c Release      # 0 警告 0 错误（TreatWarningsAsErrors）
+dotnet test MailHelper.sln -c Release       # 全部测试（含 UI 冒烟，需 Windows 桌面会话）
+```
+
+- **开发模式**（无需真实账号）：`MAILHELPER_DEV=1` 启动即用假令牌与种子邮件驱动完整链路（登录→同步→分类→浏览）。
+- **数据目录**：`%AppData%\MailHelper\`（数据库/正文缓存/令牌/日志）；可用 `MAILHELPER_DATA_DIR` 覆盖。
+- **发布产物**：`dotnet publish src/MailHelper.App -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true -p:IncludeNativeLibrariesForSelfExtract=true`（单文件自包含 win-x64）。
+
+## 下载与安装（v0.1.0 内测）
+
+| 产物 | 适用 | SHA256 |
+| --- | --- | --- |
+| `MailHelper.App.exe`（便携版单文件，约 200MB） | 免安装、进阶用户 | 见 `artifacts/publish/SHA256SUMS.txt` |
+| `MailHelperSetup.exe`（Inno Setup 安装包） | 主推，多数用户 | 发布页随附 |
+
+- **系统要求**：Windows 10 (19041+) / Windows 11；WebView2 Runtime（安装包自动引导安装）
+- **SmartScreen 提示**：本版本未做代码签名（08 §4.4 无证书路径），首次运行请选「更多信息 → 仍要运行」，并核对发布页 SHA256 校验值
+- **隐私**：邮件数据仅保存在本机，分类完全本地完成，应用无任何遥测（09 章）
+- 更新日志见 [CHANGELOG.md](CHANGELOG.md)
+
 ## 仓库约定
 
 - 分支策略与提交规范见 [08-构建发布与运维手册](docs/08-构建发布与运维手册.md)。
-- 本仓库当前仅包含文档；代码目录结构（`src/`、`tests/`）将在 M1 里程碑启动时建立，规划见 [04-详细设计说明书](docs/04-详细设计说明书.md) 附录。
+- 代码结构：`src/`（App/Services/Core/Infrastructure 四层）+ `tests/`（Core/Services/Integration 三测试工程）+ `installer/`（Inno Setup）+ `tools/`（覆盖率门禁/长稳脚本）。
+- 进度事实源：[PROGRESS.md](PROGRESS.md)（S0~S11 完成，S12 打包发布进行中）。

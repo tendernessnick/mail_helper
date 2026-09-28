@@ -41,3 +41,48 @@ jobs:
           name: coverage
           path: '**/coverage.cobertura.xml'
           if-no-files-found: error
+
+  # 08 §3/§4：合并 main 即产生 beta 渠道产物；打 tag v*.*.* 走 stable + Inno Setup 安装包（S12）
+  release:
+    needs: build-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish (单文件自包含 win-x64，08 §2)
+        run: >
+          dotnet publish src/MailHelper.App -c Release -r win-x64
+          -p:PublishSingleFile=true -p:SelfContained=true
+          -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/publish
+
+      - name: Pack (Velopack beta 通道，08 §4.3)
+        shell: pwsh
+        run: |
+          dotnet tool install -g vpk
+          vpk pack --packId MailHelper --packVersion "0.1.${{ github.run_number }}" `
+            --packDirectory artifacts/publish --mainExe MailHelper.App.exe `
+            --outputDir artifacts/velopack
+          vpk publish --channel beta --gitHubRepo ${{ github.repository }} `
+            --outputDir artifacts/velopack --releaseName "MailHelper 0.1.${{ github.run_number }} (beta)"
+
+      - name: SHA256 校验清单（08 §4.4 无证书路径）
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts/velopack -File | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
+            "$hash  $($_.Name)" | Out-File artifacts/velopack/SHA256SUMS.txt -Append -Encoding utf8
+          }
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: velopack-beta
+          path: artifacts/velopack
+          if-no-files-found: error
