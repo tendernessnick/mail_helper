@@ -91,6 +91,7 @@ public partial class MainViewModel : ObservableObject
     private readonly SyncCoordinator _sync;
     private readonly ClassificationService _classifier;
     private readonly FeedbackService _feedback;
+    private readonly SearchService _search;
     private readonly IMessageStore _store;
     private readonly ISettingsStore _settings;
     private readonly IBodyCache _bodyCache;
@@ -106,6 +107,7 @@ public partial class MainViewModel : ObservableObject
         SyncCoordinator sync,
         ClassificationService classifier,
         FeedbackService feedback,
+        SearchService search,
         IMessageStore store,
         ISettingsStore settings,
         IBodyCache bodyCache,
@@ -117,6 +119,7 @@ public partial class MainViewModel : ObservableObject
         _sync = sync;
         _classifier = classifier;
         _feedback = feedback;
+        _search = search;
         _store = store;
         _settings = settings;
         _bodyCache = bodyCache;
@@ -292,7 +295,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        var results = await _store.SearchFtsAsync(_accountId, SearchText.Trim(), 200, ct);
+        var results = await _search.SearchAsync(SearchText.Trim(), 200, ct); // FR-13 语法搜索（S10）
         await _dispatcher.InvokeAsync(() =>
         {
             ReplaceMails(results);

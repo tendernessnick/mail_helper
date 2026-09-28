@@ -13,6 +13,17 @@ public sealed record InboxQuery(
     double ReviewThreshold = 0.55,
     int Limit = 200);
 
+/// <summary>组合搜索查询（S10 FR-13：语法解析产物）。</summary>
+public sealed record SearchQuery(
+    string FreeText,
+    string? FromFilter = null,
+    MailCategory? Category = null,
+    Importance? Importance = null)
+{
+    public bool IsEmpty =>
+        FreeText.Length == 0 && FromFilter is null && Category is null && Importance is null;
+}
+
 /// <summary>邮件事实表仓储（03 章 L3 存储扩展点；Infrastructure 以 EF Core 8 + SQLite 实现，FTS 原生 SQL 隔离在实现内）。</summary>
 public interface IMessageStore
 {
@@ -31,6 +42,9 @@ public interface IMessageStore
 
     /// <summary>FTS5 全文检索（FR-13）：主题/发件人/正文预览；语法解析（from:/cat:/p:）在 S10 SearchService。</summary>
     Task<IReadOnlyList<MailMessage>> SearchFtsAsync(string accountId, string query, int limit, CancellationToken ct);
+
+    /// <summary>组合搜索（S10）：自由文本（FTS 双路径）+ 发件人子串/类别/重要度过滤；空文本=纯过滤默认排序。</summary>
+    Task<IReadOnlyList<MailMessage>> SearchAsync(string accountId, SearchQuery query, int limit, CancellationToken ct);
 
     /// <summary>收件箱列表查询（FR-12）：默认排序 importance DESC → received DESC，排除远端已删。</summary>
     Task<IReadOnlyList<MailMessage>> GetInboxAsync(string accountId, InboxQuery query, CancellationToken ct);

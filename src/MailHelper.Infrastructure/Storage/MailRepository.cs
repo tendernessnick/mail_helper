@@ -118,6 +118,102 @@ public sealed class MailRepository : IMessageStore
         return await SearchByLikeAsync(accountId, sanitized, limit, ct);
     }
 
+    /// <summary>组合搜索（S10 FR-13）：自由文本走 FTS 双路径（D-21/D-22）+ from 子串/类别/重要度 LINQ 过滤；
+    /// 纯过滤（无文本）走默认排序（重要度→时间，与收件箱一致）。FTS 路径含 rank 排序。</summary>
+    public async Task<IReadOnlyList<MailMessage>> SearchAsync(string accountId, SearchQuery query, int limit, CancellationToken ct)
+    {
+        if (limit <= 0)
+        {
+            return Array.Empty<MailMessage>();
+        }
+
+        if (query.FreeText.Length == 0)
+        {
+            return await FilteredAsync(accountId, query, limit, ct);
+        }
+
+        var sanitized = Sanitize(query.FreeText);
+        if (sanitized.Length == 0)
+        {
+            return await FilteredAsync(accountId, query with { FreeText = string.Empty }, limit, ct);
+        }
+
+        // 文本 + 过滤组合：先 FTS 命中再 LINQ 过滤（万级下 FTS 索引先收敛，PERF-03 P95<500ms）
+        if (sanitized.Length >= 3)
+        {
+            try
+            {
+                var matched = await SearchByMatchAsync(accountId, sanitized, limit * 4, ct); // 放大候选再过滤
+                var filtered = ApplyFilters(matched, query).ToList();
+                if (filtered.Count > 0 || !HasFilters(query))
+                {
+                    return filtered;
+                }
+                // 全被过滤掉：可能是 rank 截断（limit*4），落到 LIKE 兜底再试
+            }
+            catch (SqliteException)
+            {
+            }
+        }
+
+        var likeHits = await SearchByLikeAsync(accountId, sanitized, limit * 4, ct);
+        return ApplyFilters(likeHits, query).ToList();
+    }
+
+    private static bool HasFilters(SearchQuery query) =>
+        query.FromFilter is not null || query.Category is not null || query.Importance is not null;
+
+    private static IEnumerable<MailMessage> ApplyFilters(IEnumerable<MailMessage> mails, SearchQuery query)
+    {
+        foreach (var mail in mails)
+        {
+            if (query.FromFilter is { } from && (mail.FromAddress is null || !mail.FromAddress.Contains(from, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            if (query.Category is { } category && mail.Category != category)
+            {
+                continue;
+            }
+
+            if (query.Importance is { } importance && mail.Importance != importance)
+            {
+                continue;
+            }
+
+            yield return mail;
+        }
+    }
+
+    private async Task<IReadOnlyList<MailMessage>> FilteredAsync(string accountId, SearchQuery query, int limit, CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            var rows = db.Messages.AsNoTracking()
+                .Where(m => m.AccountId == accountId && !m.IsDeletedRemote);
+            if (query.FromFilter is { } from)
+            {
+                rows = rows.Where(m => m.FromAddress!.Contains(from));
+            }
+
+            if (query.Category is { } category)
+            {
+                rows = rows.Where(m => m.Category == CategoryToString(category));
+            }
+
+            if (query.Importance is { } importance)
+            {
+                rows = rows.Where(m => m.Importance == (int)importance);
+            }
+
+            var list = await rows
+                .OrderByDescending(m => m.Importance)
+                .OrderByDescending(m => m.ReceivedAtUtc)
+                .Take(limit)
+                .ToListAsync(ct);
+            return (IReadOnlyList<MailMessage>)list.Select(ToDomain).ToList();
+        }, ct);
+
     public async Task<IReadOnlyList<MailMessage>> GetInboxAsync(string accountId, InboxQuery query, CancellationToken ct) =>
         await MailDatabase.WithDbAsync(_dbPath, async db =>
         {

@@ -115,6 +115,8 @@ internal static class Bootstrapper
                     "acc-1",
                     sp.GetRequiredService<ILogger<RuleManagementService>>()));
                 services.AddSingleton<LanguageService>();
+                services.AddSingleton<SearchService>(sp => new SearchService(
+                    sp.GetRequiredService<IMessageStore>(), "acc-1")); // MOD-09（S10）
 
                 // —— 页面视图模型（05 §2 Shell 导航）——
                 services.AddSingleton<RulesViewModel>();
@@ -145,6 +147,7 @@ internal static class Bootstrapper
                     sp.GetRequiredService<SyncCoordinator>(),
                     sp.GetRequiredService<ClassificationService>(),
                     sp.GetRequiredService<FeedbackService>(),
+                    sp.GetRequiredService<SearchService>(),
                     sp.GetRequiredService<IMessageStore>(),
                     sp.GetRequiredService<ISettingsStore>(),
                     sp.GetRequiredService<IBodyCache>(),

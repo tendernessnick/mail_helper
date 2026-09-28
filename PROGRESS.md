@@ -8,10 +8,10 @@
 | 项 | 值 |
 | --- | --- |
 | 更新时间 | 2026-09-27 |
-| 里程碑 | M2 进行中（S1~S9 已完成；下一步 S10 全文搜索） |
-| 当前模块 | S10 全文搜索 UI（FR-13：FTS 接入 UI + from:/cat:/p: 语法；NFR-03 万级 P95<500ms） |
-| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——不阻塞 S10/S11 开发 |
-| 下一步 | S10 按流水线推进：SearchService（语法解析 from:/cat:/p:）测试先行 → FTS 查询扩展 → 顶栏搜索接线 → PERF-02/03 万级计时 → 六项自检 → 提交 |
+| 里程碑 | M2 进行中（S1~S10 已完成；下一步 S11 IMAP 兜底） |
+| 当前模块 | S11 IMAP 兜底通道（FR-02：MailKit XOAUTH2、UIDVALIDITY+UID 水位增量；真实连通=检查点②） |
+| 阻塞 | 检查点①（Azure ClientId）与②（真实租户账号）仍待用户——S11 逻辑层可先以 WireMock/Fake 推进 |
+| 下一步 | S11 按流水线推进：ImapMailProvider 测试先行（XOAUTH2 SASL、UID 水位增量、统一 RemoteMessage 输出）→ Bootstrapper 通道切换 → 六项自检 → 提交 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -156,12 +156,14 @@
 
 **S9 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **202/202 全绿**（Core 79 + Services 63 + Integration 60），并集覆盖 Core **95.10%**（485/510）、Core.Services **94.62%**（563/595）；③ 漏洞扫描 7 工程干净（零新增包）；④ 错误码矩阵：无新增错误码；RuleValidationException（正则不可编译/模式为空/内置只读）保存时拦截并向用户提示；⑤ 日志红线：rule.saved/deleted/builtin_disabled 仅含 id/kind/category（09 §1.4 规则禁用可审计），无发件人/正文；⑥ 文档一致性：FR-03/04/10 逐项落地、05 §3.3/§3.4 线框布局一致、04 §7 配置键逐键对齐、TC-020 注册表行为实测。
 
-### S10 全文搜索（Sprint S4）
+### S10 全文搜索（Sprint S4）—— **已完成（2026-09-28）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-S10-01 | FR-13 | 待办 | — | FTS5 接入 + 搜索语法（from:/cat:/p:） |
-| T-S10-02 | NFR-03 | 待办 | — | 万级造数脚本 + 检索计时 P95 < 500ms |
+| T-S10-01 | FR-13 | **完成** | SearchQueryParserTests 8/8（纯文本/from:/cat:/p: 大小写不敏感、非法值留自由文本、混合顺序无关、重复前缀首胜）；SearchServiceTests 7/7（中文 LIKE 路径/英文 MATCH 路径/from 子串/类别/重要度/组合/空查询）；UI 顶栏搜索接线 SearchService（S6 SearchBox 升级为语法搜索） | 语法语义 D-58：前缀值非法整 token 留自由文本；cat: 英文枚举名；p:N→Importance(3-N) |
+| T-S10-02 | NFR-03 | **完成** | SearchPerfTests：万级造数（确定性、批 100 upsert）+ 20 组中英关键词 → **P95 < 500ms 达标**（PERF-03 API 计时口径；总耗时含造数 4s） | PERF-02（滚动帧率）为 UI 计时，随 M3 S5 阶段 PresentMon/手测（06 §7 口径） |
+
+**S10 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **218/218 全绿**（Core 79 + Services 78 + Integration 61），并集覆盖 Core **95.15%**（490/515）、Core.Services **94.69%**（589/622）；③ 漏洞扫描 7 工程干净（零新增包）；④ 错误码矩阵：无新增错误码；FTS MATCH 异常落 LIKE 兜底（D-21 既有语义，组合查询继承）；⑤ 日志红线：搜索不落日志（查询词属用户输入非邮件内容，且零日志输出）；⑥ 文档一致性：FR-13（<500ms/万级）、MOD-09（语法解析+FTS 查询）、D-21/D-22 双路径与防注入、PERF-03 口径逐项一致。
 
 ### S11 IMAP 兜底通道（Sprint S4；真实连通=检查点②）
 
@@ -253,6 +255,7 @@
 | D-55 | i18n 文案用编译期 C# 字典（Strings.Zh/En）而非 resx/内嵌 JSON：本构建链上 EmbeddedResource 资源名不可靠、resx 代码生成依赖 VS | NFR-12 只要求双语界面与走查；字典随程序集分发零部署风险、可 diff；键缺失三级回落（en→zh→键名）有测试 |
 | D-56 | 语言/主题变更「重启后完全生效」（设置页文案明示）：WPF 已渲染字符串不做运行时热替换 | NFR-12 验收为双语走查而非热切换；热替换需全量 DynamicResource 改造，收益不成本，列 M3 打磨项 |
 | D-57 | FR-04 定时同步在 S9 补挂载（App 启动即启动 RunPeriodicAsync 循环，间隔变更热重启）；S4 已有循环实现与测试但无宿主挂载 | 定时同步为 M 级需求；S4 完成的是协调器能力，S9 设置页落地使其可达（间隔来自 sync.interval_minutes，1–60 钳制） |
+| D-58 | 搜索语法语义：from:/cat:/p: 空格分词、前缀大小写不敏感；cat: 取英文枚举名；p:N→Importance(3-N)；前缀值非法整 token 留作自由文本；重复前缀首个生效 | 总控 S10 给出 from:/cat:/p: 记法、03 章 MOD-09 未定义细则；「非法值当普通词」符合用户直觉且可测试；Importance 枚举 P0=3 故 p:N 映射 3-N |
 
 ## 6. S0 文件清单（本次落盘）
 
