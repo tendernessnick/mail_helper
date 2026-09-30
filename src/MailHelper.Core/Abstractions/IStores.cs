@@ -40,6 +40,11 @@ public interface IMessageStore
     /// <summary>写回分类结果（S5 管线调用；S8 用户改判同入口，classifiedBy 区分）。</summary>
     Task ApplyClassificationRangeAsync(IReadOnlyList<ClassificationWrite> writes, CancellationToken ct);
 
+    /// <summary>S13-B 规则包版本迁移：把机器来源（classifiedBy≠'user'，如 rule-engine/llm）的已分类邮件
+    /// 置回待处理（classified_at/confidence 清空、类别与重要度复位默认）；用户改判永不触碰。
+    /// 返回重置行数。</summary>
+    Task<int> ResetRuleClassificationAsync(string accountId, CancellationToken ct);
+
     /// <summary>FTS5 全文检索（FR-13）：主题/发件人/正文预览；语法解析（from:/cat:/p:）在 S10 SearchService。</summary>
     Task<IReadOnlyList<MailMessage>> SearchFtsAsync(string accountId, string query, int limit, CancellationToken ct);
 

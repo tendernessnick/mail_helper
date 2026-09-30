@@ -30,6 +30,7 @@ public class ClassifierEvaluationTests
         var predP0TrueP0 = 0;
         var predP0FalsePositive = 0;
         var pendingReview = 0;
+        var misses = new List<string>(); // S13：误分类明细（规则迭代诊断）
 
         foreach (var sample in samples)
         {
@@ -45,6 +46,12 @@ public class ClassifierEvaluationTests
                 CancellationToken.None);
 
             confusion[(int)sample.Category, (int)result.Category]++;
+
+            if (sample.Category != result.Category || result.Confidence < ClassificationService.DefaultReviewThreshold)
+            {
+                misses.Add(
+                    $"{sample.Category}→{result.Category} conf={result.Confidence:F2} {sample.Subject}");
+            }
 
             if (sample.Importance == Importance.P0)
             {
@@ -74,7 +81,7 @@ public class ClassifierEvaluationTests
         var p0FalsePositiveRate = p0Predicted == 0 ? 0.0 : (double)predP0FalsePositive / p0Predicted;
         var pendingRate = (double)pendingReview / total;
 
-        WriteReport(categories, confusion, total, accuracy, trueP0, predP0TrueP0, p0FalsePositiveRate, pendingRate);
+        WriteReport(categories, confusion, total, accuracy, trueP0, predP0TrueP0, p0FalsePositiveRate, pendingRate, misses);
 
         accuracy.Should().BeGreaterThanOrEqualTo(0.85, "类别准确率达标线（FR-07 AC1 / 06 §4.1）");
         p0Recall.Should().BeGreaterThanOrEqualTo(0.95, "P0 召回达标线（FR-08 AC1）");
@@ -84,7 +91,7 @@ public class ClassifierEvaluationTests
 
     private static void WriteReport(
         MailCategory[] categories, int[,] confusion, int total, double accuracy,
-        int trueP0, int predP0TrueP0, double p0FpRate, double pendingRate)
+        int trueP0, int predP0TrueP0, double p0FpRate, double pendingRate, List<string> misses)
     {
         var reportDir = Path.Combine(CorpusLoader.FindRepoRoot(), "artifacts", "eval");
         Directory.CreateDirectory(reportDir);
@@ -104,6 +111,14 @@ public class ClassifierEvaluationTests
         for (var i = 0; i < categories.Length; i++)
         {
             sb.Append($"| {categories[i]} | ").Append(string.Join(" | ", Enumerable.Range(0, categories.Length).Select(j => confusion[i, j].ToString()))).AppendLine(" |");
+        }
+
+        sb.AppendLine("## 误分类/低置信明细（S13 规则迭代诊断；评估集为合成样本，无隐私内容）");
+        sb.AppendLine();
+        foreach (var miss in misses)
+        {
+            var subject = miss.Length > 70 ? miss[..70] : miss;
+            sb.AppendLine($"- {subject}");
         }
 
         File.WriteAllText(Path.Combine(reportDir, "evaluation-report.md"), sb.ToString());

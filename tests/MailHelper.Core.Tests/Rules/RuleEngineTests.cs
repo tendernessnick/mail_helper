@@ -165,6 +165,31 @@ public class RuleEngineTests
     }
 
     [Fact]
+    public async Task SenderDomain_SubdomainMatches()
+    {
+        // S13-B：投递子域（bounces.instructure.com）应命中根域规则（真机探针实证 Canvas 走子域投递）
+        var engine = new RuleEngine(R.Set(
+            R.Make("Canvas-Cloud", RuleKind.SenderDomain, "instructure.com", MailCategory.Course)));
+
+        var result = await engine.ClassifyAsync(
+            R.Input("Canvas notification", from: "no-reply@bounces.instructure.com"), CancellationToken.None);
+        result.Category.Should().Be(MailCategory.Course);
+    }
+
+    [Fact]
+    public async Task SenderDomain_SimilarSuffixDoesNotMatch()
+    {
+        // 后缀拼接边界：evil-instructure.com 不是 instructure.com 的子域
+        var engine = new RuleEngine(R.Set(
+            R.Make("Canvas-Cloud", RuleKind.SenderDomain, "instructure.com", MailCategory.Course)));
+
+        var result = await engine.ClassifyAsync(
+            R.Input("x", from: "a@evil-instructure.com"), CancellationToken.None);
+        result.Category.Should().Be(MailCategory.Other);
+        result.Confidence.Should().Be(0);
+    }
+
+    [Fact]
     public async Task SubjectKeyword_MatchesPreprocessedBodyToo()
     {
         // 03 章 §5.3：主题+正文关键词加权评分（D-11）

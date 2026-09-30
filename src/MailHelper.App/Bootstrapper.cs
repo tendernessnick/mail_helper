@@ -6,6 +6,7 @@ using MailHelper.Core.Abstractions;
 using MailHelper.Core.Domain;
 using MailHelper.Core.Rules;
 using MailHelper.Core.Services;
+using MailHelper.Core.Services.Rules;
 using MailHelper.Infrastructure.Auth;
 using MailHelper.Infrastructure.Logging;
 using MailHelper.Infrastructure.Storage;
@@ -238,6 +239,11 @@ internal static class Bootstrapper
                 break;
             }
         }
+
+        // S13-B：内置包版本变化→rule 来源重分类 + 断点清空（全量重拉回填修复期缺失的发件地址）
+        new RulePackMigrator(new MailRepository(dbPath), new AccountRepository(dbPath), new SettingsRepository(dbPath))
+            .MigrateIfNeededAsync(builtin.Version ?? "0", "acc-1", CancellationToken.None)
+            .GetAwaiter().GetResult();
 
         var storedRules = new RuleRepository(dbPath)
             .GetAllAsync(CancellationToken.None).GetAwaiter().GetResult()

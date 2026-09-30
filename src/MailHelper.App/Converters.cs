@@ -36,6 +36,42 @@ public sealed class ImportanceToBrushConverter : IValueConverter
     }
 }
 
+/// <summary>S13-C 类别语义色（DesignTokens 类别色板）：头像底色/左栏图标底色。</summary>
+public sealed class CategoryToBrushConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is MailCategory category
+            ? category switch
+            {
+                MailCategory.Course => FrozenCourse,
+                MailCategory.Career => FrozenCareer,
+                MailCategory.Admin => FrozenAdmin,
+                MailCategory.Finance => FrozenFinance,
+                MailCategory.Announce => FrozenAnnounce,
+                MailCategory.Subscription => FrozenSubscription,
+                _ => FrozenOther,
+            }
+            : FrozenOther;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+
+    private static readonly Brush FrozenCourse = Freeze("#3A7BD5");
+    private static readonly Brush FrozenCareer = Freeze("#0E9F6E");
+    private static readonly Brush FrozenAdmin = Freeze("#7C5CDB");
+    private static readonly Brush FrozenFinance = Freeze("#D97706");
+    private static readonly Brush FrozenAnnounce = Freeze("#0E7490");
+    private static readonly Brush FrozenSubscription = Freeze("#8C93A0");
+    private static readonly Brush FrozenOther = Freeze("#64748B");
+
+    private static Brush Freeze(string hex)
+    {
+        var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+        brush.Freeze();
+        return brush;
+    }
+}
+
 public sealed class BoolToVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>

@@ -93,6 +93,28 @@ public sealed class MailRepository : IMessageStore
             await db.SaveChangesAsync(ct);
         }, ct);
 
+    public async Task<int> ResetRuleClassificationAsync(string accountId, CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            // S13-B：仅机器来源回炉（rule-engine/llm/…），用户改判（'user'）与反馈学习结果不触碰；
+            // 分类管线按 classified_at IS NULL 重取
+            var rows = await db.Messages
+                .Where(m => m.AccountId == accountId
+                    && m.ClassifiedBy != "user"
+                    && m.ClassifiedAtUtc != null)
+                .ToListAsync(ct);
+            foreach (var row in rows)
+            {
+                row.Category = CategoryToString(MailCategory.Other);
+                row.Importance = (int)Importance.P2;
+                row.Confidence = null;
+                row.ClassifiedAtUtc = null;
+            }
+
+            await db.SaveChangesAsync(ct);
+            return rows.Count;
+        }, ct);
+
     public async Task<IReadOnlyList<MailMessage>> SearchFtsAsync(string accountId, string query, int limit, CancellationToken ct)
     {
         var sanitized = Sanitize(query);

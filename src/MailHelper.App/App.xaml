@@ -3,9 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
-        <SolidColorBrush x:Key="RowBackground" Color="White" />
-        <Style TargetType="Button">
-            <Setter Property="Padding" Value="10,4" />
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- S13-C 设计令牌：色板/字体/圆角/控件样式（唯一视觉事实源） -->
+                <ResourceDictionary Source="DesignTokens.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <SolidColorBrush x:Key="RowBackground" Color="Transparent" />
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

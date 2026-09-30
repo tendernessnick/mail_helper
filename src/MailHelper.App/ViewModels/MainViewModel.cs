@@ -39,6 +39,11 @@ public partial class MailItemViewModel : ObservableObject
 
     public string ImportanceText => Importance.ToString();
 
+    /// <summary>S13-C 头像首字母（发件人显示名首个字符；CJK 原样）。</summary>
+    public string Initial => string.IsNullOrWhiteSpace(FromDisplay)
+        ? "?"
+        : FromDisplay.Trim()[0].ToString().ToUpperInvariant();
+
     partial void OnIsReadChanged(bool value) => OnPropertyChanged(nameof(UnreadGlyph));
 
     public string UnreadGlyph => IsRead ? string.Empty : "●";

@@ -156,7 +156,9 @@ public sealed class RuleEngine : IClassifier
                 }
 
                 var domain = address[(at + 1)..];
-                return string.Equals(domain, compiled.Rule.Pattern, StringComparison.OrdinalIgnoreCase);
+                // S13-B：子域后缀匹配（bounces.instructure.com 命中 instructure.com）；相似后缀不误命中
+                return domain.Equals(compiled.Rule.Pattern, StringComparison.OrdinalIgnoreCase)
+                    || domain.EndsWith("." + compiled.Rule.Pattern, StringComparison.OrdinalIgnoreCase);
             }
 
             case RuleKind.SubjectKeyword:

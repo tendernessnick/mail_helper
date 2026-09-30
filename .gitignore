@@ -38,3 +38,4 @@ Thumbs.db
 # WebView2 离线安装包（187MB 二进制不入源码库；构建前从官方链接下载：
 # https://go.microsoft.com/fwlink/?linkid=2099617 → installer/MicrosoftEdgeWebview2Setup.exe）
 installer/MicrosoftEdgeWebview2Setup.exe
+artifacts/screens/*-real-*.png

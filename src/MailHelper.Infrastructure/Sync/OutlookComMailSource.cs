@@ -182,14 +182,7 @@ public sealed class OutlookComMailSource : IOutlookMailSource
                         dynamic exch = sender.GetExchangeUser();
                         return exch is null ? (string)(sender.Name ?? string.Empty) : (string)exch.Name;
                     }) ?? string.Empty,
-                    FromAddress: TryGet(() =>
-                    {
-                        dynamic sender = item.Sender;
-                        return (string)(sender.SmtpAddress
-                            ?? (sender.AddressEntry.Type == "EX"
-                                ? sender.AddressEntry.GetExchangeUser().PrimarySmtpAddress
-                                : sender.Address));
-                    }) ?? string.Empty,
+                    FromAddress: TryGet(() => ResolveSenderSmtp(item)) ?? string.Empty,
                     ReceivedAtUtc: received,
                     IsRead: !((bool)item.UnRead),
                     AttachmentCount: attachments,
@@ -205,6 +198,57 @@ public sealed class OutlookComMailSource : IOutlookMailSource
 
             return (IReadOnlyList<OutlookMessageSummary>)summaries;
         });
+
+    /// <summary>解析发件人 SMTP 地址。MailItem.Sender 是 Recipient 对象——没有 SmtpAddress 属性
+    /// （EX 邮箱 .Address 返回 X.500 DN）：SMTP 直用；EX 走 AddressEntry→GetExchangeUser→PrimarySmtpAddress；
+    /// 最后兜底 PropertyAccessor 读 PR_SMTP_ADDRESS（0x39FE001F）。</summary>
+    private static string? ResolveSenderSmtp(dynamic item)
+    {
+        dynamic sender = item.Sender;
+        object? addressObj = sender.Address;
+        if (addressObj is string direct && direct.Contains('@'))
+        {
+            return direct; // 非 Exchange（SMTP 直连发件人）
+        }
+
+        dynamic entry = sender.AddressEntry;
+        if (entry is not null)
+        {
+            try
+            {
+                dynamic exch = entry.GetExchangeUser();
+                object? primaryObj = exch?.PrimarySmtpAddress;
+                if (primaryObj is string primary && primary.Contains('@'))
+                {
+                    return primary;
+                }
+            }
+            catch (COMException)
+            {
+            }
+            catch (RuntimeBinderException)
+            {
+            }
+
+            try
+            {
+                object? smtpObj = entry.PropertyAccessor.GetProperty(
+                    "http://schemas.microsoft.com/mapi/proptag/0x39FE001F");
+                if (smtpObj is string smtp && smtp.Contains('@'))
+                {
+                    return smtp;
+                }
+            }
+            catch (COMException)
+            {
+            }
+            catch (RuntimeBinderException)
+            {
+            }
+        }
+
+        return addressObj as string;
+    }
 
     private void EnsureConnected()
     {
