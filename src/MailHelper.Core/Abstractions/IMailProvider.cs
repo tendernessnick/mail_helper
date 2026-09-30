@@ -14,4 +14,7 @@ public interface IMailProvider : IAsyncDisposable
 
     /// <summary>授权健康检查。</summary>
     Task<ConnectionTestResult> TestAsync();
+
+    /// <summary>本机登录态账户地址（CHG-011 桌面通道连接用）；仅 OutlookDesktopMailProvider 支持。</summary>
+    Task<string?> GetAccountAddressAsync(CancellationToken ct) => throw new NotSupportedException("该通道不暴露登录态账户地址");
 }

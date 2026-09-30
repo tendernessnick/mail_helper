@@ -7,11 +7,11 @@
 
 | 项 | 值 |
 | --- | --- |
-| 更新时间 | 2026-09-28 |
-| 里程碑 | **M3 RC→正式发布（S0~S12 全部完成）**；正式 Release 待检查点①②与 UAT |
-| 当前模块 | 全部开发模块完成；发布等待态（G1/G2/G5/G6 本地全绿，G3/G4 自动化部分完成，G7 UAT 待用户） |
-| 阻塞 | 检查点① **已完成**（2026-09-30：用户自助注册 CityU 单租户应用，ClientId/租户经环境变量注入，登录链路打通至授权页）；现阻塞于 **RISK-01 实锤**：CityU 租户全局禁止用户同意（Graph 与 IMAP scope 双双要求管理员批准）→ 唯一解锁路径 = ITSC 管理员批准（邮件稿已交付用户，App ID 30ff03da-b63e-4f1d-a77b-b417ced67a9b）；③签名证书不阻塞 |
-| 下一步 | 用户侧：提供 ClientId 与测试账号 → 真实租户端到端（检查点①②）→ 安装包三步验证 + 完整 72h 长稳 → UAT（06 §9）→ 正式 Release |
+| 更新时间 | 2026-10-01 |
+| 里程碑 | **M3 RC→正式发布（S0~S12 全部完成）**；正式 Release 待 UAT |
+| 当前模块 | 全部开发模块完成；**真实邮箱端到端已达成**（CHG-011 Outlook 桌面通道，用户实测通过）；G1/G2/G5/G6 本地全绿，G3/G4 自动化部分完成，G7 UAT 待用户 |
+| 阻塞 | 检查点① **已完成**（2026-09-30：用户自助注册 CityU 单租户应用，ClientId/租户经环境变量注入，登录链路打通至授权页）；检查点② **实质达成**（2026-10-01：CHG-011 Outlook 桌面通道复用本机登录态，用户实测真实 CityU 邮箱同步+自动分类+阅读窗格全通过）；OAuth 通道（Graph/IMAP）仍阻于 RISK-01：CityU 租户全局禁止用户同意 → ITSC 管理员批准后可启用（邮件稿已交付，App ID 30ff03da-b63e-4f1d-a77b-b417ced67a9b）；③签名证书不阻塞 |
+| 下一步 | 用户侧：日常使用+反馈调优（改判教规则）→ 完整 72h 长稳 + 安装包三步验证 → UAT（06 §9）→ 正式 Release；ITSC 批准后可选启用 Graph OAuth 通道 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -183,6 +183,16 @@
 
 **S12 六项自检结果**：① Release 构建 0 警告 0 错误；② 测试 **230/230 全绿**（Core 95.15%、Core.Services 95.02%）；③ 漏洞扫描 7 工程干净（MailKit 4.16.0）；④⑤ 错误码/日志红线无回归；⑥ 文档一致性：产物形态=08 §4.1 两产物、WebView2 键值=§4.2、无证书路径=§4.4、检查单对照见 M3 报告。
 
+### S12+ 落地路径调整：Outlook 桌面通道（CHG-011；真实端到端=检查点②）—— **已完成（2026-10-01）**
+
+> 背景（D-65）：CityU 租户全局禁止 OAuth 用户同意，Graph/IMAP 通道被「需要管理员批准」拦截。用户安装经典版 Outlook 后，落地方法调整为 **COM 复用本机 Outlook 登录态**读邮箱——不经过任何 OAuth 授权，绕开租户同意限制。用户实测（2026-10-01）：真实 CityU 邮箱（ruijiehu7-c@my.cityu.edu.hk）连接、全量同步、自动分类打标、HTML 阅读窗格全部通过，**检查点②实质达成**。
+
+| 任务 | 需求 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-S12-04 | FR-02 落地路径调整 | **完成（用户实测通过）** | OutlookDesktopProviderTests 10/10（FakeOutlookSource 驱动不出网）：首轮全量（EntryID 键 `outlook:{EntryId}` 全部 Added）、增量仅拉水位之上、**水位回退 24h 晚到窗口**（断点间到达的旧邮件不漏）、预览截 500+HTML 入 BodyCache、断点 URI `outlook://inbox?received=` 编解码往返、非法断点回退全量、分页批次语义、TestAsync 成/败、GetAccountAddressAsync 成/败（连接流程）；OutlookComMailSource=STA 专用线程序列化 + dynamic 晚绑定（无 PIA 依赖），Jet Restrict 时间过滤、Class==43 过滤、proptag 0x1035001F 取 MessageId；MainViewModel 连接分支：桌面通道按 `provider.Kind` 跳过 OAuth，直接读登录态地址落库（日志仅记域名，红线） | SanityTests 枚举基线同步 CHG-011（Graph/Imap/OutlookDesktop）；全量 **240/240 全绿**、0 警 0 错；发布产物更新并实测启动；`tools/run-outlook.ps1`（MAILHELPER_CHANNEL=Outlook）；ITSC 批准前此通道为默认落地方法，OAuth 通道代码保留（D-64 注入不变） |
+
+**S12+ 自检**：全量测试 240/240（含新增 2 连接流程用例）；构建 0 警告 0 错误；日志红线复核（连接日志仅 account_domain）；真实数据不进 git（测试截图为 DEV 种子重生成）。
+
 ## 4. 变更提案（CHG，待用户批准；docs/ 本身不修改）
 
 | 编号 | 发现 | 处理建议 | 状态 |
@@ -197,6 +207,7 @@
 | CHG-008 | 04 §4.1 G-3 `$select` 含 `changeKey`，但 §2.1 RemoteMessage 无对应字段，DDL `messages.remote_change_key` 因此无数据来源 | 提案 RemoteMessage 追加可选参数 `string? RemoteChangeKey = null`（追加式不破坏现有构造调用）。**已实施** | 已实施，待批准 |
 | CHG-009 | 04 §2.2 `ClassificationService.ClassifyPendingAsync` 返回 `ClassificationSummary`，未定义 | 提案定义：`ClassificationSummary(int Processed, IReadOnlyDictionary<MailCategory,int> CategoryCounts, int PendingReview, long ElapsedMs)`（对应 04 §6 埋点 classify.completed 的各类别分布与待确认数）。**已实施** | 已实施，待批准 |
 | CHG-010 | 04 §8.1「同步完成事件携带 newMails」：现有 `BatchSyncedEventArgs`（CHG-007）仅含计数，无邮件列表载体；且逐批通知会造成一轮多批的碎片化弹窗 | 提案 SyncCoordinator **追加** `SyncRoundCompleted` 事件（整轮成功推进断点后触发一次）：`SyncRoundCompletedEventArgs(NewMails, IsInitialRound, DurationMs)`——NewMails=本轮全部入库邮件（更新与新增一并交给 notification_log 去重，恰为 04 §8.4 的 NOT EXISTS 语义）；失败/取消轮不触发。既有事件与签名零改动。**已实施** | 已实施，待批准 |
+| CHG-011 | **落地路径调整（用户批准发起，2026-09-30）**：02 章 FR-02/EX-01 预案仅覆盖 Graph→IMAP 双 OAuth 通道；D-65 实况为 CityU 租户全局禁止用户同意，两条 OAuth 通道均被「需要管理员批准」拦截，且用户无 ITSC 管理员权限——预案未覆盖「本机已装经典 Outlook 且已登录」的第三条路 | 提案**追加** Outlook 桌面通道（`ChannelKind.OutlookDesktop`）：COM 晚绑定复用经典 Outlook 本机登录态读取收件箱（不发起任何 OAuth）；`IMailProvider` 追加默认方法 `GetAccountAddressAsync`（仅桌面通道实现）；连接流程按 `provider.Kind` 分支跳过 MSAL。docs/ 零改动；03 §5.4 断点/幂等语义、04 §4.1 增量契约以桌面等价物保持（见 D-66/D-67）。**已实施并经用户真机实测通过（2026-10-01）** | 已实施（用户发起），待归档 |
 
 ## 5. 决策记录（文档未写明、自行拍板项，均有依据）
 
@@ -267,6 +278,9 @@
 | D-63 | MailKit 4.16.0（而非较旧稳定版）：4.8.0~4.15.x 含 Moderate 公告 GHSA-9j88-vvj5-vhgr（CVE-2026-41319 STARTTLS 响应注入） | 自检③红线：dotnet list package --vulnerable 无高危/无 Moderate 残留；4.16.0 为公告修复版 |
 | D-64 | 真实租户配置经环境变量注入（MAILHELPER_CLIENT_ID/TENANT_ID/FORCE_IMAP/IMAP_USER），源码占位符不变；单租户验证模式 authority 租户化 + 回调改 http://localhost（loopback 免协议注册，移动桌面平台默认支持） | 检查点①落地方式：不硬编码（09 红线）、用户无需重新编译；用户 CityU 自助注册的是单租户应用，common 端点不适用 |
 | D-65 | 检查点②实况（2026-09-30）：CityU 租户用户同意策略=全局禁止（Graph Mail.Read 与 IMAP scope 均提示「需要管理员批准」），RISK-01 触发且预案 1（自助注册单租户应用）不能独立解锁——预案未覆盖「注册放行/同意全禁」的组合 | 真实租户验证即为此暴露事实；结论：唯一合规解锁=ITSC 管理员批准（工单/邮件），已交付用户英文邮件稿；此事实应回写 02 章 EX-01/RISK-01 应急预案（列 CHG 候选，待用户批复） |
+| D-66 | Outlook 桌面通道断点=收件时间水位 `outlook://inbox?received={yyyyMMddTHHmmssZ}`（复用 delta_link 字段）；每轮拉取窗口回退 **24h 晚到窗口**（服务器推送延迟/离线期到达的旧邮件不漏），靠 EntryID 复合键 upsert 幂等防重；首轮断点为 null=全量 | COM 无 delta query 等价物；ReceivedTime 为单调近似水位——时间水位+回退窗口+幂等键三层兜底，语义对齐 03 §5.4 EX-05（断点损坏回退全量） |
+| D-67 | Outlook 桌面通道无远端删除感知（Outlook 删除的邮件本地缓存保留） | 与 IMAP 通道同等限制（03 §5.4 v1.0 明确接受：删除感知列 V1.x）；桌面通道删除同步无事件源，不做轮询比对 |
+| D-68 | **检查点②达成路径=CHG-011 桌面通道**（2026-10-01 用户实测：真实 CityU 邮箱连接→全量同步→自动分类→HTML 阅读窗格全通过）；Graph/IMAP OAuth 通道代码保留，ITSC 批准后经环境变量切换即可启用（D-64 注入机制不变） | RISK-01 的用户侧解法：不申请权限，复用用户已在 Outlook 完成的登录态；是 03 章 MOD-03「统一输出 RemoteMessage 流与 deltaLink」抽象的第三个实现，未破坏通道可切换性 |
 
 ## 6. S0 文件清单（本次落盘）
 

@@ -50,6 +50,7 @@ internal static class Bootstrapper
                 var realClientId = Environment.GetEnvironmentVariable("MAILHELPER_CLIENT_ID");
                 var tenantId = Environment.GetEnvironmentVariable("MAILHELPER_TENANT_ID");
                 var forceImap = Environment.GetEnvironmentVariable("MAILHELPER_FORCE_IMAP") == "1"; // FR-02 预案 2 强制切换
+                var useOutlook = Environment.GetEnvironmentVariable("MAILHELPER_CHANNEL") == "Outlook"; // CHG-011 桌面通道
                 if (devMode)
                 {
                     services.AddSingleton<ITokenProvider>(_ => new FakeTokenProvider
@@ -79,6 +80,15 @@ internal static class Bootstrapper
                 if (devMode)
                 {
                     services.AddSingleton<IMailProvider>(_ => DevSeed.BuildMailProvider());
+                }
+                else if (useOutlook)
+                {
+                    // CHG-011 落地路径调整：复用经典 Outlook 本机登录态（COM），绕开租户 OAuth 同意限制
+                    services.AddSingleton<IMailProvider>(sp => new OutlookDesktopMailProvider(
+                        new OutlookComMailSource(),
+                        sp.GetRequiredService<IBodyCache>(),
+                        cacheAccountKey: "acc-1",
+                        sp.GetRequiredService<ILogger<OutlookDesktopMailProvider>>()));
                 }
                 else if (forceImap)
                 {
@@ -196,6 +206,7 @@ internal static class Bootstrapper
                     sp.GetRequiredService<ISettingsStore>(),
                     sp.GetRequiredService<IBodyCache>(),
                     sp.GetRequiredService<IAccountStore>(),
+                    sp.GetRequiredService<IMailProvider>(),
                     sp.GetRequiredService<ILogger<MainViewModel>>(),
                     devMode));
                 services.AddSingleton<MainWindow>();

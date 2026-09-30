@@ -27,6 +27,7 @@ public enum ChannelKind
 {
     Graph,
     Imap,
+    OutlookDesktop, // CHG-011：复用经典 Outlook 本机登录态（COM），绕开租户 OAuth 同意限制
 }
 
 /// <summary>远端变更类型（04 章 §2.1 RemoteMessage.Kind：Added/Updated/Removed）。</summary>

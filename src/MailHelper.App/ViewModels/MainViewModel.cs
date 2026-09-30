@@ -96,6 +96,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ISettingsStore _settings;
     private readonly IBodyCache _bodyCache;
     private readonly IAccountStore _accounts;
+    private readonly IMailProvider _provider;
     private readonly ILogger<MainViewModel> _logger;
     private readonly Dispatcher _dispatcher;
     private readonly bool _devMode;
@@ -112,6 +113,7 @@ public partial class MainViewModel : ObservableObject
         ISettingsStore settings,
         IBodyCache bodyCache,
         IAccountStore accounts,
+        IMailProvider provider,
         ILogger<MainViewModel> logger,
         bool devMode)
     {
@@ -124,6 +126,7 @@ public partial class MainViewModel : ObservableObject
         _settings = settings;
         _bodyCache = bodyCache;
         _accounts = accounts;
+        _provider = provider;
         _logger = logger;
         _dispatcher = Dispatcher.CurrentDispatcher;
         _devMode = devMode;
@@ -233,6 +236,38 @@ public partial class MainViewModel : ObservableObject
         IsBusy = true;
         try
         {
+            if (_provider.Kind == ChannelKind.OutlookDesktop)
+            {
+                // CHG-011：桌面通道复用本机 Outlook 登录态，无 OAuth 登录环节，直接探测 COM 可达性
+                string? address;
+                try
+                {
+                    address = await _provider.GetAccountAddressAsync(ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "ui.outlook_connect_failed");
+                    SyncStatusText = "连接失败：读不到本机经典版 Outlook（请确认它已打开并登录学校邮箱后重试）。";
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(address))
+                {
+                    SyncStatusText = "连接失败：Outlook 未返回登录账户（请确认已配置学校邮箱账户）。";
+                    return;
+                }
+
+                _accountId = "acc-1";
+                await _accounts.UpsertAccountAsync(new Account(
+                    _accountId, address, null, null, ChannelKind.OutlookDesktop, null,
+                    AccountStatus.Active, DateTime.UtcNow), ct);
+                var domain = address.Contains('@') ? address[(address.LastIndexOf('@') + 1)..] : "unknown";
+                _logger.LogInformation("ui.outlook_connected account_domain={Domain}", domain); // 隐私：只记域名
+                IsOnboarding = false;
+                await RunInitialSyncAsync(ct);
+                return;
+            }
+
             var result = await _auth.SignInAsync(ct);
             if (!result.IsSuccess)
             {
