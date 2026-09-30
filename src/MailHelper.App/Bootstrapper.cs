@@ -46,7 +46,10 @@ internal static class Bootstrapper
                 services.AddSingleton<ISettingsStore>(sp => sp.GetRequiredService<SettingsRepository>());
                 services.AddSingleton<IBodyCache>(_ => new BodyCacheStore(Path.Combine(dataDir, "bodies")));
 
-                // —— 认证（DEV 假令牌 / 真实 MSAL）——
+                // —— 认证（DEV 假令牌 / 真实 MSAL：MAILHELPER_CLIENT_ID 注入即启用，检查点①）——
+                var realClientId = Environment.GetEnvironmentVariable("MAILHELPER_CLIENT_ID");
+                var tenantId = Environment.GetEnvironmentVariable("MAILHELPER_TENANT_ID");
+                var forceImap = Environment.GetEnvironmentVariable("MAILHELPER_FORCE_IMAP") == "1"; // FR-02 预案 2 强制切换
                 if (devMode)
                 {
                     services.AddSingleton<ITokenProvider>(_ => new FakeTokenProvider
@@ -58,8 +61,12 @@ internal static class Bootstrapper
                 }
                 else
                 {
-                    services.AddSingleton<ITokenProvider>(_ => new TokenService(TokenService.PlaceholderClientId,
-                        Path.Combine(dataDir, "tokens"))); // 检查点①：ClientId 待配置
+                    services.AddSingleton<ITokenProvider>(_ => new TokenService(
+                        realClientId ?? TokenService.PlaceholderClientId, // 检查点①：经环境变量注入
+                        Path.Combine(dataDir, "tokens"),
+                        scopes: forceImap ? [ImapMailProvider.ImapScope] : null, // 预案 2：IMAP scope 交互登录
+                        tenantId: tenantId,
+                        redirectUri: tenantId is { Length: > 0 } ? "http://localhost" : null)); // 单租户验证：loopback 免协议注册
                 }
 
                 services.AddSingleton<AuthService>();
@@ -72,6 +79,16 @@ internal static class Bootstrapper
                 if (devMode)
                 {
                     services.AddSingleton<IMailProvider>(_ => DevSeed.BuildMailProvider());
+                }
+                else if (forceImap)
+                {
+                    // FR-02 AC1 预案 2 强制通道：绕过账户记录直接走 IMAP（诊断/验证用）
+                    services.AddSingleton<IMailProvider>(sp => new ImapMailProvider(
+                        sp.GetRequiredService<ITokenProvider>(),
+                        () => new ImapKitClientAdapter(),
+                        Environment.GetEnvironmentVariable("MAILHELPER_IMAP_USER")
+                            ?? throw new InvalidOperationException("IMAP 通道需 MAILHELPER_IMAP_USER 指定登录邮箱"),
+                        sp.GetRequiredService<ILogger<ImapMailProvider>>()));
                 }
                 else
                 {
@@ -87,9 +104,11 @@ internal static class Bootstrapper
                                 .FindAllAsync(CancellationToken.None).GetAwaiter().GetResult()
                                 .First(a => a.Channel == ChannelKind.Imap).Email;
                             var imapTokens = new TokenService(
-                                TokenService.PlaceholderClientId, // 检查点①：ClientId 待配置
+                                realClientId ?? TokenService.PlaceholderClientId,
                                 Path.Combine(dataDir, "tokens"),
-                                [ImapMailProvider.ImapScope]);
+                                [ImapMailProvider.ImapScope],
+                                tenantId: tenantId,
+                                redirectUri: tenantId is { Length: > 0 } ? "http://localhost" : null);
                             return new ImapMailProvider(
                                 imapTokens,
                                 () => new ImapKitClientAdapter(),

@@ -22,7 +22,8 @@ public sealed class TokenService : ITokenProvider
     private readonly bool _isPlaceholder;
     private readonly string[] _scopes;
 
-    public TokenService(string clientId, string? cacheDirectory = null, string[]? scopes = null)
+    public TokenService(string clientId, string? cacheDirectory = null, string[]? scopes = null,
+        string? tenantId = null, string? redirectUri = null)
     {
         _scopes = scopes ?? Scopes; // S11：IMAP 通道传 https://outlook.office365.com/IMAP.AccessAsUser.All（04 §4.3）
         _isPlaceholder = string.IsNullOrWhiteSpace(clientId) || clientId.Trim().Equals(PlaceholderClientId, StringComparison.OrdinalIgnoreCase);
@@ -32,9 +33,14 @@ public sealed class TokenService : ITokenProvider
         _cachePath = Path.Combine(cacheDirectory, "msal.cache.bin");
         _protector = new DpapiFileProtector(Encoding.UTF8.GetBytes("MailHelper.TokenCache.v1"));
 
-        _app = PublicClientApplicationBuilder.Create(_isPlaceholder ? PlaceholderClientId : clientId)
-            .WithAuthority(AzureCloudInstance.AzurePublic, AadAuthorityAudience.AzureAdAndPersonalMicrosoftAccount) // 多租户 common（02 §7）
-            .WithRedirectUri("mailhelper://auth") // 自定义协议深链（03 §5.1；协议注册随 S12 安装器落地）
+        // S12 真实租户：单租户应用用租户化 authority + 本地回环回调（移动桌面平台默认允许 loopback，
+        // 免协议注册；凭据仍在系统浏览器输入，09 §3 安全语义不变）；默认保持多租户 common + 协议深链
+        var builder = PublicClientApplicationBuilder.Create(_isPlaceholder ? PlaceholderClientId : clientId);
+        builder = string.IsNullOrWhiteSpace(tenantId)
+            ? builder.WithAuthority(AzureCloudInstance.AzurePublic, AadAuthorityAudience.AzureAdAndPersonalMicrosoftAccount)
+            : builder.WithAuthority($"https://login.microsoftonline.com/{tenantId}");
+        _app = builder
+            .WithRedirectUri(redirectUri ?? "mailhelper://auth")
             .Build();
 
         // 09 §3：令牌缓存自定义序列化，写盘前经 DPAPI 加密

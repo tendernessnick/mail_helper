@@ -10,7 +10,7 @@
 | 更新时间 | 2026-09-28 |
 | 里程碑 | **M3 RC→正式发布（S0~S12 全部完成）**；正式 Release 待检查点①②与 UAT |
 | 当前模块 | 全部开发模块完成；发布等待态（G1/G2/G5/G6 本地全绿，G3/G4 自动化部分完成，G7 UAT 待用户） |
-| 阻塞 | 检查点①（Azure ClientId）②（真实租户账号：端到端/IMAP 连通/72h）③（签名证书——已走 08 §4.4 无证书路径不阻塞） |
+| 阻塞 | 检查点① **已完成**（2026-09-30：用户自助注册 CityU 单租户应用，ClientId/租户经环境变量注入，登录链路打通至授权页）；现阻塞于 **RISK-01 实锤**：CityU 租户全局禁止用户同意（Graph 与 IMAP scope 双双要求管理员批准）→ 唯一解锁路径 = ITSC 管理员批准（邮件稿已交付用户，App ID 30ff03da-b63e-4f1d-a77b-b417ced67a9b）；③签名证书不阻塞 |
 | 下一步 | 用户侧：提供 ClientId 与测试账号 → 真实租户端到端（检查点①②）→ 安装包三步验证 + 完整 72h 长稳 → UAT（06 §9）→ 正式 Release |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
@@ -265,6 +265,8 @@
 | D-61 | FR-02 AC2「两通道同步结果一致」解释为内容层一致（邮件集合/字段语义一致）；messages.id 因 Graph id 与 IMAP 复合键结构不同必然不同 | Graph id 为 Exchange GUID、IMAP 为 UID 复合键，结构一致性不可实现；幂等 upsert 保证通道内一致（FR-04 AC2） |
 | D-62 | v1 IMAP 仅同步 INBOX 文件夹 | 03 §5.4「每文件夹记录水位」在 v1 收敛为 INBOX；多文件夹随 V1.x 演进；IImapClientAdapter 接口已按文件夹粒度预留 |
 | D-63 | MailKit 4.16.0（而非较旧稳定版）：4.8.0~4.15.x 含 Moderate 公告 GHSA-9j88-vvj5-vhgr（CVE-2026-41319 STARTTLS 响应注入） | 自检③红线：dotnet list package --vulnerable 无高危/无 Moderate 残留；4.16.0 为公告修复版 |
+| D-64 | 真实租户配置经环境变量注入（MAILHELPER_CLIENT_ID/TENANT_ID/FORCE_IMAP/IMAP_USER），源码占位符不变；单租户验证模式 authority 租户化 + 回调改 http://localhost（loopback 免协议注册，移动桌面平台默认支持） | 检查点①落地方式：不硬编码（09 红线）、用户无需重新编译；用户 CityU 自助注册的是单租户应用，common 端点不适用 |
+| D-65 | 检查点②实况（2026-09-30）：CityU 租户用户同意策略=全局禁止（Graph Mail.Read 与 IMAP scope 均提示「需要管理员批准」），RISK-01 触发且预案 1（自助注册单租户应用）不能独立解锁——预案未覆盖「注册放行/同意全禁」的组合 | 真实租户验证即为此暴露事实；结论：唯一合规解锁=ITSC 管理员批准（工单/邮件），已交付用户英文邮件稿；此事实应回写 02 章 EX-01/RISK-01 应急预案（列 CHG 候选，待用户批复） |
 
 ## 6. S0 文件清单（本次落盘）
 
