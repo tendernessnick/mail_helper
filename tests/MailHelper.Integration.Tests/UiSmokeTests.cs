@@ -44,6 +44,9 @@ public class UiSmokeTests
             {
                 ["MAILHELPER_DEV"] = "1",
                 ["MAILHELPER_DATA_DIR"] = dataDir,
+                // UIA 探针依赖中文 AutomationProperties.Name（ByName「类别导航」/「邮件列表」）：
+                // CI（en-US）下 auto 语言会渲染英文，强制 zh-CN 保证元素名确定
+                ["MAILHELPER_LANG"] = "zh-CN",
             },
         };
 

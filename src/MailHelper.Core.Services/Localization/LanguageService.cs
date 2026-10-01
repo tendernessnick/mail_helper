@@ -17,16 +17,19 @@ public sealed class LanguageService
     public LanguageService(ISettingsStore store) =>
         _store = store ?? throw new ArgumentNullException(nameof(store));
 
-    /// <summary>读取 ui.language 并装载对应字典；auto 跟随系统 UI 文化（zh 系 → zh-CN，其余 → en）。</summary>
+    /// <summary>读取 ui.language 并装载对应字典；auto 跟随系统 UI 文化（zh 系 → zh-CN，其余 → en）。
+    /// MAILHELPER_LANG 环境变量可在 auto 时强制语言（UI 冒烟测试依赖确定性文案）。</summary>
     public async Task ApplyAsync(CancellationToken ct)
     {
         var tag = await _store.GetAsync("ui.language", ct) is { Length: > 0 } raw ? raw : "auto";
         tag = tag switch
         {
             "zh-CN" or "en" => tag,
-            _ => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("zh", StringComparison.OrdinalIgnoreCase)
-                ? "zh-CN"
-                : "en",
+            _ => Environment.GetEnvironmentVariable("MAILHELPER_LANG") is { Length: > 0 } forced
+                ? forced
+                : CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("zh", StringComparison.OrdinalIgnoreCase)
+                    ? "zh-CN"
+                    : "en",
         };
         CurrentTag = tag;
         _strings = Load(tag);
