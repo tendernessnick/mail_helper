@@ -1,41 +1,38 @@
-# 构建产物
-[Bb]in/
-[Oo]bj/
-[Oo]ut/
-publish/
-*.pubxml.user
 
-# IDE
-.vs/
-.idea/
-*.user
-*.suo
-*.DotSettings.user
-
-# 测试与覆盖率
-TestResults/
-*.coverage
-artifacts/*
 !artifacts/eval/
 !artifacts/screens/
-
+# IDE
+# Office 锁文件与本会话目录
+# WebView2 离线安装包（187MB 二进制不入源码库；构建前从官方链接下载：
+# https://go.microsoft.com/fwlink/?linkid=2099617 → installer/MicrosoftEdgeWebview2Setup.exe）
+# 构建产物
+# 测试与覆盖率
+# 系统
 # 运行时与本地数据（永不入库：令牌/邮件数据红线，09 章 §4）
+*.DotSettings.user
+*.coverage
 *.db
 *.db-shm
 *.db-wal
-logs/
-tokens/
-bodies/
-
-# Office 锁文件与本会话目录
-~$*
-.zcode/
-
-# 系统
-Thumbs.db
+*.pubxml.user
+*.suo
+*.user
 .DS_Store
-
-# WebView2 离线安装包（187MB 二进制不入源码库；构建前从官方链接下载：
-# https://go.microsoft.com/fwlink/?linkid=2099617 → installer/MicrosoftEdgeWebview2Setup.exe）
-installer/MicrosoftEdgeWebview2Setup.exe
+.idea/
+.vs/
+.zcode/
+TestResults/
+Thumbs.db
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+artifacts/*
+artifacts/dist/
+artifacts/installer/
 artifacts/screens/*-real-*.png
+bodies/
+installer/MicrosoftEdgeWebview2Setup.exe
+logs/
+publish/
+tokens/
+~$*

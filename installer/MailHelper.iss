@@ -4,7 +4,7 @@
 ; 编译：ISCC installer\MailHelper.iss（产物 artifacts\installer\MailHelperSetup.exe）
 
 #define MyAppName "MailHelper"
-#define MyAppVersion "0.1.0"
+#define MyAppVersion "0.3.0"
 #define MyAppPublisher "MailHelper Project"
 #define MyAppExeName "MailHelper.App.exe"
 
@@ -16,8 +16,8 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-OutputBaseFilename=MailHelperSetup
-OutputDir=..\..\artifacts\installer
+OutputBaseFilename=MailHelperSetup-0.3.0
+OutputDir=..\artifacts\installer
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
@@ -25,8 +25,8 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
-[Languages]
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+; [Languages]：中文向导语言包为非官方附件，本机编译环境不可得——向导用默认英文（3 步）；
+; 自定义提示语（附加任务/卸载询问）仍为中文，见 [Tasks]/[Code]。
 
 [Files]
 ; 应用单文件（08 §2 publish 产物）
