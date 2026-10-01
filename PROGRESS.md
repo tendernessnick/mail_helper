@@ -399,3 +399,16 @@ PROGRESS.md
 **08 §5 发布检查单对照**：1 门禁=本表；2 版本=0.1.0+规则包 v2026.09；3 CHANGELOG ✅；4 规则包评估 ✅；5 安装三步=待 CI/真实机；6 SHA256 ✅（签名=无证书路径）；7 Release 页=待 GitHub 仓库；8 通道切换=待 CI 首次运行。
 
 **检查点清单（唯一剩余项）**：① Azure ClientId（占位符已在位，回填即切真实通道）；② 真实学校测试账号（Graph 端到端 50 封/IMAP 连通/真实弹窗/完整 72h/PERF-02）；③ 签名证书（不阻塞，无证书路径已执行）。
+
+### S15 —— 2026-10-01 开源发布链路（GitHub Releases + 应用内更新）
+
+**完成项与证据**：
+- 应用内检查更新（S15/08 §4.3）：`Updates/UpdateService`（UpdateManager + GithubSource，prerelease=false 只认正式版）+ 设置页「关于」分组（检查更新/进度/重启并安装）；Velopack 1.2.161
+- CI 发布链路修正：release job 补 `permissions: contents: write` 与 GITHUB_TOKEN（原 `vpk publish --gitHubRepo` 参数在 vpk 新版不存在，首跑必败）；改用 `vpk upload github`；push main→beta 预发布，tag v*.*.*→stable 正式版（版本以 tag 为唯一事实源，-p:Version 注入）
+- 版本统一：Directory.Build.props 0.1.0 → 0.4.0 基线（原三处版本不一致：props 0.1.0 / iss 0.3.1 / CI 0.1.构建号）
+- 发布方式：Inno Setup 退役（installer/MailHelper.iss 删除，git 历史可溯），Velopack 全面接管（Setup.exe + 便携 zip + 增量更新）
+- 文档：README 下载/安装/更新章节 + docs/发布操作指南.md（发版流程/排障/渠道说明）+ LICENSE(MIT) + CHANGELOG 0.4.0
+
+**质量**：全量测试 250/250 通过；0 警告 0 错误；本地 publish+vpk pack 冒烟通过
+
+**待办**：首次推送后盯 CI 绿 → tag v0.4.0 发首个正式 Release → 真机验证应用内更新闭环（0.4.0→下一版）
