@@ -24,6 +24,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        // S15（08 §4.3）：Velopack 安装/更新钩子必须最先执行——钩子以本进程启动并在此退出；
+        // 未安装环境（源码/裸 exe）下为空操作
+        Velopack.VelopackApp.Build().Run();
+
         DispatcherUnhandledException += (_, args) =>
             WriteCrashLog("DispatcherUnhandled", args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>

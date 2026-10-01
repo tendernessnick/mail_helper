@@ -163,8 +163,9 @@ internal static class Bootstrapper
                 services.AddSingleton<IRulesStore>(sp => sp.GetRequiredService<RuleRepository>());
                 services.AddSingleton<FeedbackService>();
 
-                // —— 设置 / 规则管理 / 语言（S9：FR-03/04/10、NFR-12）——
+                // —— 设置 / 规则管理 / 语言 / 更新（S9：FR-03/04/10、NFR-12；S15：08 §4.3）——
                 services.AddSingleton<SettingsService>();
+                services.AddSingleton<Updates.UpdateService>();
                 services.AddSingleton(sp => new RuleManagementService(
                     sp.GetRequiredService<IRulesStore>(),
                     sp.GetRequiredService<RuleEngine>(),
@@ -182,6 +183,7 @@ internal static class Bootstrapper
                     sp.GetRequiredService<AuthService>(),
                     sp.GetRequiredService<IAccountStore>(),
                     onSyncIntervalChanged: RestartPeriodicSync,
+                    updates: sp.GetRequiredService<Updates.UpdateService>(),
                     setAutostartAsync: enabled =>
                     {
                         var autostart = new AutostartService(

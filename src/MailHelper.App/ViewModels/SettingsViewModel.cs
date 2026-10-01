@@ -5,6 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using MailHelper.Core;
 using MailHelper.Core.Abstractions;
 using MailHelper.Core.Services;
+using Velopack;
 
 namespace MailHelper.App.ViewModels;
 
@@ -16,6 +17,8 @@ public partial class SettingsViewModel : ObservableObject
     private readonly AuthService _auth;
     private readonly IAccountStore _accounts;
     private readonly Action<int> _onSyncIntervalChanged; // 周期循环热更新（FR-04）
+    private readonly Updates.UpdateService _updates;
+    private UpdateInfo? _pendingUpdate; // 已下载待应用的更新（S15）
 
     /// <summary>autostart 读写委托（App 层注入注册表实现，TC-020）。</summary>
     public Func<bool, Task>? SetAutostartAsync { get; init; }
@@ -25,12 +28,14 @@ public partial class SettingsViewModel : ObservableObject
         AuthService auth,
         IAccountStore accounts,
         Action<int> onSyncIntervalChanged,
+        Updates.UpdateService updates,
         Func<bool, Task>? setAutostartAsync = null)
     {
         _settings = settings;
         _auth = auth;
         _accounts = accounts;
         _onSyncIntervalChanged = onSyncIntervalChanged;
+        _updates = updates;
         SetAutostartAsync = setAutostartAsync;
     }
 
@@ -80,6 +85,24 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private int bodyLimitMb = 2048;
+
+    // —— 关于/更新（S15，08 §4.3）——
+    [ObservableProperty]
+    private string appVersion = Updates.UpdateService.CurrentVersion;
+
+    [ObservableProperty]
+    private string updateStatus = string.Empty;
+
+    [ObservableProperty]
+    private bool isCheckingUpdate;
+
+    /// <summary>更新包已下载，展示「重启并安装」按钮。</summary>
+    [ObservableProperty]
+    private bool updateReady;
+
+    /// <summary>源码/裸 exe 运行（非 Velopack 安装）时禁用入口。</summary>
+    [ObservableProperty]
+    private bool canCheckUpdate = Updates.UpdateService.IsInstalled;
 
     public event EventHandler? SignOutCompleted;
 
@@ -161,5 +184,57 @@ public partial class SettingsViewModel : ObservableObject
     {
         await _auth.SignOutAsync(ct); // AC：撤销令牌+删缓存，保留本地分类缓存供查阅（FR-03）
         SignOutCompleted?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>检查更新（S15）：有新版即后台下载，完成后交由用户确认重启安装。</summary>
+    [RelayCommand]
+    private async Task CheckUpdateAsync(CancellationToken ct)
+    {
+        if (IsCheckingUpdate || !CanCheckUpdate)
+        {
+            return;
+        }
+
+        IsCheckingUpdate = true;
+        UpdateReady = false;
+        _pendingUpdate = null;
+        UpdateStatus = "正在检查更新…";
+        try
+        {
+            var info = await _updates.CheckForUpdateAsync(ct);
+            if (info is null)
+            {
+                UpdateStatus = $"当前已是最新版本（v{AppVersion}）";
+                return;
+            }
+
+            UpdateStatus = $"发现新版本 v{info.TargetFullRelease.Version}，正在下载…";
+            await _updates.DownloadUpdateAsync(
+                info,
+                percent => UpdateStatus = $"正在下载更新… {percent}%",
+                CancellationToken.None); // 下载不随 UI 取消中断，进度照常汇报
+            _pendingUpdate = info;
+            UpdateReady = true;
+            UpdateStatus = $"v{info.TargetFullRelease.Version} 已就绪，点击「重启并安装」完成更新";
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus = "检查更新失败，请确认网络后重试";
+            App.WriteCrashLog("CheckUpdate", ex);
+        }
+        finally
+        {
+            IsCheckingUpdate = false;
+        }
+    }
+
+    /// <summary>应用已下载的更新并重启（Velopack 接管退出/替换/拉起）。</summary>
+    [RelayCommand]
+    private void ApplyUpdate()
+    {
+        if (_pendingUpdate is { } info)
+        {
+            _updates.ApplyUpdateAndRestart(info);
+        }
     }
 }
