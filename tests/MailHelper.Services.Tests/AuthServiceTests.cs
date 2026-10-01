@@ -103,7 +103,9 @@ public class AuthServiceTests
         var service = new AuthService(fake);
 
         var first = Task.Run(() => service.SignInAsync(CancellationToken.None));
-        await Task.Delay(80); // 确保第一个登录已进入 SigningIn
+        // 以状态就绪为门槛（CI 慢机上 Task.Delay 墙钟时序不可靠：首个登录可能已完成后第二次才发起）
+        SpinWait.SpinUntil(() => service.State == AuthState.SigningIn, TimeSpan.FromSeconds(10))
+            .Should().BeTrue("第一个登录应先进入 SigningIn");
         var second = await service.SignInAsync(CancellationToken.None);
 
         second.IsSuccess.Should().BeFalse(); // 重入被拒绝
