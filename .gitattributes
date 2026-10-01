@@ -1,0 +1,3 @@
+# 行尾策略（S15）：默认不强制归一，避免全仓 churn；下列内容必须禁止 EOL 转换
+# —— 生成器 LF 输出与「随包提交语料」逐字节比对（语料确定性测试），checkout 转换会引入 CR 破坏比对
+tests/fixtures/sample-corpus/** -text

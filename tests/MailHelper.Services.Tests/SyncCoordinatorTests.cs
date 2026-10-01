@@ -165,7 +165,9 @@ public class SyncCoordinatorTests : IDisposable
         await coordinator.RunPeriodicAsync(TimeSpan.FromMilliseconds(60), cts.Token);
 
         provider.FetchCalls.Should().BeGreaterThanOrEqualTo(3); // 周期触发（FR-04）
-        coordinator.State.Should().Be(SyncState.Idle);
+        // 取消时最后一 tick 可能仍在途（慢机 CI 上固定时点断言必现竞态）：轮询等待回 Idle
+        SpinWait.SpinUntil(() => coordinator.State == SyncState.Idle, TimeSpan.FromSeconds(10))
+            .Should().BeTrue("取消后同步循环应回到 Idle");
     }
 
     [Fact]

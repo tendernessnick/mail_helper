@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using MailHelper.Core;
 
@@ -81,7 +82,8 @@ internal static class SampleCorpus
         sb.Append("From: ").Append(spec.FromName).Append(" <").Append(spec.FromAddress).Append(">\n");
         sb.Append("To: Student <s123456@connect.hku.hk>\n");
         sb.Append("Subject: ").Append(spec.Subject).Append('\n');
-        sb.Append("Date: ").Append(date.ToString("R")).Append('\n');
+        // RFC1123 星期/月名为文化敏感（zh-CN 生成中文星期名，en-US 重生成即漂移）：锁定 Invariant
+        sb.Append("Date: ").Append(date.ToString("R", CultureInfo.InvariantCulture)).Append('\n');
         sb.Append("Content-Type: text/plain; charset=utf-8\n");
         sb.Append("MIME-Version: 1.0\n\n");
         sb.Append(spec.Body);
