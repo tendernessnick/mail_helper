@@ -13,7 +13,7 @@
 | 渠道 | 链接 | 说明 |
 | --- | --- | --- |
 | **安装版（推荐）** | [Releases 页最新正式版](https://github.com/tendernessnick/mail_helper/releases/latest) → `MailHelper-stable-Setup.exe` | 双击安装，支持应用内自动更新 |
-| 便携版（免安装） | 同一发布页 → `MailHelper-stable-portable.zip` | 解压即用，更新需重新下载 |
+| 便携版（免安装） | 同一发布页 → `MailHelper-stable-Portable.zip` | 解压即用，更新需重新下载 |
 | 尝鲜（beta） | [全部 Pre-releases](https://github.com/tendernessnick/mail_helper/releases) | 每次提交 main 自动产出，稳定性不作保证 |
 
 安装后，应用内 **设置 → 关于 → 检查更新** 即可随时升级到最新正式版。详细说明见下文[下载、安装与更新](#下载安装与更新)。
@@ -114,7 +114,7 @@ vpk pack --packId MailHelper --packVersion 0.4.0 --packDirectory artifacts/publi
 所有正式版发布在 [GitHub Releases](https://github.com/tendernessnick/mail_helper/releases/latest)，`releases/latest` 链接永远指向最新正式版。每个发布随附：
 
 - `MailHelper-stable-Setup.exe` — 安装版（推荐，支持自动更新）
-- `MailHelper-stable-portable.zip` — 便携版（解压即用）
+- `MailHelper-stable-Portable.zip` — 便携版（解压即用）
 - `SHA256SUMS.txt` — 全部产物的 SHA256 校验清单
 
 ### 安装
