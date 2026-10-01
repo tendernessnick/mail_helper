@@ -1,11 +1,20 @@
 name: ci
 
-# 08 章 §3 CI：PR 触发 build+test+覆盖率门禁；release job（publish/Velopack）随 S12 落地
+# 08 章 §3 CI：PR 触发 build+test+覆盖率门禁。
+# 发布链路（S15，08 §4.3）：
+#   push main            → beta 渠道（GitHub Pre-release，不影响 Releases/latest）
+#   打 tag v*.*.*        → stable 渠道（正式 Release，Releases/latest 指向它，应用内检查更新的数据源）
+# 版本唯一事实源 = git tag（stable）/ Directory.Build.props + 构建号（beta）。
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-test:
@@ -42,10 +51,11 @@ jobs:
           path: '**/coverage.cobertura.xml'
           if-no-files-found: error
 
-  # 08 §3/§4：合并 main 即产生 beta 渠道产物；打 tag v*.*.* 走 stable + Inno Setup 安装包（S12）
   release:
     needs: build-test
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write # 创建 Release 并上传产物（GITHUB_TOKEN 最小授权）
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -56,33 +66,74 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Publish (单文件自包含 win-x64，08 §2)
+      # stable 版本 = tag 去掉 v 前缀；beta 版本 = Directory.Build.props 基线 + beta.构建号（SemVer2 可比较，逐次递增）
+      - name: 计算版本与渠道
+        id: ver
+        shell: pwsh
+        run: |
+          [xml]$props = Get-Content Directory.Build.props
+          $base = $props.Project.PropertyGroup.Version.Trim()
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $version = $env:GITHUB_REF_NAME -replace '^v', ''
+            $channel = 'stable'; $pre = 'false'
+          } else {
+            $version = "$base-beta.$($env:GITHUB_RUN_NUMBER)"
+            $channel = 'beta'; $pre = 'true'
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "channel=$channel" >> $env:GITHUB_OUTPUT
+          "pre=$pre"         >> $env:GITHUB_OUTPUT
+          Write-Host "version=$version channel=$channel"
+
+      # 自包含（免装 .NET）；不用单文件——Velopack 以自身压缩格式分发，单文件自解压反而拖慢启动
+      - name: Publish (自包含 win-x64，版本随 tag/渠道注入)
         run: >
           dotnet publish src/MailHelper.App -c Release -r win-x64
-          -p:PublishSingleFile=true -p:SelfContained=true
-          -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/publish
+          -p:Version=${{ steps.ver.outputs.version }}
+          -p:SelfContained=true
+          -o artifacts/publish
 
-      - name: Pack (Velopack beta 通道，08 §4.3)
+      - name: Pack (Velopack：Setup.exe + 便携 zip + 增量更新包)
         shell: pwsh
         run: |
           dotnet tool install -g vpk
-          vpk pack --packId MailHelper --packVersion "0.1.${{ github.run_number }}" `
-            --packDirectory artifacts/publish --mainExe MailHelper.App.exe `
+          vpk pack --packId MailHelper `
+            --packVersion ${{ steps.ver.outputs.version }} `
+            --packDirectory artifacts/publish `
+            --mainExe MailHelper.App.exe `
+            --icon src/MailHelper.App/Assets/app.ico `
+            --channel ${{ steps.ver.outputs.channel }} `
             --outputDir artifacts/velopack
-          vpk publish --channel beta --gitHubRepo ${{ github.repository }} `
-            --outputDir artifacts/velopack --releaseName "MailHelper 0.1.${{ github.run_number }} (beta)"
 
       - name: SHA256 校验清单（08 §4.4 无证书路径）
         shell: pwsh
         run: |
+          Remove-Item artifacts/velopack/SHA256SUMS.txt -ErrorAction SilentlyContinue
           Get-ChildItem artifacts/velopack -File | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
             "$hash  $($_.Name)" | Out-File artifacts/velopack/SHA256SUMS.txt -Append -Encoding utf8
           }
 
-      - name: Upload release artifacts
+      # 上传为 GitHub Release：beta 标 pre-release；--merge 允许同版本重跑合并而非报错
+      - name: Upload to GitHub Releases
+        shell: pwsh
+        run: |
+          vpk upload github `
+            --repoUrl "https://github.com/${{ github.repository }}" `
+            --token "${{ secrets.GITHUB_TOKEN }}" `
+            --channel ${{ steps.ver.outputs.channel }} `
+            --pre ${{ steps.ver.outputs.pre }} `
+            --publish true `
+            --releaseName "MailHelper v${{ steps.ver.outputs.version }}" `
+            --tag "v${{ steps.ver.outputs.version }}" `
+            --merge true `
+            --outputDir artifacts/velopack
+
+      # 仅当发布上传失败时保留本地产物用于排查
+      - name: Upload release artifacts (失败排查用)
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: velopack-beta
+          name: velopack-${{ steps.ver.outputs.channel }}
           path: artifacts/velopack
           if-no-files-found: error
