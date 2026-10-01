@@ -4,7 +4,7 @@
 ; 编译：ISCC installer\MailHelper.iss（产物 artifacts\installer\MailHelperSetup.exe）
 
 #define MyAppName "MailHelper"
-#define MyAppVersion "0.3.0"
+#define MyAppVersion "0.3.1"
 #define MyAppPublisher "MailHelper Project"
 #define MyAppExeName "MailHelper.App.exe"
 
@@ -16,7 +16,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-OutputBaseFilename=MailHelperSetup-0.3.0
+OutputBaseFilename=MailHelperSetup-0.3.1
 OutputDir=..\artifacts\installer
 Compression=lzma
 SolidCompression=yes
