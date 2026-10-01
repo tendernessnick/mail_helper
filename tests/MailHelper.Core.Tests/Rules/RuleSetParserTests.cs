@@ -1,4 +1,5 @@
 using FluentAssertions;
+using MailHelper.Core;
 using MailHelper.Core.Domain;
 using MailHelper.Core.Rules;
 using Xunit;
@@ -37,7 +38,7 @@ public class RuleSetParserTests
         moodle.Name.Should().Be("Moodle-HKU");
         moodle.Kind.Should().Be(RuleKind.SenderDomain);
         moodle.Pattern.Should().Be("moodle.hku.hk");
-        moodle.Category.Should().Be(MailCategory.Course);
+        moodle.Category.Should().Be(CategoryIds.Course);
         moodle.Weight.Should().Be(8);
         moodle.Source.Should().Be(RuleSource.Builtin);
         moodle.Enabled.Should().BeTrue();

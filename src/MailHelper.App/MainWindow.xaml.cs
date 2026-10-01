@@ -107,10 +107,11 @@ public partial class MainWindow : Window
         }
 
         var menu = new ContextMenu();
-        foreach (var (category, label, _) in ViewModels.MainViewModel.CategoryLabels)
+        foreach (var definition in CategoryCatalog.All) // S14-C：内置 + 自定义动态
         {
-            var item = new MenuItem { Header = label };
-            item.Click += (_, _) => _ = _viewModel.ApplyCorrectionAsync(category, CancellationToken.None);
+            var item = new MenuItem { Header = $"{definition.Icon} {definition.Label}" };
+            var categoryId = definition.Id;
+            item.Click += (_, _) => _ = _viewModel.ApplyCorrectionAsync(categoryId, CancellationToken.None);
             menu.Items.Add(item);
         }
 

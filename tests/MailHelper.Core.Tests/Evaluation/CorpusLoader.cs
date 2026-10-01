@@ -3,7 +3,7 @@ using MailHelper.Core;
 
 namespace MailHelper.Core.Tests.Evaluation;
 
-internal sealed record CorpusSample(string File, MailCategory Category, Importance Importance, string FromName, string FromAddress, string Subject, string Body);
+internal sealed record CorpusSample(string File, string Category, Importance Importance, string FromName, string FromAddress, string Subject, string Body);
 
 /// <summary>极简 .eml 解析（D-42：合成语料为固定格式——UTF-8 无折叠头、无 MIME 多部分；
 /// 引入真实邮件样本时升级 MailKit）。+ 语料目录/规则包定位（向上查找仓库根）。</summary>
@@ -23,7 +23,7 @@ internal static class CorpusLoader
             var eml = ParseEml(Path.Combine(corpusDir, parts[0]));
             samples.Add(new CorpusSample(
                 parts[0],
-                Enum.Parse<MailCategory>(parts[1], ignoreCase: true),
+                parts[1].Trim().ToLowerInvariant(),
                 (Importance)int.Parse(parts[2]),
                 eml.FromName, eml.FromAddress, eml.Subject, eml.Body));
         }

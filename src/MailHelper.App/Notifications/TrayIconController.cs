@@ -81,7 +81,7 @@ public sealed class TrayIconController : IDisposable
         _icon.ForceCreate(enablesEfficiencyMode: false);
     }
 
-    /// <summary>图标生成（04 §4 DrawText）：蓝底信封底图；未读 >0 时叠加红色角标数字。
+    /// <summary>图标生成（S14-A 换品牌底图）：app.ico 32px 帧 + 未读 >0 时叠加红色角标数字。
     /// WPF 渲染 → PNG → 手工包装 ICO 容器（Icon 构造不接受裸 PNG 流），避免引 System.Drawing.Common。</summary>
     private static System.Drawing.Icon GenerateIcon(int unread)
     {
@@ -89,10 +89,7 @@ public sealed class TrayIconController : IDisposable
         var visual = new DrawingVisual();
         using (var dc = visual.RenderOpen())
         {
-            dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(0x00, 0x78, 0xD4)), null, new Rect(0, 0, size, size));
-            var envelope = new FormattedText("✉", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                new Typeface("Segoe UI Emoji"), 18, Brushes.White, 1.25);
-            dc.DrawText(envelope, new Point((size - envelope.Width) / 2, (size - envelope.Height) / 2));
+            dc.DrawImage(BaseIcon, new Rect(0, 0, size, size));
             if (unread > 0)
             {
                 dc.DrawEllipse(Brushes.Firebrick, new Pen(Brushes.White, 1.5), new Point(25, 7), 8, 8);
@@ -114,6 +111,20 @@ public sealed class TrayIconController : IDisposable
         var icon = new System.Drawing.Icon(icoStream);
         return icon;
     }
+
+    /// <summary>品牌底图（S14-A）：app.ico 的 32px 帧，懒加载缓存。</summary>
+    private static readonly Lazy<ImageSource> BaseIconSource = new(() =>
+    {
+        var decoder = BitmapDecoder.Create(
+            new Uri("pack://application:,,,/Assets/app.ico"), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+        var frame = decoder.Frames
+            .OrderBy(f => f.PixelWidth)
+            .First(f => f.PixelWidth >= 32);
+        frame.Freeze();
+        return (ImageSource)frame;
+    });
+
+    private static ImageSource BaseIcon => BaseIconSource.Value;
 
     /// <summary>把单帧 PNG 封装为 ICO 容器（Vista+ 支持内嵌 PNG；目录项 22 字节）。</summary>
     private static MemoryStream WrapPngAsIco(byte[] png)

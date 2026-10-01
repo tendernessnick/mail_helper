@@ -4,8 +4,8 @@ namespace MailHelper.Core.Domain;
 public sealed record ClassificationFeedback(
     Guid Id,
     string MessageId,
-    MailCategory OldCategory,
-    MailCategory NewCategory,
+    string OldCategory,
+    string NewCategory,
     Importance OldImportance,
     Importance NewImportance,
     DateTime CreatedAtUtc);

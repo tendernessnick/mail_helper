@@ -20,7 +20,7 @@ public static class RemoteMessageMapper
         message.ReceivedAtUtc,
         message.HasAttachments,
         message.IsRead,
-        MailCategory.Other,          // 新行待分类（CHG-002：显式 other/P2）
+        CategoryIds.Other,           // 新行待分类（CHG-002：显式 other/P2）
         Importance.P2,
         Confidence: null,
         ClassifiedBy: "rule",

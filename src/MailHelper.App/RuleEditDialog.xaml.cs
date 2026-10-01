@@ -27,15 +27,15 @@ public partial class RuleEditDialog : Window
         WeightBox.Text = draft.Weight.ToString("0.#");
         EnabledBox.IsChecked = draft.Enabled;
 
-        // 类别：（无）+ 7 类（05 §3.3：目标类别可选，仅重要度线索规则合法）
+        // 类别：（无）+ 类别目录（S14-C：内置七类 + 自定义）
         CategoryBox.Items.Add("(仅重要度)");
-        foreach (var (_, label, _) in ViewModels.MainViewModel.CategoryLabels)
+        foreach (var definition in CategoryCatalog.All)
         {
-            CategoryBox.Items.Add(label);
+            CategoryBox.Items.Add(definition.Label);
         }
 
         CategoryBox.SelectedIndex = draft.Category is { } c
-            ? Array.FindIndex(ViewModels.MainViewModel.CategoryLabels, p => p.Category == c) + 1
+            ? CategoryCatalog.All.IndexIf(d => d.Id == c) + 1
             : 0;
 
         // 重要度建议：（无）/P3/P2/P1/P0
@@ -58,9 +58,9 @@ public partial class RuleEditDialog : Window
             3 => 3,
             _ => 0,
         });
-        MailCategory? category = CategoryBox.SelectedIndex <= 0
+        string? category = CategoryBox.SelectedIndex <= 0
             ? null
-            : ViewModels.MainViewModel.CategoryLabels[CategoryBox.SelectedIndex - 1].Category;
+            : CategoryCatalog.All[CategoryBox.SelectedIndex - 1].Id;
         Importance? hint = ImportanceBox.SelectedIndex <= 0 ? null : (Importance)(ImportanceBox.SelectedIndex - 1);
         if (!double.TryParse(WeightBox.Text, out var weight))
         {

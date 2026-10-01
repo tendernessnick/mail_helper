@@ -9,10 +9,13 @@ namespace MailHelper.Core.Tests.Evaluation;
 /// 造成不可控误分——锚点保证主类证据显著领先（干扰 +3 分不改变 top1/gap 判定）。</summary>
 internal static class SampleCorpus
 {
+    // "course"→"Course"：语料文件名历史约定（首字母大写，防生成漂移）
+    private static string Capitalized(string id) => char.ToUpperInvariant(id[0]) + id[1..];
+
     public const int TotalCount = 600;
     public const int Seed = 20260926;
 
-    private sealed record Spec(string FileName, MailCategory Category, Importance Importance, string FromName, string FromAddress, string Subject, string Body);
+    private sealed record Spec(string FileName, string Category, Importance Importance, string FromName, string FromAddress, string Subject, string Body);
 
     public static void Generate(string targetDir, int seed = Seed)
     {
@@ -24,22 +27,22 @@ internal static class SampleCorpus
 
         var rng = new Random(seed);
         var specs = new List<Spec>(TotalCount + 7);
-        AddQuota(specs, rng, MailCategory.Course, 135, p0Rate: 0.06);
-        AddQuota(specs, rng, MailCategory.Career, 90, p0Rate: 0.0);
-        AddQuota(specs, rng, MailCategory.Admin, 95, p0Rate: 0.15);
-        AddQuota(specs, rng, MailCategory.Finance, 60, p0Rate: 0.30);
-        AddQuota(specs, rng, MailCategory.Announce, 70, p0Rate: 0.0);
-        AddQuota(specs, rng, MailCategory.Subscription, 100, p0Rate: 0.0);
-        AddQuota(specs, rng, MailCategory.Other, 50, p0Rate: 0.0);
+        AddQuota(specs, rng, CategoryIds.Course, 135, p0Rate: 0.06);
+        AddQuota(specs, rng, CategoryIds.Career, 90, p0Rate: 0.0);
+        AddQuota(specs, rng, CategoryIds.Admin, 95, p0Rate: 0.15);
+        AddQuota(specs, rng, CategoryIds.Finance, 60, p0Rate: 0.30);
+        AddQuota(specs, rng, CategoryIds.Announce, 70, p0Rate: 0.0);
+        AddQuota(specs, rng, CategoryIds.Subscription, 100, p0Rate: 0.0);
+        AddQuota(specs, rng, CategoryIds.Other, 50, p0Rate: 0.0);
         AddBoundarySamples(specs);
 
-        var labels = new List<(string File, MailCategory Category, Importance Importance)>();
+        var labels = new List<(string File, string Category, Importance Importance)>();
         var seq = 0;
         foreach (var spec in specs)
         {
             var fileName = spec.FileName.Length > 0
                 ? spec.FileName
-                : $"{++seq:0000}-{spec.Category}-{(int)spec.Importance}.eml";
+                : $"{++seq:0000}-{Capitalized(spec.Category)}-{(int)spec.Importance}.eml"; // 文件名段保持历史首字母大写（防语料漂移）
             File.WriteAllText(Path.Combine(targetDir, fileName), ToEml(spec, rng), new UTF8Encoding(false));
             labels.Add((fileName, spec.Category, spec.Importance));
         }
@@ -57,7 +60,7 @@ internal static class SampleCorpus
         WriteLabels(Path.Combine(targetDir, "labels-eval.csv"), labels.Where(l => !trainFiles.Contains(l.File)));
     }
 
-    private static void WriteLabels(string path, IEnumerable<(string File, MailCategory Category, Importance Importance)> rows)
+    private static void WriteLabels(string path, IEnumerable<(string File, string Category, Importance Importance)> rows)
     {
         var sb = new StringBuilder("file,category,importance\n");
         foreach (var row in rows.OrderBy(r => r.File, StringComparer.Ordinal))
@@ -85,7 +88,7 @@ internal static class SampleCorpus
         return sb.ToString();
     }
 
-    private static void AddQuota(List<Spec> specs, Random rng, MailCategory category, int count, double p0Rate)
+    private static void AddQuota(List<Spec> specs, Random rng, string category, int count, double p0Rate)
     {
         for (var i = 0; i < count; i++)
         {
@@ -93,7 +96,7 @@ internal static class SampleCorpus
         }
     }
 
-    private static Spec NextSample(Random rng, MailCategory category, double p0Rate)
+    private static Spec NextSample(Random rng, string category, double p0Rate)
     {
         var isP0 = rng.NextDouble() < p0Rate;
         var (subject, body, fromName, fromAddress, _) = Compose(rng, category, isP0);
@@ -102,7 +105,7 @@ internal static class SampleCorpus
     }
 
     private static (string Subject, string Body, string FromName, string FromAddress, bool Anchored) Compose(
-        Random rng, MailCategory category, bool isP0)
+        Random rng, string category, bool isP0)
     {
         var templates = Templates[category];
         var (subjectTemplate, bodyTemplate) = templates[rng.Next(templates.Length)];
@@ -143,29 +146,29 @@ internal static class SampleCorpus
         || address.Contains("blackboard", StringComparison.OrdinalIgnoreCase)
         || address is "no-reply@instructure.com" or "careers@hku.hk" or "registry@hku.hk" or "finance@hku.hk";
 
-    private static Importance PickImportance(Random rng, MailCategory category) => category switch
+    private static Importance PickImportance(Random rng, string category) => category switch
     {
-        MailCategory.Career => rng.NextDouble() < 0.40 ? Importance.P1 : Importance.P2,
-        MailCategory.Finance => rng.NextDouble() < 0.20 ? Importance.P1 : Importance.P2,
-        MailCategory.Admin => rng.NextDouble() < 0.25 ? Importance.P1 : rng.NextDouble() < 0.15 ? Importance.P3 : Importance.P2,
-        MailCategory.Course => rng.NextDouble() < 0.15 ? Importance.P1 : Importance.P2,
-        MailCategory.Announce => rng.NextDouble() < 0.20 ? Importance.P3 : Importance.P2,
-        MailCategory.Subscription => Importance.P3,
+        CategoryIds.Career => rng.NextDouble() < 0.40 ? Importance.P1 : Importance.P2,
+        CategoryIds.Finance => rng.NextDouble() < 0.20 ? Importance.P1 : Importance.P2,
+        CategoryIds.Admin => rng.NextDouble() < 0.25 ? Importance.P1 : rng.NextDouble() < 0.15 ? Importance.P3 : Importance.P2,
+        CategoryIds.Course => rng.NextDouble() < 0.15 ? Importance.P1 : Importance.P2,
+        CategoryIds.Announce => rng.NextDouble() < 0.20 ? Importance.P3 : Importance.P2,
+        CategoryIds.Subscription => Importance.P3,
         _ => Importance.P2,
     };
 
     // P0 前缀按类别对齐：只含本类别关键词，避免把样本主题拼成两类别竞争（分差不足落入模糊区）
-    private static readonly Dictionary<MailCategory, string[]> P0Prefixes = new()
+    private static readonly Dictionary<string, string[]> P0Prefixes = new()
     {
-        [MailCategory.Finance] = new[]
+        [CategoryIds.Finance] = new[]
         {
             "FINAL REMINDER: ", "Final Reminder - ", "Overdue: ", "【紧急】学费缴费截止 ", "缴费逾期提醒 ",
         },
-        [MailCategory.Admin] = new[]
+        [CategoryIds.Admin] = new[]
         {
             "Final Reminder - ", "Overdue: ", "最后提醒：签证材料递交截止 ", "【紧急】签证材料递交截止 ",
         },
-        [MailCategory.Course] = new[]
+        [CategoryIds.Course] = new[]
         {
             "Final Reminder - ", "Overdue: ", "【紧急】作业提交截止 ",
         },
@@ -179,9 +182,9 @@ internal static class SampleCorpus
         "Career fair details are attached in the newsletter.",
     };
 
-    private static readonly Dictionary<MailCategory, (string FromName, string FromAddress)[]> Senders = new()
+    private static readonly Dictionary<string, (string FromName, string FromAddress)[]> Senders = new()
     {
-        [MailCategory.Course] = new[]
+        [CategoryIds.Course] = new[]
         {
             ("Moodle HKU", "noreply@moodle.hku.hk"),
             ("Canvas Notification", "no-reply@instructure.com"),
@@ -189,35 +192,35 @@ internal static class SampleCorpus
             ("Prof. Chan", "cchan@eee.hku.hk"),
             ("Teaching Team", "tteam@ust.hk"),
         },
-        [MailCategory.Career] = new[]
+        [CategoryIds.Career] = new[]
         {
             ("Careers Centre", "careers@hku.hk"),
             ("CEDS", "ceds@cuhk.edu.hk"),
             ("HR Team", "hr@bank.example.com"),
         },
-        [MailCategory.Admin] = new[]
+        [CategoryIds.Admin] = new[]
         {
             ("Registry", "registry@hku.hk"),
             ("Student Affairs Office", "sao@ust.hk"),
             ("Library", "library@cuhk.edu.hk"),
             ("Immigration Liaison", "visa@hku.hk"),
         },
-        [MailCategory.Finance] = new[]
+        [CategoryIds.Finance] = new[]
         {
             ("Finance Office", "finance@hku.hk"),
             ("Bursary", "bursary@cuhk.edu.hk"),
         },
-        [MailCategory.Announce] = new[]
+        [CategoryIds.Announce] = new[]
         {
             ("University Communications", "comms@hku.hk"),
             ("Faculty Office", "faculty@cuhk.edu.hk"),
         },
-        [MailCategory.Subscription] = new[]
+        [CategoryIds.Subscription] = new[]
         {
             ("Campus Deals", "deals@shop.example.com"),
             ("Alumni E-News", "enews@alumni.example.com"),
         },
-        [MailCategory.Other] = new[]
+        [CategoryIds.Other] = new[]
         {
             ("Alex Wong", "alexw@example.com"),
             ("王同学", "classmate@example.com"),
@@ -225,9 +228,9 @@ internal static class SampleCorpus
         },
     };
 
-    private static readonly Dictionary<MailCategory, (string Subject, string Body)[]> Templates = new()
+    private static readonly Dictionary<string, (string Subject, string Body)[]> Templates = new()
     {
-        [MailCategory.Course] = new (string Subject, string Body)[]
+        [CategoryIds.Course] = new (string Subject, string Body)[]
         {
             ("CS1012 Assignment {0} released", "Assignment {0} has been released on the course page. Submit before the cut-off shown on Moodle."),
             ("Quiz {0} results are available", "Your Quiz {0} score is now visible in the gradebook. Please review the feedback."),
@@ -240,7 +243,7 @@ internal static class SampleCorpus
             ("期中考试安排通知", "期中考试将于第{0}周进行，请提前确认考场与座位。"),
             ("实验课分组通知", "第{0}次实验课分组名单已出，请按时到场。"),
         },
-        [MailCategory.Career] = new (string Subject, string Body)[]
+        [CategoryIds.Career] = new (string Subject, string Body)[]
         {
             ("Summer Internship Program {0} Open", "Applications for the summer internship intake {0} are now open. Submit your resume early."),
             ("Interview Invitation - Ref {0}", "We are pleased to invite you to a first-round interview. Kindly confirm your availability."),
@@ -252,7 +255,7 @@ internal static class SampleCorpus
             ("招聘会{0}报名开启", "本次招聘会含多家雇主，欢迎携带简历现场交流。"),
             ("简历工作坊报名确认", "简历工作坊席位已确认，请准时参加。"),
         },
-        [MailCategory.Admin] = new (string Subject, string Body)[]
+        [CategoryIds.Admin] = new (string Subject, string Body)[]
         {
             ("Student visa extension guidance", "Please prepare documents for your student visa extension before the term starts."),
             ("Library notice: item {0} due", "A library item borrowed on your account is approaching its return time."),
@@ -266,7 +269,7 @@ internal static class SampleCorpus
             ("迎新周活动安排", "迎新周各项活动安排已发布，请查收。"),
             ("学生事务处通告第{0}号", "关于校园服务时间调整的事务处通告。"),
         },
-        [MailCategory.Finance] = new (string Subject, string Body)[]
+        [CategoryIds.Finance] = new (string Subject, string Body)[]
         {
             ("Tuition Fee Invoice {0}", "Your tuition fee invoice {0} is ready. Kindly settle the payment per the schedule."),
             ("Payment due for Semester {0}", "This is a reminder that the semester {0} installment is approaching its payment window."),
@@ -276,7 +279,7 @@ internal static class SampleCorpus
             ("缴费提醒：第二期分期", "第二期学费分期即将进入缴费窗口，请留意账户状态。"),
             ("账户余额通知", "您的学生账户存在待缴费用，详见账单明细。"),
         },
-        [MailCategory.Announce] = new (string Subject, string Body)[]
+        [CategoryIds.Announce] = new (string Subject, string Body)[]
         {
             ("Distinguished lecture series {0}: Frontiers of AI", "The lecture series continues with a talk on AI frontiers. All are welcome."),
             ("Campus announcement: shuttle bus adjustment", "The campus shuttle bus timetable will be adjusted from next week."),
@@ -286,7 +289,7 @@ internal static class SampleCorpus
             ("讲座系列：人工智能前沿", "本场讲座面向全校师生开放，无需报名。"),
             ("活动预告：心理健康周", "心理健康周活动安排已发布。"),
         },
-        [MailCategory.Subscription] = new (string Subject, string Body)[]
+        [CategoryIds.Subscription] = new (string Subject, string Body)[]
         {
             ("Weekly newsletter #{0}", "Your weekly newsletter with campus stories. You can unsubscribe at any time."),
             ("Best student deals this week", "Special deal selection for students. Subscribe for weekly promotions."),
@@ -296,7 +299,7 @@ internal static class SampleCorpus
             ("学生电子报第{0}期", "本期电子报精选校园资讯，可随时退订。"),
             ("本周优惠精选", "为学生精选的本周优惠，订阅后每周收到推广。"),
         },
-        [MailCategory.Other] = new (string Subject, string Body)[]
+        [CategoryIds.Other] = new (string Subject, string Body)[]
         {
             ("Thanks for the notes", "Thanks for sharing the notes, really helpful!"),
             ("Lunch on Friday?", "Shall we grab lunch on Friday at the canteen?"),
@@ -308,24 +311,24 @@ internal static class SampleCorpus
 
     private static void AddBoundarySamples(List<Spec> specs)
     {
-        specs.Add(new Spec("r01-finance-p0.eml", MailCategory.Finance, Importance.P0, "Finance Office", "finance@hku.hk",
+        specs.Add(new Spec("r01-finance-p0.eml", CategoryIds.Finance, Importance.P0, "Finance Office", "finance@hku.hk",
             "FINAL REMINDER: Tuition Fee Payment",
             "Your tuition for Semester A must be settled by 30 September. Overdue payments incur a surcharge."));
-        specs.Add(new Spec("r02-career-p1.eml", MailCategory.Career, Importance.P1, "HR Team", "hr@bank.example.com",
+        specs.Add(new Spec("r02-career-p1.eml", CategoryIds.Career, Importance.P1, "HR Team", "hr@bank.example.com",
             "面试邀约 Interview Invitation - Summer Intern",
             "We would like to invite you to an interview for the summer internship programme next week."));
-        specs.Add(new Spec("r03-course-p2.eml", MailCategory.Course, Importance.P2, "Moodle HKU", "noreply@moodle.hku.hk",
+        specs.Add(new Spec("r03-course-p2.eml", CategoryIds.Course, Importance.P2, "Moodle HKU", "noreply@moodle.hku.hk",
             "课件更新 CS1012 Week 3 slides",
             "Course slides for week 3 have been updated on Moodle."));
-        specs.Add(new Spec("r04-subscription-p3.eml", MailCategory.Subscription, Importance.P3, "Campus Deals", "deals@shop.example.com",
+        specs.Add(new Spec("r04-subscription-p3.eml", CategoryIds.Subscription, Importance.P3, "Campus Deals", "deals@shop.example.com",
             "Student Newsletter - September",
             "Click here to read the September newsletter, or unsubscribe from this list."));
-        specs.Add(new Spec("r05-other-p2.eml", MailCategory.Other, Importance.P2, "Stranger", "stranger@nowhere.example",
+        specs.Add(new Spec("r05-other-p2.eml", CategoryIds.Other, Importance.P2, "Stranger", "stranger@nowhere.example",
             "嗨", "随便聊聊，无关键词。"));
-        specs.Add(new Spec("r06-course-p2.eml", MailCategory.Course, Importance.P2, "Moodle HKU", "noreply@moodle.hku.hk",
+        specs.Add(new Spec("r06-course-p2.eml", CategoryIds.Course, Importance.P2, "Moodle HKU", "noreply@moodle.hku.hk",
             "Your course timetable is ready",
             "Your course timetable is ready.\n\nFrom: office@hku.hk\nSent: Mon, 07 Sep 2026 09:00:00 +0000\n> deadline tomorrow for old drafts"));
-        specs.Add(new Spec("r07-other-p2.eml", MailCategory.Other, Importance.P2, "Probe", "probe@example.com",
+        specs.Add(new Spec("r07-other-p2.eml", CategoryIds.Other, Importance.P2, "Probe", "probe@example.com",
             new string('a', 60) + "!",
             "ReDoS probe subject with no category keywords."));
     }

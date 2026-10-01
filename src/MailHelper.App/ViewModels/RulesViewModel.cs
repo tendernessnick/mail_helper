@@ -19,9 +19,7 @@ public partial class RuleRowViewModel : ObservableObject
     public string Name => Rule.Name;
     public string KindText => KindLabel(Rule.Kind);
     public string PatternText => Rule.Pattern;
-    public string CategoryText => Rule.Category is { } c
-        ? Array.Find(MainViewModel.CategoryLabels, p => p.Category == c).Label
-        : "—";
+    public string CategoryText => Rule.Category is { } c ? CategoryCatalog.LabelOf(c) : "—"; // S14-C
     public double Weight => Rule.Weight;
     public bool IsBuiltin => Rule.Source == RuleSource.Builtin;
     public string SourceTag => Rule.Source switch

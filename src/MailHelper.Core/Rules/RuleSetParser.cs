@@ -175,19 +175,20 @@ public static class RuleSetParser
 
         var pattern = patternEl.GetString()!;
 
-        // category 允显式 null 或缺省 → 仅重要度线索（CHG-004）
-        MailCategory? category = null;
+        // category 允显式 null 或缺省 → 仅重要度线索（CHG-004）；S14-C 起为类别 ID 字符串（内置 ID 经此校验，
+        // 自定义 ID 由上层 RuleManagementService 依注册表校验——Core 不依赖存储）
+        string? category = null;
         if (element.TryGetProperty("category", out var categoryEl)
             && categoryEl.ValueKind == JsonValueKind.String
             && categoryEl.GetString() is { Length: > 0 } categoryString)
         {
-            if (!Enum.TryParse(categoryString, ignoreCase: true, out MailCategory parsed))
+            if (!CategoryIds.All.Contains(categoryString, StringComparer.OrdinalIgnoreCase))
             {
-                error = $"{where}({name}) category '{categoryString}' 无效";
+                error = $"{where}({name}) category '{categoryString}' 非内置类别 ID";
                 return false;
             }
 
-            category = parsed;
+            category = categoryString.ToLowerInvariant();
         }
 
         Importance? importanceHint = null;

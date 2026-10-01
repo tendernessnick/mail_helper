@@ -20,15 +20,15 @@ public class SanityTests
     [Fact]
     public void MailCategoryHasSevenValues()
     {
-        Enum.GetValues<MailCategory>().Should().BeEquivalentTo(new[]
+        CategoryIds.All.Should().BeEquivalentTo(new[]
         {
-            MailCategory.Course,
-            MailCategory.Career,
-            MailCategory.Admin,
-            MailCategory.Finance,
-            MailCategory.Announce,
-            MailCategory.Subscription,
-            MailCategory.Other,
+            CategoryIds.Course,
+            CategoryIds.Career,
+            CategoryIds.Admin,
+            CategoryIds.Finance,
+            CategoryIds.Announce,
+            CategoryIds.Subscription,
+            CategoryIds.Other,
         });
     }
 

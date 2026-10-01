@@ -36,7 +36,7 @@ public class RuleStoreTests : IDisposable
     private static ClassifyRule Rule(string name, RuleSource source = RuleSource.Feedback, bool enabled = true,
         Importance? hint = null, Guid? id = null) => new(
         id ?? Guid.NewGuid(), name, RuleKind.SenderAddress, $"{name}@hku.hk",
-        MailCategory.Finance, hint, 10, 0, enabled, source);
+        CategoryIds.Finance, hint, 10, 0, enabled, source);
 
     [Fact]
     public async Task Upsert_GetAll_Roundtrip()
@@ -52,7 +52,7 @@ public class RuleStoreTests : IDisposable
         row.Name.Should().Be(rule.Name);
         row.Kind.Should().Be(rule.Kind);
         row.Pattern.Should().Be(rule.Pattern);
-        row.Category.Should().Be(MailCategory.Finance);
+        row.Category.Should().Be(CategoryIds.Finance);
         row.ImportanceHint.Should().Be(Importance.P1);
         row.Weight.Should().Be(10);
         row.Enabled.Should().BeTrue();
@@ -83,11 +83,11 @@ public class RuleStoreTests : IDisposable
         [
             new MailMessage("m-1", "acc-1", "<m1@im>", "s", "f", "f@hku.hk", "p", null,
                 new DateTime(2026, 9, 27, 8, 0, 0, DateTimeKind.Utc), false, false,
-                MailCategory.Other, Importance.P2, 0.2, "rule", null, null, false),
+                CategoryIds.Other, Importance.P2, 0.2, "rule", null, null, false),
         ], CancellationToken.None);
 
         var entry = new ClassificationFeedback(
-            Guid.NewGuid(), "m-1", MailCategory.Other, MailCategory.Finance,
+            Guid.NewGuid(), "m-1", CategoryIds.Other, CategoryIds.Finance,
             Importance.P2, Importance.P1, new DateTime(2026, 9, 27, 8, 0, 0, DateTimeKind.Utc));
 
         await _feedback.AddAsync(entry, CancellationToken.None);

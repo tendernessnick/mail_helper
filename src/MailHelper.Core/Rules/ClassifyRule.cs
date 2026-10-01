@@ -9,7 +9,7 @@ public sealed record ClassifyRule(
     string Name,
     RuleKind Kind,
     string Pattern,
-    MailCategory? Category,
+    string? Category,
     Importance? ImportanceHint,
     double Weight,
     int Priority,              // 小者先匹配；同优先级按 Weight 降序

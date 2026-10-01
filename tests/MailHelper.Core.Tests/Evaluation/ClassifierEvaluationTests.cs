@@ -24,7 +24,7 @@ public class ClassifierEvaluationTests
         var samples = CorpusLoader.Load(CorpusDir, "labels-eval.csv");
         samples.Should().HaveCountGreaterThan(100);
 
-        var categories = Enum.GetValues<MailCategory>();
+        var categories = (string[])CategoryIds.All.Clone();
         var confusion = new int[categories.Length, categories.Length];
         var trueP0 = 0;
         var predP0TrueP0 = 0;
@@ -45,7 +45,7 @@ public class ClassifierEvaluationTests
                 new ClassifiedInput(sample.Subject, sample.FromName, sample.FromAddress, bodyText, ReceivedAtUtc: null),
                 CancellationToken.None);
 
-            confusion[(int)sample.Category, (int)result.Category]++;
+            confusion[Array.IndexOf(categories, sample.Category), Array.IndexOf(categories, result.Category)]++;
 
             if (sample.Category != result.Category || result.Confidence < ClassificationService.DefaultReviewThreshold)
             {
@@ -90,7 +90,7 @@ public class ClassifierEvaluationTests
     }
 
     private static void WriteReport(
-        MailCategory[] categories, int[,] confusion, int total, double accuracy,
+        string[] categories, int[,] confusion, int total, double accuracy,
         int trueP0, int predP0TrueP0, double p0FpRate, double pendingRate, List<string> misses)
     {
         var reportDir = Path.Combine(CorpusLoader.FindRepoRoot(), "artifacts", "eval");

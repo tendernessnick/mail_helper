@@ -7,6 +7,6 @@ namespace MailHelper.Core.Services;
 /// 对应 04 §6 埋点 classify.completed：各类别分布 + 待确认数。</summary>
 public sealed record ClassificationSummary(
     int Processed,
-    IReadOnlyDictionary<MailCategory, int> CategoryCounts,
+    IReadOnlyDictionary<string, int> CategoryCounts,
     int PendingReview,
     long ElapsedMs);

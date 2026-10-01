@@ -24,7 +24,7 @@ public class CorpusIntegrityTests
 
         var evalSamples = CorpusLoader.Load(CorpusDir, "labels-eval.csv");
         evalSamples.Should().NotBeEmpty();
-        evalSamples.Should().OnlyContain(s => Enum.IsDefined(s.Category) && Enum.IsDefined(s.Importance));
+        evalSamples.Should().OnlyContain(s => CategoryIds.All.Contains(s.Category) && Enum.IsDefined(s.Importance));
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class CorpusIntegrityTests
         var all = CorpusLoader.Load(CorpusDir, "labels-train.csv")
             .Concat(CorpusLoader.Load(CorpusDir, "labels-eval.csv"));
 
-        all.GroupBy(s => s.Category).Select(g => g.Key).Should().BeEquivalentTo(Enum.GetValues<MailCategory>());
+        all.GroupBy(s => s.Category).Select(g => g.Key).Should().BeEquivalentTo(CategoryIds.All);
         all.Should().Contain(s => s.Importance == Importance.P0, "评估 P0 召回需要 P0 样本");
         all.Should().Contain(s => s.Importance == Importance.P3);
         all.Should().Contain(s => s.Subject.Any(char.IsAsciiLetter) && s.Subject.Any(c => c > 127), "中英文混合");
@@ -45,18 +45,18 @@ public class CorpusIntegrityTests
         var evalSamples = CorpusLoader.Load(CorpusDir, "labels-eval.csv");
 
         var r01 = evalSamples.Single(s => s.File.StartsWith("r01"));
-        r01.Category.Should().Be(MailCategory.Finance);
+        r01.Category.Should().Be(CategoryIds.Finance);
         r01.Importance.Should().Be(Importance.P0);
 
         var r02 = evalSamples.Single(s => s.File.StartsWith("r02"));
-        r02.Category.Should().Be(MailCategory.Career);
+        r02.Category.Should().Be(CategoryIds.Career);
         r02.Importance.Should().Be(Importance.P1);
 
         var r05 = evalSamples.Single(s => s.File.StartsWith("r05"));
-        r05.Category.Should().Be(MailCategory.Other);
+        r05.Category.Should().Be(CategoryIds.Other);
 
         var r06 = evalSamples.Single(s => s.File.StartsWith("r06"));
-        r06.Category.Should().Be(MailCategory.Course);
+        r06.Category.Should().Be(CategoryIds.Course);
         r06.Body.Should().Contain("From: office@hku.hk"); // 引文块存在（预处理必须剥离）
 
         var r07 = evalSamples.Single(s => s.File.StartsWith("r07"));

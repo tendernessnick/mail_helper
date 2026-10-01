@@ -28,7 +28,7 @@ public class NotificationRepositoryTests : IDisposable
         var ids = new[] { "a", "b", "c", "q1", "q2", "s1", "m1" }.Select(id => new MailMessage(
             id, "acc-1", $"<{id}@im>", id, "f", "f@hku.hk", "p", null,
             new DateTime(2026, 9, 27, 8, 0, 0, DateTimeKind.Utc), false, false,
-            MailCategory.Other, Importance.P2, 0.5, "rule", null, null, false)).ToList();
+            CategoryIds.Other, Importance.P2, 0.5, "rule", null, null, false)).ToList();
         new MailRepository(dbPath).UpsertRangeAsync("acc-1", ids, CancellationToken.None).GetAwaiter().GetResult();
         _repo = new NotificationRepository(dbPath);
     }

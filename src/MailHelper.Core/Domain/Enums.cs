@@ -1,17 +1,8 @@
 // 领域枚举 —— 签名与 04 章 §2.1 完全一致（总控指令三.4：接口/字段不得偏离）。
 namespace MailHelper.Core;
 
-/// <summary>邮件七类别（02 章附录 A：课程学习/职业发展/校园事务/财务缴费/通知公告/订阅营销/其他）。</summary>
-public enum MailCategory
-{
-    Course,
-    Career,
-    Admin,
-    Finance,
-    Announce,
-    Subscription,
-    Other,
-}
+// 邮件类别自 S14-C（CHG-012）起由枚举升级为「类别注册表」：内置七 ID 见 Categories.cs（CategoryIds），
+// 用户自定义类别经 ICategoryStore 管理——DB/规则包/评估集的存量字符串值完全兼容。
 
 /// <summary>重要程度四级；数值越大越重要（04 章 §2.1，与 DDL「importance INTEGER 0..3」对应）。</summary>
 public enum Importance

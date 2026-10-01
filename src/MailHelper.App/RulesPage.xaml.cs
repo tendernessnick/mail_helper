@@ -37,7 +37,7 @@ public partial class RulesPage : UserControl
     {
         var draft = new ClassifyRule(
             Guid.NewGuid(), string.Empty, RuleKind.SenderAddress, string.Empty,
-            MailCategory.Finance, null, RuleSet.DefaultWeight(RuleKind.SenderAddress), 100, true,
+            CategoryIds.Finance, null, RuleSet.DefaultWeight(RuleKind.SenderAddress), 100, true,
             RuleSource.User);
         ShowEditDialog(draft, isNew: true);
     }

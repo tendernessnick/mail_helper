@@ -41,7 +41,7 @@ public class RulePackMigrationTests : IDisposable
         MailMessage Msg(string id, string classifiedBy, double confidence) => new(
             id, "acc-1", $"<{id}@im>", id, "f", "f@cityu.edu.hk", "p", null,
             new DateTime(2026, 9, 28, 8, 0, 0, DateTimeKind.Utc), false, false,
-            MailCategory.Other, Importance.P2, confidence, classifiedBy,
+            CategoryIds.Other, Importance.P2, confidence, classifiedBy,
             new DateTime(2026, 9, 28, 8, 30, 0, DateTimeKind.Utc), null, false);
         await _mails.UpsertRangeAsync("acc-1",
             [Msg("r1", "rule-engine", 0.4), Msg("r2", "rule-engine", 0.9), Msg("l1", "llm", 0.8),
@@ -82,7 +82,7 @@ public class RulePackMigrationTests : IDisposable
         await _migrator.MigrateIfNeededAsync("2026.10", "acc-1", CancellationToken.None); // 首次迁移：r1/r2 置回待处理
         // 模拟分类管线按新规则重跑完成（写回 r1 分类）
         await _mails.ApplyClassificationRangeAsync(
-            [new ClassificationWrite("r1", MailCategory.Course, Importance.P1, 0.9, "rule")], CancellationToken.None);
+            [new ClassificationWrite("r1", CategoryIds.Course, Importance.P1, 0.9, "rule")], CancellationToken.None);
 
         var reset = await _migrator.MigrateIfNeededAsync("2026.10", "acc-1", CancellationToken.None);
 

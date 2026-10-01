@@ -281,11 +281,27 @@ public class GraphMailProviderTests : IDisposable
     [Fact]
     public async Task ExTc04_ConnectionRefused_MapsToSync001()
     {
-        await using var provider = NewProvider(baseAddress: new Uri("http://localhost:1/"));
+        // 动态空闲端口（无人监听→必然 ECONNREFUSED）；固定低位端口（如 :1）可能被防火墙 DROP 伪装成超时
+        var port = GetFreePort();
+        await using var provider = NewProvider(baseAddress: new Uri($"http://127.0.0.1:{port}/"));
         var act = () => CollectAsync(provider, null);
 
         (await act.Should().ThrowAsync<MailProviderException>())
             .Where(ex => ex.ErrorCode == "SYNC-001");
+    }
+
+    private static int GetFreePort()
+    {
+        var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            return ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+        }
+        finally
+        {
+            listener.Stop();
+        }
     }
 
     // ———— 04 §4.1 例外：P0 候选同步时即拉正文 ————

@@ -12,7 +12,7 @@ public static class SearchQueryParser
     {
         var freeText = new List<string>();
         string? from = null;
-        MailCategory? category = null;
+        string? category = null;
         Importance? importance = null;
 
         foreach (var token in (input ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries))
@@ -46,9 +46,12 @@ public static class SearchQueryParser
             : (token[..colon].ToLowerInvariant(), token[(colon + 1)..]);
     }
 
-    private static bool TryParseCategory(string value, out MailCategory category) =>
-        Enum.TryParse(value, ignoreCase: true, out category)
-        && Enum.IsDefined(typeof(MailCategory), category);
+    private static bool TryParseCategory(string value, out string category)
+    {
+        // S14-C：cat: 语法匹配类别 ID（内置七 ID，小写归一）
+        category = value.ToLowerInvariant();
+        return CategoryIds.All.Contains(category, StringComparer.Ordinal);
+    }
 
     private static bool TryParseImportance(string value, out Importance importance)
     {

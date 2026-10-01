@@ -86,3 +86,13 @@ internal sealed class SettingEntity
     public string Key { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
 }
+
+/// <summary>自定义类别（S14-C/CHG-012：categories 表；内置七类不落库）。</summary>
+internal sealed class CategoryEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+    public string ColorHex { get; set; } = string.Empty;
+    public int Sort { get; set; }
+}

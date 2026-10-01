@@ -38,7 +38,7 @@ public class MailRepositoryTests : TempDirTestBase
         m2.Subject.Should().Be("学费缴纳提醒");
         m2.BodyPreview.Should().StartWith("请于 9 月 30 日");
         m2.ReceivedAtUtc.Should().Be(new DateTime(2026, 9, 26, 8, 0, 0, DateTimeKind.Utc)); // Unix 秒往返无损
-        m2.Category.Should().Be(MailCategory.Other); // 新行默认待分类（CHG-002：显式 P2/other）
+        m2.Category.Should().Be(CategoryIds.Other); // 新行默认待分类（CHG-002：显式 P2/other）
         m2.Importance.Should().Be(Importance.P2);
         m2.ClassifiedAtUtc.Should().BeNull();
     }
@@ -64,7 +64,7 @@ public class MailRepositoryTests : TempDirTestBase
         // 用户改判（EX-08：人工分类不被同步覆盖）
         await repo.ApplyClassificationRangeAsync(new[]
         {
-            new ClassificationWrite("m1", MailCategory.Finance, Importance.P1, 0.9, "user"),
+            new ClassificationWrite("m1", CategoryIds.Finance, Importance.P1, 0.9, "user"),
         }, CancellationToken.None);
 
         // 远端同一封邮件更新（已读、主题变化）再次同步入库
@@ -78,7 +78,7 @@ public class MailRepositoryTests : TempDirTestBase
         var m = found.Single(m => m.Id == "m1");
         m.Subject.Should().Be("Tuition revised final"); // 同步字段已更新
         m.IsRead.Should().BeTrue();
-        m.Category.Should().Be(MailCategory.Finance);   // 分类保留
+        m.Category.Should().Be(CategoryIds.Finance);   // 分类保留
         m.Importance.Should().Be(Importance.P1);
         m.Confidence.Should().Be(0.9);
         m.ClassifiedBy.Should().Be("user");
@@ -96,8 +96,8 @@ public class MailRepositoryTests : TempDirTestBase
 
         await repo.ApplyClassificationRangeAsync(new[]
         {
-            new ClassificationWrite("m1", MailCategory.Course, Importance.P2, 1.0, "rule-engine"),
-            new ClassificationWrite("m3", MailCategory.Course, Importance.P2, 1.0, "rule-engine"),
+            new ClassificationWrite("m1", CategoryIds.Course, Importance.P2, 1.0, "rule-engine"),
+            new ClassificationWrite("m3", CategoryIds.Course, Importance.P2, 1.0, "rule-engine"),
         }, CancellationToken.None);
 
         var pending = await repo.GetPendingClassificationAsync("acc-1", 10, CancellationToken.None);
@@ -115,7 +115,7 @@ public class MailRepositoryTests : TempDirTestBase
         var before = DateTime.UtcNow.AddSeconds(-5);
         await repo.ApplyClassificationRangeAsync(new[]
         {
-            new ClassificationWrite("m1", MailCategory.Course, Importance.P1, 0.875, "rule-engine"),
+            new ClassificationWrite("m1", CategoryIds.Course, Importance.P1, 0.875, "rule-engine"),
         }, CancellationToken.None);
 
         var pending = await repo.GetPendingClassificationAsync("acc-1", 10, CancellationToken.None);
@@ -123,7 +123,7 @@ public class MailRepositoryTests : TempDirTestBase
 
         var found = await repo.SearchFtsAsync("acc-1", "coursework", 10, CancellationToken.None);
         var m = found.Single(m => m.Id == "m1");
-        m.Category.Should().Be(MailCategory.Course);
+        m.Category.Should().Be(CategoryIds.Course);
         m.Importance.Should().Be(Importance.P1);
         m.Confidence.Should().Be(0.875);
         m.ClassifiedBy.Should().Be("rule-engine");

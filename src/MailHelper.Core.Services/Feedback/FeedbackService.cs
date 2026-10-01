@@ -36,7 +36,7 @@ public sealed class FeedbackService
 
     /// <summary>应用改判（04 §2.2 签名）：邮件不存在返回 false；newImportance 省略时沿用原重要度。</summary>
     public async Task<bool> ApplyCorrectionAsync(
-        string messageId, MailCategory newCategory, Importance? newImportance, CancellationToken ct)
+        string messageId, string newCategory, Importance? newImportance, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(messageId);
         var mail = await _messages.GetByIdAsync(messageId, ct);
@@ -69,7 +69,7 @@ public sealed class FeedbackService
     }
 
     /// <summary>反馈规则：稳定 Id（同发件人重复改判覆盖而非堆积）、基准权重 10、Priority 0（先于内置）。</summary>
-    internal static ClassifyRule FeedbackRuleFor(string fromAddress, MailCategory category, Importance? importanceHint)
+    internal static ClassifyRule FeedbackRuleFor(string fromAddress, string category, Importance? importanceHint)
     {
         return new ClassifyRule(
             Id: StableFeedbackRuleId(fromAddress),

@@ -33,7 +33,7 @@ public class RuleManagementServiceTests : IDisposable
         _engine = new RuleEngine(new RuleSet("v-test", new RuleScoring(),
         [
             new ClassifyRule(Guid.NewGuid(), "Builtin-LMS", RuleKind.SenderDomain, "moodle.hku.hk",
-                MailCategory.Course, Importance.P2, 8, 100, true, RuleSource.Builtin),
+                CategoryIds.Course, Importance.P2, 8, 100, true, RuleSource.Builtin),
         ]));
         _service = new RuleManagementService(_rules, _engine, _messages, "acc-1");
     }
@@ -52,7 +52,7 @@ public class RuleManagementServiceTests : IDisposable
 
     private static ClassifyRule Draft(
         string pattern = "careers.hku.hk", RuleKind kind = RuleKind.SenderDomain,
-        MailCategory? category = MailCategory.Career, Guid? id = null,
+        string? category = CategoryIds.Career, Guid? id = null,
         RuleSource source = RuleSource.User, bool enabled = true) => new(
         id ?? Guid.NewGuid(), "规则-" + pattern, kind, pattern, category, null,
         RuleSet.DefaultWeight(kind), 100, enabled, source);
@@ -63,7 +63,7 @@ public class RuleManagementServiceTests : IDisposable
         [
             new MailMessage(id, "acc-1", $"<{id}@im>", subject, "f", from, "预览", null,
                 new DateTime(2026, 9, 27, 8, 0, 0, DateTimeKind.Utc), false, false,
-                MailCategory.Other, Importance.P2, 0.2, "rule", null, null, false),
+                CategoryIds.Other, Importance.P2, 0.2, "rule", null, null, false),
         ], CancellationToken.None);
     }
 
@@ -77,7 +77,7 @@ public class RuleManagementServiceTests : IDisposable
         var hit = await _engine.ClassifyAsync(
             new ClassifiedInput("s", "f", "someone@careers.hku.hk", null, null),
             CancellationToken.None);
-        hit.Category.Should().Be(MailCategory.Career); // 保存后即时生效
+        hit.Category.Should().Be(CategoryIds.Career); // 保存后即时生效
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class RuleManagementServiceTests : IDisposable
         (await _rules.GetAllAsync(CancellationToken.None)).Should().BeEmpty();
         var hit = await _engine.ClassifyAsync(
             new ClassifiedInput("s", "f", "dean@ust.hk", null, null), CancellationToken.None);
-        hit.Category.Should().Be(MailCategory.Other); // 引擎同步移除
+        hit.Category.Should().Be(CategoryIds.Other); // 引擎同步移除
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public class RuleManagementServiceTests : IDisposable
 
         var hit = await _engine.ClassifyAsync(
             new ClassifiedInput("s", "f", "x@moodle.hku.hk", null, null), CancellationToken.None);
-        hit.Category.Should().Be(MailCategory.Other); // 禁用后不命中
+        hit.Category.Should().Be(CategoryIds.Other); // 禁用后不命中
         (await _rules.GetAllAsync(CancellationToken.None)).Single().Enabled.Should().BeFalse();
     }
 
@@ -157,13 +157,13 @@ public class RuleManagementServiceTests : IDisposable
         await _service.SetEnabledAsync(saved.Id, enabled: false, CancellationToken.None);
         var off = await _engine.ClassifyAsync(
             new ClassifiedInput("s", "f", "someone@careers.hku.hk", null, null), CancellationToken.None);
-        off.Category.Should().Be(MailCategory.Other);
+        off.Category.Should().Be(CategoryIds.Other);
 
         await _service.SetEnabledAsync(saved.Id, enabled: true, CancellationToken.None);
 
         var on = await _engine.ClassifyAsync(
             new ClassifiedInput("s", "f", "someone@careers.hku.hk", null, null), CancellationToken.None);
-        on.Category.Should().Be(MailCategory.Career);
+        on.Category.Should().Be(CategoryIds.Career);
     }
 
     [Fact]

@@ -105,7 +105,7 @@ public sealed class MailRepository : IMessageStore
                 .ToListAsync(ct);
             foreach (var row in rows)
             {
-                row.Category = CategoryToString(MailCategory.Other);
+                row.Category = CategoryIds.Other;
                 row.Importance = (int)Importance.P2;
                 row.Confidence = null;
                 row.ClassifiedAtUtc = null;
@@ -272,7 +272,7 @@ public sealed class MailRepository : IMessageStore
             return (IReadOnlyList<MailMessage>)list.Select(ToDomain).ToList();
         }, ct);
 
-    public async Task<IReadOnlyDictionary<MailCategory, int>> GetUnreadCountsAsync(string accountId, CancellationToken ct) =>
+    public async Task<IReadOnlyDictionary<string, int>> GetUnreadCountsAsync(string accountId, CancellationToken ct) =>
         await MailDatabase.WithDbAsync(_dbPath, async db =>
         {
             var groups = await db.Messages.AsNoTracking()
@@ -281,13 +281,16 @@ public sealed class MailRepository : IMessageStore
                 .Select(g => new { Category = g.Key, Count = g.Count() })
                 .ToListAsync(ct);
 
-            var result = Enum.GetValues<MailCategory>().ToDictionary(c => c, _ => 0);
+            var result = CategoryIds.All.ToDictionary(c => c, _ => 0);
             foreach (var group in groups)
             {
-                result[ParseCategory(group.Category)] = group.Count;
+                if (result.ContainsKey(group.Category))
+                {
+                    result[group.Category] = group.Count;
+                }
             }
 
-            return (IReadOnlyDictionary<MailCategory, int>)result;
+            return (IReadOnlyDictionary<string, int>)result;
         }, ct);
 
     public async Task<int> GetNeedsReviewCountAsync(string accountId, double reviewThreshold, CancellationToken ct) =>
@@ -402,7 +405,7 @@ public sealed class MailRepository : IMessageStore
         FromUnixSeconds(e.ReceivedAtUtc),
         e.HasAttachments,
         e.IsRead,
-        ParseCategory(e.Category),
+        e.Category, // S14-C：类别即 ID
         (Importance)e.Importance,
         e.Confidence,
         e.ClassifiedBy,
@@ -410,27 +413,8 @@ public sealed class MailRepository : IMessageStore
         e.RemoteChangeKey,
         e.IsDeletedRemote);
 
-    internal static string CategoryToString(MailCategory category) => category switch
-    {
-        MailCategory.Course => "course",
-        MailCategory.Career => "career",
-        MailCategory.Admin => "admin",
-        MailCategory.Finance => "finance",
-        MailCategory.Announce => "announce",
-        MailCategory.Subscription => "subscription",
-        _ => "other",
-    };
-
-    internal static MailCategory ParseCategory(string? category) => category switch
-    {
-        "course" => MailCategory.Course,
-        "career" => MailCategory.Career,
-        "admin" => MailCategory.Admin,
-        "finance" => MailCategory.Finance,
-        "announce" => MailCategory.Announce,
-        "subscription" => MailCategory.Subscription,
-        _ => MailCategory.Other,
-    };
+    // S14-C：类别即 ID 字符串（DB 存量值与内置 ID 一致，零转换；未知自定义 ID 原样保留）
+    internal static string CategoryToString(string category) => category;
 
     internal static long ToUnixSeconds(DateTime utc) =>
         new DateTimeOffset(utc.ToUniversalTime(), TimeSpan.Zero).ToUnixTimeSeconds();

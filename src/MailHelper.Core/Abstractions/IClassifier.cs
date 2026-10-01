@@ -13,7 +13,7 @@ public interface IClassifier
 
 /// <summary>分类结果（04 章 §2.1）。ClassifiedBy ∈ rule|user|llm（对应 DDL messages.classified_by）。</summary>
 public sealed record ClassificationResult(
-    MailCategory Category,
+    string Category,
     Importance Importance,
     double Confidence,
     string ClassifiedBy);

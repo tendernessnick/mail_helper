@@ -36,33 +36,50 @@ public sealed class ImportanceToBrushConverter : IValueConverter
     }
 }
 
-/// <summary>S13-C 类别语义色（DesignTokens 类别色板）：头像底色/左栏图标底色。</summary>
+/// <summary>S14-C 类别语义色：内置 ID 走固定色板，自定义类别解析其 ColorHex（缓存冻结刷）。</summary>
 public sealed class CategoryToBrushConverter : IValueConverter
 {
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is MailCategory category
-            ? category switch
+    private static readonly Dictionary<string, Brush> Builtin = new(StringComparer.Ordinal)
+    {
+        [CategoryIds.Course] = Freeze("#3A7BD5"),
+        [CategoryIds.Career] = Freeze("#0E9F6E"),
+        [CategoryIds.Admin] = Freeze("#7C5CDB"),
+        [CategoryIds.Finance] = Freeze("#D97706"),
+        [CategoryIds.Announce] = Freeze("#0E7490"),
+        [CategoryIds.Subscription] = Freeze("#8C93A0"),
+        [CategoryIds.Other] = Freeze("#64748B"),
+    };
+
+    private static readonly Dictionary<string, Brush> CustomCache = new(StringComparer.Ordinal);
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not string id)
+        {
+            return Builtin[CategoryIds.Other];
+        }
+
+        if (Builtin.TryGetValue(id, out var builtinBrush))
+        {
+            return builtinBrush;
+        }
+
+        lock (CustomCache)
+        {
+            if (CustomCache.TryGetValue(id, out var cached))
             {
-                MailCategory.Course => FrozenCourse,
-                MailCategory.Career => FrozenCareer,
-                MailCategory.Admin => FrozenAdmin,
-                MailCategory.Finance => FrozenFinance,
-                MailCategory.Announce => FrozenAnnounce,
-                MailCategory.Subscription => FrozenSubscription,
-                _ => FrozenOther,
+                return cached;
             }
-            : FrozenOther;
+
+            var hex = CategoryCatalog.ColorOf(id);
+            var brush = Freeze(hex);
+            CustomCache[id] = brush;
+            return brush;
+        }
+    }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
-
-    private static readonly Brush FrozenCourse = Freeze("#3A7BD5");
-    private static readonly Brush FrozenCareer = Freeze("#0E9F6E");
-    private static readonly Brush FrozenAdmin = Freeze("#7C5CDB");
-    private static readonly Brush FrozenFinance = Freeze("#D97706");
-    private static readonly Brush FrozenAnnounce = Freeze("#0E7490");
-    private static readonly Brush FrozenSubscription = Freeze("#8C93A0");
-    private static readonly Brush FrozenOther = Freeze("#64748B");
 
     private static Brush Freeze(string hex)
     {

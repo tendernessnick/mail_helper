@@ -16,6 +16,7 @@ public sealed class MailHelperDbContext : DbContext
     internal DbSet<ClassificationFeedbackEntity> ClassificationFeedback => Set<ClassificationFeedbackEntity>();
     internal DbSet<NotificationLogEntity> NotificationLogs => Set<NotificationLogEntity>();
     internal DbSet<SettingEntity> Settings => Set<SettingEntity>();
+    internal DbSet<CategoryEntity> Categories => Set<CategoryEntity>(); // S14-C/CHG-012 自定义类别
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -121,5 +122,15 @@ public sealed class MailHelperDbContext : DbContext
         setting.HasKey(x => x.Key);
         setting.Property(x => x.Key).HasColumnName("key").HasColumnType("TEXT");
         setting.Property(x => x.Value).HasColumnName("value").HasColumnType("TEXT");
+
+        // S14-C/CHG-012：自定义类别（内置七类代码静态，不在此表）
+        var category = modelBuilder.Entity<CategoryEntity>();
+        category.ToTable("categories");
+        category.HasKey(x => x.Id);
+        category.Property(x => x.Id).HasColumnName("id").HasColumnType("TEXT");
+        category.Property(x => x.Label).HasColumnName("label").HasColumnType("TEXT").IsRequired();
+        category.Property(x => x.Icon).HasColumnName("icon").HasColumnType("TEXT").IsRequired();
+        category.Property(x => x.ColorHex).HasColumnName("color_hex").HasColumnType("TEXT").IsRequired();
+        category.Property(x => x.Sort).HasColumnName("sort").HasColumnType("INTEGER");
     }
 }

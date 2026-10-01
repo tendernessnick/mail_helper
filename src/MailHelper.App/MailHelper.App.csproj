@@ -4,7 +4,11 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework> <!-- WinRT 平台版本：Toolkit Toast 桌面 API（04 §4） -->
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon> <!-- S14-A：exe/任务栏/资源管理器图标 -->
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" /> <!-- S14-A：窗口标题栏/托盘底图（pack URI） -->
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />

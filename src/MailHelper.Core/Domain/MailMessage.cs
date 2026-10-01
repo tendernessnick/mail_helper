@@ -13,7 +13,7 @@ public sealed record MailMessage(
     DateTime ReceivedAtUtc,
     bool HasAttachments,
     bool IsRead,
-    MailCategory Category,
+    string Category,
     Importance Importance,
     double? Confidence,
     string ClassifiedBy,          // rule|user|llm

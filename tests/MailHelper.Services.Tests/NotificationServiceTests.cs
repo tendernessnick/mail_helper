@@ -48,7 +48,7 @@ public class NotificationServiceTests : IDisposable
     private static MailMessage Mail(string id, Importance importance) => new(
         id, "acc-1", $"<{id}@im>", $"主题-{id}", "发件人", "someone@hku.hk", "预览", null,
         new DateTime(2026, 9, 27, 8, 0, 0, DateTimeKind.Utc), false, false,
-        MailCategory.Finance, importance, 0.9, "rule",
+        CategoryIds.Finance, importance, 0.9, "rule",
         new DateTime(2026, 9, 27, 8, 0, 1, DateTimeKind.Utc), null, false);
 
     /// <summary>生产顺序：邮件先入 messages（FK notification_log.message_id → messages），再通知。</summary>

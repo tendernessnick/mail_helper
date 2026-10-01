@@ -11,7 +11,7 @@
 | 里程碑 | **M3 RC→正式发布（S0~S12 全部完成）**；正式 Release 待 UAT |
 | 当前模块 | 全部开发模块完成；**真实邮箱端到端已达成**（CHG-011 Outlook 桌面通道，用户实测通过）；G1/G2/G5/G6 本地全绿，G3/G4 自动化部分完成，G7 UAT 待用户 |
 | 阻塞 | 检查点① **已完成**（2026-09-30：用户自助注册 CityU 单租户应用，ClientId/租户经环境变量注入，登录链路打通至授权页）；检查点② **实质达成**（2026-10-01：CHG-011 Outlook 桌面通道复用本机登录态，用户实测真实 CityU 邮箱同步+自动分类+阅读窗格全通过）；OAuth 通道（Graph/IMAP）仍阻于 RISK-01：CityU 租户全局禁止用户同意 → ITSC 管理员批准后可启用（邮件稿已交付，App ID 30ff03da-b63e-4f1d-a77b-b417ced67a9b）；③签名证书不阻塞 |
-| 下一步 | 用户侧：日常使用+改判教学（待确认 20 封）→ **S14 候选**：深色主题/设置页改版/安装包三步验证 + 完整 72h 长稳 → UAT（06 §9）→ 正式 Release；ITSC 批准后可选启用 Graph OAuth 通道 |
+| 下一步 | 用户侧：日常使用+改判教学+自定义类别实践 → S15 候选：深色主题/类别改名与图标编辑/安装包三步验证 + 完整 72h 长稳 → UAT（06 §9）→ 正式 Release；ITSC 批准后可选启用 Graph OAuth 通道 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -206,6 +206,17 @@
 
 **S13 六项自检**：① 构建 0 警 0 错（双配置）；② 246/246 全绿；③ 漏洞扫描干净（零新增依赖）；④⑤ 错误码/日志红线复核（pack_migrated 日志仅版本与计数，无主题/发件人）；⑥ 真机验收态：迁移+重拉+重分类全链路自动完成，用户改判保留语义经测试锁定。
 
+### S14 自定义类别 × 界面修复 × 应用图标（prompts/S14；2026-10-01）—— **已完成（真机验证通过）**
+
+| 任务 | 需求 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-S14-A | G-S14-1 应用图标 | **完成（真机可见）** | `tools/make-icon.ps1` 程序化绘制（GDI+：主色渐变圆角底+白信封+橙角标，16~256 六尺寸 PNG-ICO）；三处接入=csproj ApplicationIcon（exe/任务栏）+ MainWindow.Icon（标题栏）+ 托盘底图（保留未读角标） | 截图 `artifacts/screens/icon-preview.png`；真机任务栏/标题栏已见新图标 |
+| T-S14-B | G-S14-2 界面修复 | **完成** | 顶栏 DockPanel→Grid 三段（品牌导航｜搜索居中｜未读筛选），最大化不散架；阅读窗格 `InjectReaderChrome` 构建期注入居中样式（页面浅灰底+正文白卡片 860px 对称留白+图片限宽）——消除最大化右侧空白；WebView2 禁脚本不变（样式构建期注入） | 用户报告的两处显示问题（第一张截图）均修复 |
+| T-S14-C | G-S14-3 自定义类别（**CHG-012**） | **完成（250/250 全绿）** | 类别从枚举升级「类别注册表」：`CategoryIds` 内置七 ID（=历史 DB 值，**零数据迁移**）+ `categories` 表（EF 迁移 AddCustomCategories）+ `ICategoryStore/CategoryStore`（删除级联=邮件归其他+规则同删，事务）+ `CategoryCatalog` 进程内缓存；分类栏/改判菜单/规则编辑下拉全动态；设置页新增「自定义类别」管理（名称+图标+六色板+删除确认） | 删 `MailCategory` 枚举，42 文件 string 化手术（编译器驱动）；规则 JSON/评估集/存量库完全兼容（评估 98.79% 保持）；SanityTests 七值锁定改为内置 ID 锁定；新增 CategoryStoreTests 4 用例（级联/内置保护） |
+| T-S14-D | 门禁 | **完成** | 全量 **250/250**（Core 81/Services 78/Integration 91）；0 警 0 错；发布产物+SHA256 更新；真机截图 `s14-real-inbox.png`（图标/顶栏/分类栏可见） | 修复 ExTc04 测试环境脆弱性：固定低位端口被防火墙 DROP 伪装超时→动态空闲端口（断言不削弱） |
+
+**S14 六项自检**：① 0 警 0 错；② 250/250；③ 零新增依赖；④⑤ 日志红线复核（rule.saved 记类别 ID 非敏感）；⑥ CHG-012 登记完整、docs/ 零改动。
+
 ## 4. 变更提案（CHG，待用户批准；docs/ 本身不修改）
 
 | 编号 | 发现 | 处理建议 | 状态 |
@@ -221,6 +232,7 @@
 | CHG-009 | 04 §2.2 `ClassificationService.ClassifyPendingAsync` 返回 `ClassificationSummary`，未定义 | 提案定义：`ClassificationSummary(int Processed, IReadOnlyDictionary<MailCategory,int> CategoryCounts, int PendingReview, long ElapsedMs)`（对应 04 §6 埋点 classify.completed 的各类别分布与待确认数）。**已实施** | 已实施，待批准 |
 | CHG-010 | 04 §8.1「同步完成事件携带 newMails」：现有 `BatchSyncedEventArgs`（CHG-007）仅含计数，无邮件列表载体；且逐批通知会造成一轮多批的碎片化弹窗 | 提案 SyncCoordinator **追加** `SyncRoundCompleted` 事件（整轮成功推进断点后触发一次）：`SyncRoundCompletedEventArgs(NewMails, IsInitialRound, DurationMs)`——NewMails=本轮全部入库邮件（更新与新增一并交给 notification_log 去重，恰为 04 §8.4 的 NOT EXISTS 语义）；失败/取消轮不触发。既有事件与签名零改动。**已实施** | 已实施，待批准 |
 | CHG-011 | **落地路径调整（用户批准发起，2026-09-30）**：02 章 FR-02/EX-01 预案仅覆盖 Graph→IMAP 双 OAuth 通道；D-65 实况为 CityU 租户全局禁止用户同意，两条 OAuth 通道均被「需要管理员批准」拦截，且用户无 ITSC 管理员权限——预案未覆盖「本机已装经典 Outlook 且已登录」的第三条路 | 提案**追加** Outlook 桌面通道（`ChannelKind.OutlookDesktop`）：COM 晚绑定复用经典 Outlook 本机登录态读取收件箱（不发起任何 OAuth）；`IMailProvider` 追加默认方法 `GetAccountAddressAsync`（仅桌面通道实现）；连接流程按 `provider.Kind` 分支跳过 MSAL。docs/ 零改动；03 §5.4 断点/幂等语义、04 §4.1 增量契约以桌面等价物保持（见 D-66/D-67）。**已实施并经用户真机实测通过（2026-10-01）** | 已实施（用户发起），待归档 |
+| CHG-012 | **02 章附录 A「邮件七类别固定」**：用户验收后提出自定义类别需求（S13 汇报披露能力边界，用户确认扩展）；枚举形态无法承载用户运行期新增类别 | 类别升级为「类别注册表」：内置七 ID 不变（course/career/admin/finance/announce/subscription/other——DB 存量值/规则包/评估集完全兼容，零数据迁移），新增 categories 表承载用户自定义（名称/图标/颜色/排序），删除级联=邮件归其他+规则同删；docs/ 零改动。**已实施（2026-10-01，真机验证通过）** | 已实施（用户发起），待批准 |
 
 ## 5. 决策记录（文档未写明、自行拍板项，均有依据）
 
@@ -296,6 +308,7 @@
 | D-68 | **检查点②达成路径=CHG-011 桌面通道**（2026-10-01 用户实测：真实 CityU 邮箱连接→全量同步→自动分类→HTML 阅读窗格全通过）；Graph/IMAP OAuth 通道代码保留，ITSC 批准后经环境变量切换即可启用（D-64 注入机制不变） | RISK-01 的用户侧解法：不申请权限，复用用户已在 Outlook 完成的登录态；是 03 章 MOD-03「统一输出 RemoteMessage 流与 deltaLink」抽象的第三个实现，未破坏通道可切换性 |
 | D-69 | SenderDomain 匹配语义=根域后缀匹配（`domain == pattern || domain.EndsWith("." + pattern)`） | 03 §5.3 未定义子域语义；真机实证 Canvas 经 `*.instructure.com` 投递域群发，精确相等会漏配；后缀拼界（evil-instructure.com）经测试锁定不误命中 |
 | D-70 | 内置规则包版本迁移（S13-B）：Settings 键 `rules.builtin.applied_version` 记录已应用版本；不一致时机器来源（classified_by≠'user'）邮件回炉重分类 + 断点清空触发全量重拉（顺带回填历史缺失的同步字段） | 04 §7 未定义规则升级语义；断点清空一举两得——规则重跑需要地址已修复的存量，而 COM 通道无 delta 概念只有时间水位；用户改判（EX-08）永不触碰 |
+| D-72 | 类别表示=字符串 ID 全链路（内置 ID 恒定小写；自定义 ID=custom-<8hex>）：Core 不依赖类别存储（RuleSetParser 仅校验内置 ID，自定义 ID 由上层 RuleManagementService/UI 依注册表管理）；删除类别语义=邮件归 other+规则同删（事务） | 枚举→string 的受控迁移；DB messages.category 本就 TEXT 存 ID（零数据迁移根因）；规则引擎投票/排序对类别字符串透明，不破坏 03 §5.3 语义 |
 | D-71 | UI 视觉系统落 `DesignTokens.xaml` 唯一事实源（Fluent 基色保留 05 §5.1 语义色），类别新增语义色板；样式零魔法数 | 05 章未钉死整体设计语言（仅线框与语义色）；零新增 NuGet 依赖（总控十一.2）；深色主题列 S14 |
 
 ## 6. S0 文件清单（本次落盘）

@@ -48,7 +48,7 @@ public sealed class RuleRepository : IRulesStore
         Name: r.Name,
         Kind: Enum.TryParse<RuleKind>(r.Kind, ignoreCase: true, out var kind) ? kind : RuleKind.SubjectKeyword,
         Pattern: r.Pattern,
-        Category: Enum.TryParse<MailCategory>(r.Category, ignoreCase: true, out var category) ? category : null,
+        Category: string.IsNullOrWhiteSpace(r.Category) ? null : r.Category, // S14-C：类别即 ID
         ImportanceHint: r.ImportanceHint is { } hint ? (Importance)hint : null,
         Weight: r.Weight,
         Priority: r.Priority,

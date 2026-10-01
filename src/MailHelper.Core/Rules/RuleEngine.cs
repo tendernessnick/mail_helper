@@ -197,7 +197,7 @@ public sealed class RuleEngine : IClassifier
         }
     }
 
-    private static MailCategory ResolveCategory(
+    private static string ResolveCategory(
         List<CompiledRule> hits, RuleScoring scoring, out double confidence, out bool strongCategory)
     {
         // 03 章 §5.3：发件人规则命中 → 强命中锁定类别（排序已按 Priority 升序、Weight 降序）
@@ -207,12 +207,12 @@ public sealed class RuleEngine : IClassifier
         {
             confidence = LockedConfidence;
             strongCategory = true;
-            return senderLock.Rule.Category!.Value;
+            return senderLock.Rule.Category!;
         }
 
         var votes = hits
             .Where(h => h.Rule.Category is not null)
-            .GroupBy(h => h.Rule.Category!.Value)
+            .GroupBy(h => h.Rule.Category!)
             .Select(g => (Category: g.Key, Score: g.Sum(h => h.EffectiveWeight)))
             .OrderByDescending(v => v.Score)
             .ToList();
@@ -221,7 +221,7 @@ public sealed class RuleEngine : IClassifier
         {
             confidence = 0;
             strongCategory = false;
-            return MailCategory.Other; // FR-07 AC2：无命中归「其他」
+            return CategoryIds.Other; // FR-07 AC2：无命中归「其他」
         }
 
         var top1 = votes[0].Score;
@@ -237,10 +237,10 @@ public sealed class RuleEngine : IClassifier
         // 模糊区间 → other + 待确认（FR-09：分差不足，置信度压低供下游判定）
         confidence = AmbiguousConfidenceFactor * (top2 <= 0 ? 1.0 : top1 / (top1 + top2));
         strongCategory = false;
-        return MailCategory.Other;
+        return CategoryIds.Other;
     }
 
-    private static Importance ResolveImportance(List<CompiledRule> hits, bool strongCategory, MailCategory category)
+    private static Importance ResolveImportance(List<CompiledRule> hits, bool strongCategory, string category)
     {
         var hints = hits
             .Select(h => h.Rule.ImportanceHint)
@@ -256,7 +256,7 @@ public sealed class RuleEngine : IClassifier
             // 类别证据白名单（D-41）：订阅/公告类别的 final reminder 等措辞不构成 P0 依据（P0 误报率红线）
             var p0Signals = hints.Count(h => h == Importance.P0);
             var strongEvidence = strongCategory && category
-                is MailCategory.Finance or MailCategory.Admin or MailCategory.Course;
+                is CategoryIds.Finance or CategoryIds.Admin or CategoryIds.Course;
             if (p0Signals + (strongEvidence ? 1 : 0) < 2)
             {
                 importance = Importance.P1;

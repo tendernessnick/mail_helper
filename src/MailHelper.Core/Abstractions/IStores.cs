@@ -6,7 +6,7 @@ namespace MailHelper.Core.Abstractions;
 
 /// <summary>收件箱查询（FR-12：类别/重要度/未读过滤 + 待确认队列入口）。</summary>
 public sealed record InboxQuery(
-    MailCategory? Category = null,
+    string? Category = null,
     bool NeedsReviewOnly = false,
     Importance? MinimumImportance = null,
     bool UnreadOnly = false,
@@ -17,7 +17,7 @@ public sealed record InboxQuery(
 public sealed record SearchQuery(
     string FreeText,
     string? FromFilter = null,
-    MailCategory? Category = null,
+    string? Category = null,
     Importance? Importance = null)
 {
     public bool IsEmpty =>
@@ -55,7 +55,7 @@ public interface IMessageStore
     Task<IReadOnlyList<MailMessage>> GetInboxAsync(string accountId, InboxQuery query, CancellationToken ct);
 
     /// <summary>各类别未读数（左栏徽章）。</summary>
-    Task<IReadOnlyDictionary<MailCategory, int>> GetUnreadCountsAsync(string accountId, CancellationToken ct);
+    Task<IReadOnlyDictionary<string, int>> GetUnreadCountsAsync(string accountId, CancellationToken ct);
 
     /// <summary>待确认队列计数（FR-09 侧栏入口红点）。</summary>
     Task<int> GetNeedsReviewCountAsync(string accountId, double reviewThreshold, CancellationToken ct);
@@ -116,4 +116,17 @@ public interface IFeedbackStore
     Task AddAsync(ClassificationFeedback feedback, CancellationToken ct);
 
     Task<int> CountAsync(CancellationToken ct);
+}
+
+/// <summary>自定义类别仓储（S14-C/CHG-012；内置七类为代码静态不落库，此处只管用户自定义）。</summary>
+public interface ICategoryStore
+{
+    /// <summary>全部自定义类别（Sort 升序）。</summary>
+    Task<IReadOnlyList<CategoryDefinition>> GetAllAsync(CancellationToken ct);
+
+    /// <summary>新建或更新自定义类别（Id 为 slug，内置 ID 拒绝）。</summary>
+    Task UpsertAsync(CategoryDefinition category, CancellationToken ct);
+
+    /// <summary>删除自定义类别：该类邮件归「其他」、相关规则一并删除（事务）。返回迁移的邮件数。</summary>
+    Task<int> DeleteAsync(string id, CancellationToken ct);
 }

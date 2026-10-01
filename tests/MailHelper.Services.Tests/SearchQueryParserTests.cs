@@ -33,9 +33,9 @@ public class SearchQueryParserTests
     [Fact]
     public void Category_AcceptsEnumName_CaseInsensitive()
     {
-        SearchQueryParser.Parse("cat:finance").Category.Should().Be(MailCategory.Finance);
-        SearchQueryParser.Parse("cat:FINANCE").Category.Should().Be(MailCategory.Finance);
-        SearchQueryParser.Parse("cat:course").Category.Should().Be(MailCategory.Course);
+        SearchQueryParser.Parse("cat:finance").Category.Should().Be(CategoryIds.Finance);
+        SearchQueryParser.Parse("cat:FINANCE").Category.Should().Be(CategoryIds.Finance);
+        SearchQueryParser.Parse("cat:course").Category.Should().Be(CategoryIds.Course);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class SearchQueryParserTests
 
         q.Importance.Should().Be(Importance.P1);
         q.FromFilter.Should().Be("bursary@hku.hk");
-        q.Category.Should().Be(MailCategory.Course);
+        q.Category.Should().Be(CategoryIds.Course);
         q.FreeText.Should().Be("deadline 学费");
     }
 

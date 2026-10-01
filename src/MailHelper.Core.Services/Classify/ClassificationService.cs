@@ -58,8 +58,7 @@ public sealed class ClassificationService
         }
 
         var pendingReview = writes.Count(w => w.Confidence < _reviewThreshold);
-        var counts = Enum.GetValues<MailCategory>()
-            .Where(c => writes.Any(w => w.Category == c))
+        var counts = writes.Select(w => w.Category).Distinct()
             .ToDictionary(c => c, c => writes.Count(w => w.Category == c));
 
         _logger.LogInformation(

@@ -45,6 +45,8 @@ internal static class Bootstrapper
                 services.AddSingleton<IAccountStore>(sp => sp.GetRequiredService<AccountRepository>());
                 services.AddSingleton(_ => new SettingsRepository(dbPath));
                 services.AddSingleton<ISettingsStore>(sp => sp.GetRequiredService<SettingsRepository>());
+                services.AddSingleton(_ => new CategoryStore(dbPath));
+                services.AddSingleton<ICategoryStore>(sp => sp.GetRequiredService<CategoryStore>()); // S14-C/CHG-012
                 services.AddSingleton<IBodyCache>(_ => new BodyCacheStore(Path.Combine(dataDir, "bodies")));
 
                 // —— 认证（DEV 假令牌 / 真实 MSAL：MAILHELPER_CLIENT_ID 注入即启用，检查点①）——

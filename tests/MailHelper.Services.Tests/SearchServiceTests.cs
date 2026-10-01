@@ -40,17 +40,17 @@ public class SearchServiceTests : IDisposable
 
     private async Task SeedAsync()
     {
-        MailMessage M(string id, string subject, string from, MailCategory cat, Importance imp, string preview) =>
+        MailMessage M(string id, string subject, string from, string cat, Importance imp, string preview) =>
             new(id, "acc-1", $"<{id}@im>", subject, "f", from, preview, null,
                 new DateTime(2026, 9, 27, 8, 0, 0, DateTimeKind.Utc), false, false,
                 cat, imp, 0.9, "rule", new DateTime(2026, 9, 27, 8, 0, 1, DateTimeKind.Utc), null, false);
         await _store.UpsertRangeAsync("acc-1",
         [
-            M("m1", "FINAL REMINDER: Tuition Fee Payment", "bursary@hku.hk", MailCategory.Finance, Importance.P0, "Outstanding balance"),
-            M("m2", "学费缴纳通知", "finance@hku.hk", MailCategory.Finance, Importance.P1, "请于截止日期前缴纳学费"),
-            M("m3", "Assignment deadline", "moodle.hku.hk", MailCategory.Course, Importance.P2, "Week 4 submission"),
-            M("m4", " internship invite", "careers.hku.hk", MailCategory.Career, Importance.P1, "first-round interview"),
-            M("m5", "Campus maintenance", "facilities@hku.hk", MailCategory.Admin, Importance.P3, "水房维修通知"),
+            M("m1", "FINAL REMINDER: Tuition Fee Payment", "bursary@hku.hk", CategoryIds.Finance, Importance.P0, "Outstanding balance"),
+            M("m2", "学费缴纳通知", "finance@hku.hk", CategoryIds.Finance, Importance.P1, "请于截止日期前缴纳学费"),
+            M("m3", "Assignment deadline", "moodle.hku.hk", CategoryIds.Course, Importance.P2, "Week 4 submission"),
+            M("m4", " internship invite", "careers.hku.hk", CategoryIds.Career, Importance.P1, "first-round interview"),
+            M("m5", "Campus maintenance", "facilities@hku.hk", CategoryIds.Admin, Importance.P3, "水房维修通知"),
         ], CancellationToken.None);
     }
 

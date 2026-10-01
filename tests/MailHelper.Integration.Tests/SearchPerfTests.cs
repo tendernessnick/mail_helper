@@ -78,7 +78,7 @@ public class SearchPerfTests : IDisposable
                 $"Preview body {i}: 学费 deadline invoice 奖学金 library 内容 {i}", null,
                 new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMinutes(i),
                 false, i % 3 == 0,
-                (MailCategory)(i % 7), (Importance)(i % 4), 0.9, "rule",
+                CategoryIds.All[i % CategoryIds.All.Length], (Importance)(i % 4), 0.9, "rule",
                 new DateTime(2026, 9, 27, 8, 0, 0, DateTimeKind.Utc), null, false));
             if (batch.Count == 100)
             {

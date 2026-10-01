@@ -24,7 +24,7 @@ public partial class MailItemViewModel : ObservableObject
 
     public required string ReceivedText { get; init; }
 
-    public required MailCategory Category { get; init; }
+    public required string Category { get; init; } // S14-C：类别 ID
 
     public required Importance Importance { get; init; }
 
@@ -77,11 +77,13 @@ public partial class MailItemViewModel : ObservableObject
 /// <summary>左栏导航项（05 §3.2：全部/待确认/7 类别 + 未读计数；「待确认」为 FR-09 队列入口）。</summary>
 public partial class CategoryItemViewModel : ObservableObject
 {
-    public required MailCategory? Category { get; init; }
+    public required string? CategoryId { get; init; } // S14-C：null=全部/待确认虚拟项
 
     public required string Label { get; init; }
 
     public required string Icon { get; init; }
+
+    public required string ColorHex { get; init; }
 
     public required bool IsNeedsReviewEntry { get; init; }
 
@@ -136,17 +138,34 @@ public partial class MainViewModel : ObservableObject
         _dispatcher = Dispatcher.CurrentDispatcher;
         _devMode = devMode;
 
-        Categories.Add(new CategoryItemViewModel { Category = null, Label = "收件箱（全部）", Icon = "📥", IsNeedsReviewEntry = false });
-        Categories.Add(new CategoryItemViewModel { Category = null, Label = "待确认", Icon = "⏰", IsNeedsReviewEntry = true });
-        foreach (var (category, label, icon) in CategoryLabels)
-        {
-            Categories.Add(new CategoryItemViewModel { Category = category, Label = label, Icon = icon, IsNeedsReviewEntry = false });
-        }
+        RebuildCategories();
 
         _sync.StateChanged += (_, e) => OnSyncStateChanged(e);
     }
 
     public ObservableCollection<CategoryItemViewModel> Categories { get; } = new();
+
+    /// <summary>S14-C：按类别目录重建左栏（保留当前选中）；目录变更（新建/删除类别）后调用。</summary>
+    public void RebuildCategories()
+    {
+        var selectedId = SelectedCategory?.CategoryId;
+        var needsReview = SelectedCategory?.IsNeedsReviewEntry == true;
+        Categories.Clear();
+        Categories.Add(new CategoryItemViewModel { CategoryId = null, Label = "收件箱（全部）", Icon = "📥", ColorHex = "#0F6CBD", IsNeedsReviewEntry = false });
+        Categories.Add(new CategoryItemViewModel { CategoryId = null, Label = "待确认", Icon = "⏰", ColorHex = "#F7630C", IsNeedsReviewEntry = true });
+        foreach (var definition in CategoryCatalog.All)
+        {
+            Categories.Add(new CategoryItemViewModel
+            {
+                CategoryId = definition.Id, Label = definition.Label, Icon = definition.Icon,
+                ColorHex = definition.ColorHex, IsNeedsReviewEntry = false,
+            });
+        }
+
+        SelectedCategory = Categories.FirstOrDefault(c =>
+            c.CategoryId == selectedId && c.IsNeedsReviewEntry == needsReview)
+            ?? Categories[0];
+    }
 
     public ObservableCollection<MailItemViewModel> Mails { get; } = new();
 
@@ -364,14 +383,14 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private async Task MarkReadAsync(string messageId, MailCategory category)
+    private async Task MarkReadAsync(string messageId, string category)
     {
         await _store.MarkReadAsync(messageId, CancellationToken.None);
         await _dispatcher.InvokeAsync(() =>
         {
             // 左栏未读数联动（「全部」+ 对应类别；待确认入口计数与此无关）
             foreach (var item in Categories.Where(c =>
-                         (c.Category is null && !c.IsNeedsReviewEntry) || c.Category == category))
+                         (c.CategoryId is null && !c.IsNeedsReviewEntry) || c.CategoryId == category))
             {
                 if (item.Count > 0)
                 {
@@ -389,7 +408,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         var query = new InboxQuery(
-            Category: SelectedCategory?.Category,
+            Category: SelectedCategory?.CategoryId,
             NeedsReviewOnly: SelectedCategory?.IsNeedsReviewEntry == true,
             UnreadOnly: UnreadOnly);
         var messages = await _store.GetInboxAsync(_accountId, query, ct);
@@ -405,8 +424,9 @@ public partial class MainViewModel : ObservableObject
             {
                 item.Count = item.IsNeedsReviewEntry
                     ? reviewCount
-                    : item.Category is { } c ? unread[c]
-                    : messages.Count(m => !m.IsRead);
+                    : item.CategoryId is { } c && unread.TryGetValue(c, out var n) ? n
+                    : item.CategoryId is null ? messages.Count(m => !m.IsRead)
+                    : 0; // S14-C：自定义类别无未读时归零
             }
         });
     }
@@ -419,7 +439,7 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        var allCategory = Categories.First(c => c.Category is null && !c.IsNeedsReviewEntry);
+        var allCategory = Categories.First(c => c.CategoryId is null && !c.IsNeedsReviewEntry);
         if (SelectedCategory != allCategory)
         {
             SelectedCategory = allCategory; // 触发 LoadInboxAsync
@@ -461,7 +481,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>改判（FR-11/TC-014 入口）：立即生效并由反馈闭环自动生成发件人规则。</summary>
-    public async Task ApplyCorrectionAsync(MailCategory newCategory, CancellationToken ct)
+    public async Task ApplyCorrectionAsync(string newCategory, CancellationToken ct)
     {
         if (SelectedMail is not { } mail)
         {
@@ -483,8 +503,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private static string LabelOf(MailCategory category) =>
-        Array.Find(CategoryLabels, pair => pair.Category == category).Label;
+    private static string LabelOf(string category) => CategoryCatalog.LabelOf(category);
 
     /// <summary>阅读窗格内容：优先正文缓存 HTML，缺失时回退纯文本预览（04 §4.1 按需拉正文本期不做）。</summary>
     public async Task<string?> BuildReaderHtmlAsync(MailItemViewModel mail, CancellationToken ct)
@@ -494,22 +513,34 @@ public partial class MainViewModel : ObservableObject
             var html = await _bodyCache.ReadAsync(relative, ct);
             if (html is not null)
             {
-                return html;
+                return InjectReaderChrome(html);
             }
         }
 
         var text = System.Net.WebUtility.HtmlEncode(mail.Preview);
-        return $"<html><body style=\"font-family:Segoe UI,'Microsoft YaHei';font-size:14px;color:#201F1E;\"><pre style=\"white-space:pre-wrap;font-family:inherit\">{text}</pre></body></html>";
+        return InjectReaderChrome(
+            $"<html><body><pre style=\"white-space:pre-wrap;font-family:inherit\">{text}</pre></body></html>");
     }
 
-    public static readonly (MailCategory Category, string Label, string Icon)[] CategoryLabels =
+    /// <summary>S14-B 阅读窗格版式：邮件 HTML（营销模板常为固定宽表格）居中呈现——
+    /// 页面浅灰底 + 正文白卡片对称留白，消除最大化后的右侧空白。构建期注入（WebView2 禁脚本）。</summary>
+    private static string InjectReaderChrome(string html)
     {
-        (MailCategory.Course, "课程学习", "📚"),
-        (MailCategory.Career, "职业发展", "💼"),
-        (MailCategory.Admin, "校园事务", "🏫"),
-        (MailCategory.Finance, "财务缴费", "💰"),
-        (MailCategory.Announce, "通知公告", "📢"),
-        (MailCategory.Subscription, "订阅营销", "📨"),
-        (MailCategory.Other, "其他", "🗂"),
-    };
+        const string style = "<style>" +
+            "html{background:#EEF2F7 !important;}" +
+            "body{max-width:860px !important;margin:0 auto !important;padding:28px 36px !important;" +
+            "background:#fff !important;min-height:100vh !important;" +
+            "box-shadow:0 0 18px rgba(27,42,74,.08) !important;" +
+            "font-family:Segoe UI,'Microsoft YaHei',sans-serif !important;}" +
+            "img{max-width:100% !important;height:auto !important;}" +
+            "</style>";
+        var headIndex = html.IndexOf("<head", StringComparison.OrdinalIgnoreCase);
+        if (headIndex < 0)
+        {
+            return style + html; // 无 head 的片段：样式块前置（浏览器可渲染）
+        }
+
+        var closeIndex = html.IndexOf('>', headIndex);
+        return closeIndex < 0 ? style + html : html.Insert(closeIndex + 1, style);
+    }
 }

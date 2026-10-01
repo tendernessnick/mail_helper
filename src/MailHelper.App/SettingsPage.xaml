@@ -1,7 +1,11 @@
 <UserControl x:Class="MailHelper.App.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:app="clr-namespace:MailHelper.App"
              xmlns:vm="clr-namespace:MailHelper.App.ViewModels">
+    <UserControl.Resources>
+        <app:CategoryToBrushConverter x:Key="CategoryBrush" />
+    </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="20,16" MaxWidth="640" HorizontalAlignment="Left">
 
@@ -71,6 +75,51 @@
                             <ComboBoxItem Content="深色" Tag="dark" />
                         </ComboBox>
                     </DockPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 自定义类别（S14-C/CHG-012） -->
+            <TextBlock Text="自定义类别" FontSize="16" FontWeight="SemiBold" Margin="0,18,0,8" />
+            <Border Background="White" CornerRadius="6" Padding="14,10" BorderBrush="#E1DFDD" BorderThickness="1">
+                <StackPanel>
+                    <ItemsControl x:Name="CustomCategoriesList">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel Margin="0,3">
+                                    <Button DockPanel.Dock="Right" Content="删除" Style="{StaticResource GhostButton}"
+                                            Padding="8,2" FontSize="11" Click="OnDeleteCategoryClick" />
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="20" Height="20" CornerRadius="6"
+                                                Background="{Binding ColorHex, Converter={StaticResource CategoryBrush}}">
+                                            <TextBlock Text="{Binding Icon}" FontSize="11"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <TextBlock Text="{Binding Label}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Separator Margin="0,8" Background="#E1DFDD" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBox x:Name="NewCategoryName" Width="150" Style="{StaticResource RoundedTextBox}"
+                                 AutomationProperties.Name="新类别名称" />
+                        <TextBox x:Name="NewCategoryIcon" Width="44" Margin="6,0,0,0"
+                                 Style="{StaticResource RoundedTextBox}" Text="📌" TextAlignment="Center"
+                                 AutomationProperties.Name="新类别图标" />
+                        <ComboBox x:Name="NewCategoryColor" Width="100" Margin="6,0,0,0" SelectedIndex="0">
+                            <ComboBoxItem Tag="#3A7BD5">蓝</ComboBoxItem>
+                            <ComboBoxItem Tag="#0E9F6E">绿</ComboBoxItem>
+                            <ComboBoxItem Tag="#7C5CDB">紫</ComboBoxItem>
+                            <ComboBoxItem Tag="#D97706">橙</ComboBoxItem>
+                            <ComboBoxItem Tag="#0E7490">青</ComboBoxItem>
+                            <ComboBoxItem Tag="#C2417D">粉</ComboBoxItem>
+                        </ComboBox>
+                        <Button Content="添加" Style="{StaticResource PrimaryButton}" Padding="14,5"
+                                Margin="8,0,0,0" FontSize="12" Click="OnAddCategoryClick" />
+                    </StackPanel>
+                    <TextBlock Text="删除类别时，该类邮件归入「其他」，指向它的规则将一并删除。"
+                               FontSize="11" Foreground="{StaticResource BrushTextTertiary}" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>
 

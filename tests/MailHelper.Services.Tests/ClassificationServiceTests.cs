@@ -38,8 +38,8 @@ public class ClassificationServiceTests : IDisposable
 
     private static IClassifier NewClassifier() => new RuleEngine(new RuleSet("test", new RuleScoring(), new[]
     {
-        new ClassifyRule(Guid.NewGuid(), "Course-Kw", RuleKind.SubjectKeyword, "assignment|作业", MailCategory.Course, null, 3, 100, true, RuleSource.Builtin),
-        new ClassifyRule(Guid.NewGuid(), "Career-Kw", RuleKind.SubjectKeyword, "interview|面试", MailCategory.Career, Importance.P1, 3, 100, true, RuleSource.Builtin),
+        new ClassifyRule(Guid.NewGuid(), "Course-Kw", RuleKind.SubjectKeyword, "assignment|作业", CategoryIds.Course, null, 3, 100, true, RuleSource.Builtin),
+        new ClassifyRule(Guid.NewGuid(), "Career-Kw", RuleKind.SubjectKeyword, "interview|面试", CategoryIds.Career, Importance.P1, 3, 100, true, RuleSource.Builtin),
         new ClassifyRule(Guid.NewGuid(), "P0-Deadline", RuleKind.SubjectRegex, "(final reminder|overdue)", null, Importance.P0, 6, 100, true, RuleSource.Builtin),
     }));
 
@@ -57,7 +57,7 @@ public class ClassificationServiceTests : IDisposable
     private static MailMessage Msg(string id, string subject, string preview) => new(
         id, "acc-1", $"<{id}@im>", subject, "Sender", "someone@example.com", preview, null,
         new DateTime(2026, 9, 26, 8, 0, 0, DateTimeKind.Utc), false, false,
-        MailCategory.Other, Importance.P2, null, "rule", null, "ck", false);
+        CategoryIds.Other, Importance.P2, null, "rule", null, "ck", false);
 
     [Fact]
     public async Task ClassifyPending_WritesBackAndSummarizes()
@@ -71,16 +71,16 @@ public class ClassificationServiceTests : IDisposable
         var summary = await service.ClassifyPendingAsync(100, CancellationToken.None);
 
         summary.Processed.Should().Be(3);
-        summary.CategoryCounts[MailCategory.Course].Should().Be(1);
-        summary.CategoryCounts[MailCategory.Career].Should().Be(1);
-        summary.CategoryCounts[MailCategory.Other].Should().Be(1);
+        summary.CategoryCounts[CategoryIds.Course].Should().Be(1);
+        summary.CategoryCounts[CategoryIds.Career].Should().Be(1);
+        summary.CategoryCounts[CategoryIds.Other].Should().Be(1);
         summary.PendingReview.Should().Be(1); // 仅低置信度的 m3
 
         var repo = new MailRepository(_dbPath);
         (await repo.GetPendingClassificationAsync("acc-1", 10, CancellationToken.None)).Should().BeEmpty(); // 全部已写回
 
         var m2 = (await repo.SearchFtsAsync("acc-1", "interview", 10, CancellationToken.None)).Single();
-        m2.Category.Should().Be(MailCategory.Career);
+        m2.Category.Should().Be(CategoryIds.Career);
         m2.Importance.Should().Be(Importance.P1); // 规则 hint 生效
         m2.Confidence.Should().BeGreaterThan(0.5);
         m2.ClassifiedBy.Should().Be(RuleEngine.EngineName);
@@ -111,7 +111,7 @@ public class ClassificationServiceTests : IDisposable
 
         var repo = new MailRepository(_dbPath);
         var m1 = (await repo.SearchFtsAsync("acc-1", "assignment", 10, CancellationToken.None)).Single();
-        m1.Category.Should().Be(MailCategory.Course);
+        m1.Category.Should().Be(CategoryIds.Course);
         m1.Importance.Should().NotBe(Importance.P0); // 引文深处的 final reminder 不触发 P0
     }
 

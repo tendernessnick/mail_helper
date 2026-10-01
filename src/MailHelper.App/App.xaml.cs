@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using MailHelper.App.Notifications;
+using MailHelper.Core.Abstractions;
 using MailHelper.App.ViewModels;
 using MailHelper.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +41,9 @@ public partial class App : Application
 
         _host = Bootstrapper.BuildHost();
         _host.Start();
+        // S14-C：类别目录先于 UI 就绪（分类栏/改判/规则编辑统一取自 CategoryCatalog）
+        CategoryCatalog.RefreshAsync(
+            _host.Services.GetRequiredService<ICategoryStore>()).GetAwaiter().GetResult();
         MainWindow = _host.Services.GetRequiredService<MainWindow>();
         var viewModel = (MainViewModel)MainWindow.DataContext;
         _host.Services.GetRequiredService<LanguageService>()

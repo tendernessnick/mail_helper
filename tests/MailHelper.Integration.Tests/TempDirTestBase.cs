@@ -42,7 +42,7 @@ public abstract class TempDirTestBase : IDisposable
         preview ?? $"preview of {id}", BodyPath: null,
         received ?? new DateTime(2026, 9, 26, 8, 0, 0, DateTimeKind.Utc),
         HasAttachments: false, IsRead: isRead,
-        Category: MailCategory.Other, Importance: Importance.P2,
+        Category: CategoryIds.Other, Importance: Importance.P2,
         Confidence: null, ClassifiedBy: "rule", ClassifiedAtUtc: null,
         RemoteChangeKey: "ck-1", IsDeletedRemote: false);
 }

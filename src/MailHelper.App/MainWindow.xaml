@@ -6,6 +6,7 @@
         xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="MailHelper" Height="780" Width="1320" MinWidth="940" MinHeight="580"
         WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Assets/app.ico"
         Background="{StaticResource BrushWindowBg}"
         FontFamily="{StaticResource FontApp}">
     <Window.Resources>
@@ -143,17 +144,22 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- 顶栏（S13-C：白面 + 品牌名 + 胶囊导航 + 圆角搜索） -->
+            <!-- 顶栏（S14-B：Grid 三段布局——品牌导航 | 搜索居中 | 未读筛选，最大化不散架） -->
             <Border Grid.Row="0" Background="{StaticResource BrushTopBar}"
                     BorderBrush="{StaticResource BrushDivider}" BorderThickness="0,0,0,1"
                     Padding="14,8">
-                <DockPanel>
-                    <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" Margin="2,0,14,0">
-                        <Run Text="📮" FontSize="17" />
-                        <Run Text="MailHelper" FontSize="15" FontWeight="Bold"
-                             FontFamily="{StaticResource FontAppDisplay}" Foreground="{StaticResource BrushTextPrimary}" />
-                    </TextBlock>
-                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock VerticalAlignment="Center" Margin="2,0,14,0">
+                            <Run Text="📮" FontSize="17" />
+                            <Run Text="MailHelper" FontSize="15" FontWeight="Bold"
+                                 FontFamily="{StaticResource FontAppDisplay}" Foreground="{StaticResource BrushTextPrimary}" />
+                        </TextBlock>
                         <RadioButton Content="收件箱" GroupName="Nav" IsChecked="True" Margin="0,0,2,0"
                                      Padding="14,6" Style="{StaticResource NavTab}"
                                      Command="{Binding ShowInboxCommand}" />
@@ -164,30 +170,29 @@
                                      Padding="14,6" Style="{StaticResource NavTab}"
                                      Command="{Binding ShowSettingsCommand}" />
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
-                                Margin="16,0,0,0">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal"
+                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="380" VerticalAlignment="Center" Style="{StaticResource RoundedTextBox}"
+                                 AutomationProperties.Name="搜索框">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <Button Content="搜索" Style="{StaticResource GhostButton}"
+                                Command="{Binding SearchCommand}" Margin="6,0,0,0" />
+                        <Button Content="清除" Style="{StaticResource GhostButton}"
+                                Command="{Binding ClearSearchCommand}" Margin="6,0,0,0"
+                                Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
                         <CheckBox Content="仅未读" IsChecked="{Binding UnreadOnly}" Style="{StaticResource ModernCheck}"
                                   Command="{Binding ToggleUnreadOnlyCommand}" VerticalAlignment="Center"
                                   Margin="0,0,14,0" />
                         <TextBlock Text="Ctrl+F 搜索 · Ctrl+R 同步" FontSize="11" VerticalAlignment="Center"
                                    Foreground="{StaticResource BrushTextTertiary}" />
                     </StackPanel>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="清除" Style="{StaticResource GhostButton}"
-                                Command="{Binding ClearSearchCommand}" Margin="6,0,0,0"
-                                Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}}" />
-                        <Button DockPanel.Dock="Right" Content="搜索" Style="{StaticResource GhostButton}"
-                                Command="{Binding SearchCommand}" Margin="6,0,0,0" />
-                        <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 Width="380" VerticalAlignment="Center" Style="{StaticResource RoundedTextBox}"
-                                 HorizontalAlignment="Center"
-                                 AutomationProperties.Name="搜索框">
-                            <TextBox.InputBindings>
-                                <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
-                            </TextBox.InputBindings>
-                        </TextBox>
-                    </DockPanel>
-                </DockPanel>
+                </Grid>
             </Border>
 
             <!-- 收件箱（三栏） -->
@@ -219,7 +224,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Border Width="26" Height="26" CornerRadius="7" VerticalAlignment="Center"
-                                            Background="{Binding Category, Converter={StaticResource CategoryBrush}}">
+                                            Background="{Binding CategoryId, Converter={StaticResource CategoryBrush}}">
                                         <ContentControl Content="{Binding Icon}" FontSize="13"
                                                         HorizontalAlignment="Center" VerticalAlignment="Center"
                                                         Focusable="False" />
