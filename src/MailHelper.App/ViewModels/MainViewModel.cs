@@ -526,13 +526,18 @@ public partial class MainViewModel : ObservableObject
     /// 页面浅灰底 + 正文白卡片对称留白，消除最大化后的右侧空白。构建期注入（WebView2 禁脚本）。</summary>
     private static string InjectReaderChrome(string html)
     {
+        // S14 修正：WebView2 在复合 DPI 下 CSS 视口与控件宽可能不一致——不依赖视口值：
+        // body 满宽（灰底）+ 直接子元素限宽居中（白卡片），overflow-x 裁剪，任何视口下都无横向溢出
         const string style = "<style>" +
-            "html{background:#EEF2F7 !important;}" +
-            "body{max-width:860px !important;margin:0 auto !important;padding:28px 36px !important;" +
-            "background:#fff !important;min-height:100vh !important;" +
-            "box-shadow:0 0 18px rgba(27,42,74,.08) !important;" +
+            "html{background:#EEF2F7 !important;overflow-x:hidden !important;}" +
+            "body{width:100% !important;margin:0 !important;padding:0 !important;" +
+            "background:#EEF2F7 !important;min-height:100vh !important;" +
+            "overflow-x:hidden !important;" +
             "font-family:Segoe UI,'Microsoft YaHei',sans-serif !important;}" +
-            "img{max-width:100% !important;height:auto !important;}" +
+            "body>*{width:100% !important;max-width:100% !important;margin:0 !important;" +
+            "background:#fff !important;padding:22px 32px !important;" +
+            "box-shadow:0 0 14px rgba(27,42,74,.06) !important;box-sizing:border-box !important;}" +
+            "img,table{max-width:100% !important;height:auto !important;}" +
             "</style>";
         var headIndex = html.IndexOf("<head", StringComparison.OrdinalIgnoreCase);
         if (headIndex < 0)

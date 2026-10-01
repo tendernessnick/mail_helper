@@ -30,6 +30,8 @@ public partial class MainWindow : Window
         RulesHost.Content = rulesPage; // DI 页面挂载（UserControl 带 ctor 注入，不能在 XAML 实例化）
         SettingsHost.Content = settingsPage;
 
+        // S14 修复（用户验收缺陷根因）：WebView2 光栅化比例被错固定为 200%（devicePixelRatio=2），
+        // 系统 DPI 实为 166.67% → 内容渲染比控件大 20%，右缘被裁。显式对齐窗口真实 DPI。
         Loaded += async (_, _) =>
         {
             RestoreLayout();
@@ -78,7 +80,10 @@ public partial class MainWindow : Window
                 ConfigureSandbox();
                 if (_pendingHtml is { Length: > 0 } html)
                 {
-                    Reader.NavigateToString(html);
+                    var readerFile = System.IO.Path.Combine(
+                        System.IO.Path.GetTempPath(), "mailhelper-reader-current.html");
+                    System.IO.File.WriteAllText(readerFile, html); // S14-B：与主路径一致的 file:// 渲染
+                    Reader.CoreWebView2.Navigate(new Uri(readerFile).ToString());
                     _pendingHtml = null;
                 }
             }
@@ -120,6 +125,19 @@ public partial class MainWindow : Window
         menu.IsOpen = true;
     }
 
+    /// <summary>S14-B workaround：以当前布局尺寸重设 WebView2（Width 固定→还原 NaN），
+    /// 逼使控件重建渲染表面。尺寸为 0（Onboarding 态）时跳过。</summary>
+    private void ForceReaderRelayout()
+    {
+        if (Reader.ActualWidth is not double.NaN && Reader.ActualWidth > 1)
+        {
+            Reader.Width = Reader.ActualWidth;
+            Reader.UpdateLayout();
+            Reader.Width = double.NaN;
+            Reader.UpdateLayout();
+        }
+    }
+
     /// <summary>托盘/管道唤起（EX-TC-07）：恢复显示并前置。</summary>
     internal void ShowFromTray()
     {
@@ -153,9 +171,11 @@ public partial class MainWindow : Window
     /// <summary>外链拦截（09 §5：外链点击前确认——v1 一律取消导航，仅渲染正文 data: 内容）。</summary>
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
-        if (e.Uri is null || e.Uri.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        var readerFileUri = new Uri(System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(), "mailhelper-reader-current.html")).ToString();
+        if (e.Uri is null || e.Uri == readerFileUri)
         {
-            return; // NavigateToString 的正文渲染
+            return; // 正文渲染：仅放行注入副本自身（其余 data:/file:/http 一律拦截）
         }
 
         e.Cancel = true;
@@ -182,7 +202,11 @@ public partial class MainWindow : Window
                 return;
             }
 
-            Reader.NavigateToString(html ?? string.Empty);
+            // S14-B：注入后副本落盘并以 file:// 导航（data: URI 实测在复合 DPI 下视口异常）
+            var readerFile = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(), "mailhelper-reader-current.html");
+            System.IO.File.WriteAllText(readerFile, html ?? string.Empty);
+            Reader.CoreWebView2.Navigate(new Uri(readerFile).ToString());
         }
         catch (Exception ex)
         {
@@ -190,6 +214,8 @@ public partial class MainWindow : Window
         }
     }
 
+    // S14 修复（用户验收缺陷：「放大后右侧空白」）：列宽记忆从绝对像素改为**窗口占比**——
+    // 像素恢复在三栏布局中导致最大化后列宽不随窗口伸缩（右侧整片 Grid 空白）。
     private void RestoreLayout()
     {
         var saved = _settings.GetAsync(LayoutKey, CancellationToken.None).GetAwaiter().GetResult();
@@ -200,19 +226,30 @@ public partial class MainWindow : Window
 
         var parts = saved.Split(';');
         if (parts.Length == 3
-            && double.TryParse(parts[0], out var left) && left >= LeftColumn.MinWidth
-            && double.TryParse(parts[1], out var middle) && middle >= MiddleColumn.MinWidth
-            && double.TryParse(parts[2], out var right) && right >= RightColumn.MinWidth)
+            && double.TryParse(parts[0], System.Globalization.CultureInfo.InvariantCulture, out var left)
+            && double.TryParse(parts[1], System.Globalization.CultureInfo.InvariantCulture, out var middle)
+            && double.TryParse(parts[2], System.Globalization.CultureInfo.InvariantCulture, out var right)
+            && left > 0 && middle > 0 && right > 0
+            && left + middle + right is var total && total > 0)
         {
-            LeftColumn.Width = new GridLength(left, GridUnitType.Pixel);
-            MiddleColumn.Width = new GridLength(middle, GridUnitType.Pixel);
-            RightColumn.Width = new GridLength(right, GridUnitType.Pixel);
+            // 按占比恢复为 Star 宽度：任何窗口尺寸下三栏同步伸缩（MinWidth 由列定义兜底）
+            LeftColumn.Width = new GridLength(left / total, GridUnitType.Star);
+            MiddleColumn.Width = new GridLength(middle / total, GridUnitType.Star);
+            RightColumn.Width = new GridLength(right / total, GridUnitType.Star);
         }
     }
 
-    private async Task SaveLayoutAsync() // 05 §3.3：三栏宽度持久化
+    private async Task SaveLayoutAsync() // 05 §3.3：三栏宽度持久化（占比，窗口尺寸无关）
     {
-        var value = $"{LeftColumn.ActualWidth:0.0};{MiddleColumn.ActualWidth:0.0};{RightColumn.ActualWidth:0.0}";
+        var total = LeftColumn.ActualWidth + MiddleColumn.ActualWidth + RightColumn.ActualWidth;
+        if (total <= 0)
+        {
+            return;
+        }
+
+        var value = string.Format(System.Globalization.CultureInfo.InvariantCulture,
+            "{0:0.000};{1:0.000};{2:0.000}",
+            LeftColumn.ActualWidth / total, MiddleColumn.ActualWidth / total, RightColumn.ActualWidth / total);
         try
         {
             await _settings.SetAsync(LayoutKey, value, CancellationToken.None);
