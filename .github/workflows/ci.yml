@@ -36,7 +36,29 @@ jobs:
         run: dotnet build MailHelper.sln -c Release --no-restore
 
       - name: Test (含 XPlat 覆盖率收集，排除 *.g.cs 生成代码)
-        run: dotnet test MailHelper.sln -c Release --no-build --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+        run: >
+          dotnet test MailHelper.sln -c Release --no-build
+          --collect:"XPlat Code Coverage" --settings coverlet.runsettings
+          --logger "trx"
+
+      # 失败时把失败用例名写进 Job Summary（公开可见）并上传 TRX，便于无 token 排查
+      - name: 失败用例摘要
+        if: failure()
+        shell: pwsh
+        run: |
+          $names = Get-ChildItem -Recurse -Filter *.trx | ForEach-Object {
+            [xml]$x = Get-Content $_.FullName
+            $x.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' } | ForEach-Object { $_.testName }
+          } | Select-Object -Unique
+          ("### 失败用例`n" + ($names | ForEach-Object { "- ❌ $_" } | Out-String)) | Out-File -Append $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload test results (失败排查用)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/TestResults/*.trx'
+          if-no-files-found: ignore
 
       # NFR-10 / G1：MailHelper.Core 行覆盖 ≥ 80%（并集语义：任一测试工程命中即算覆盖；
       # 归一化各报告 filename 前缀差异；排除 obj 下源生成器产物，D-14）
