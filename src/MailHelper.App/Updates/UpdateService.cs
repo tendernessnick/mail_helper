@@ -1,49 +1,106 @@
-using Velopack;
-using Velopack.Sources;
+using System.IO;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace MailHelper.App.Updates;
 
-/// <summary>应用内更新（S15，08 §4.3）：更新源为 GitHub Releases。
-/// 只认正式版（prerelease=false），beta 渠道预发布仅供发布前人工验证，不推送已在用用户；
-/// 版本比较依据 Velopack 清单与安装包元数据，未安装环境（源码/裸 exe 运行）检查入口禁用。</summary>
+/// <summary>应用内更新（S17，Inno 安装包路线）：更新源为 GitHub Releases。
+/// 检查 = releases/latest 与当前程序集版本比较（只认正式版，预发布不推送）；
+/// 下载 = 安装包落临时目录（字节级进度）；应用 = /SILENT 同目录覆盖安装，
+/// 由安装器接管关闭应用与完成后的自动重启。</summary>
 public sealed class UpdateService
 {
-    /// <summary>更新源仓库（CI vpk upload github 与此一致；改仓库名需同步）。</summary>
     public const string RepoUrl = "https://github.com/tendernessnick/mail_helper";
+    public const string InstallerAssetName = "MailHelper-stable-Setup.exe";
+
+    private static readonly HttpClient Http = CreateClient();
 
     /// <summary>当前版本（AssemblyVersion，CI 以 tag 注入 -p:Version）。</summary>
     public static string CurrentVersion { get; } =
         (typeof(UpdateService).Assembly.GetName().Version ?? new Version(0, 0, 0)).ToString(3);
 
-    /// <summary>当前进程是否处于 Velopack 安装/便携环境（决定「检查更新」入口可用性）。</summary>
-    public static bool IsInstalled => CreateManager().IsInstalled;
+    /// <summary>一条可下载的新版本记录。</summary>
+    public sealed record PendingUpdate(string Version, string DownloadUrl, long SizeBytes);
 
-    /// <summary>检查更新：无更新返回 null，有更新返回可供下载的 UpdateInfo。</summary>
-    public async Task<UpdateInfo?> CheckForUpdateAsync(CancellationToken ct)
+    /// <summary>检查更新：无更新返回 null。</summary>
+    public async Task<PendingUpdate?> CheckForUpdateAsync(CancellationToken ct)
     {
-        var mgr = CreateManager();
-        if (!mgr.IsInstalled)
+        using var req = new HttpRequestMessage(HttpMethod.Get, RepoUrl + "/releases/latest");
+        req.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+        using var resp = await Http.SendAsync(req, ct).ConfigureAwait(false);
+        resp.EnsureSuccessStatusCode();
+
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        using var json = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
+
+        var tag = json.RootElement.GetProperty("tag_name").GetString() ?? string.Empty;
+        if (!Version.TryParse(tag.TrimStart('v', 'V'), out var latest) ||
+            latest <= Version.Parse(CurrentVersion))
         {
             return null;
         }
 
-        return await mgr.CheckForUpdatesAsync().WaitAsync(ct).ConfigureAwait(false);
+        foreach (var asset in json.RootElement.GetProperty("assets").EnumerateArray())
+        {
+            if (asset.GetProperty("name").GetString() != InstallerAssetName)
+            {
+                continue;
+            }
+
+            var url = asset.GetProperty("browser_download_url").GetString();
+            var size = asset.TryGetProperty("size", out var s) ? s.GetInt64() : 0;
+            if (url is not null)
+            {
+                return new PendingUpdate(latest.ToString(3), url, size);
+            }
+        }
+
+        return null;
     }
 
-    /// <summary>后台下载更新包（progress 0–100），完成后需调用 ApplyUpdateAndRestart 生效。</summary>
-    public async Task DownloadUpdateAsync(UpdateInfo info, Action<int>? progress, CancellationToken ct)
+    /// <summary>下载安装包到临时目录（progress：已读字节 / 总字节），返回本地路径。</summary>
+    public async Task<string> DownloadUpdateAsync(
+        PendingUpdate update, Action<long, long>? progress, CancellationToken ct)
     {
-        var mgr = CreateManager();
-        await mgr.DownloadUpdatesAsync(info, progress, ct).ConfigureAwait(false);
+        using var resp = await Http.GetAsync(
+            update.DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+        resp.EnsureSuccessStatusCode();
+        var total = resp.Content.Headers.ContentLength ?? update.SizeBytes;
+
+        var target = Path.Combine(Path.GetTempPath(), InstallerAssetName);
+        await using var http = await resp.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+        await using var file = new FileStream(
+            target, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16, useAsync: true);
+
+        var buffer = new byte[1 << 16];
+        long read = 0;
+        int n;
+        while ((n = await http.ReadAsync(buffer.AsMemory(0, buffer.Length), ct).ConfigureAwait(false)) > 0)
+        {
+            await file.WriteAsync(buffer.AsMemory(0, n), ct).ConfigureAwait(false);
+            read += n;
+            progress?.Invoke(read, total);
+        }
+
+        return target;
     }
 
-    /// <summary>应用更新并重启（Velopack 接管退出与替换，托盘/单实例随之重建）。</summary>
-    public void ApplyUpdateAndRestart(UpdateInfo info)
+    /// <summary>启动静默升级（/SILENT 同目录覆盖安装）；调用方随后退出应用，
+    /// 安装完成后由安装器自动重启 MailHelper。</summary>
+    public void InstallSilently(string installerPath)
     {
-        var mgr = CreateManager();
-        mgr.ApplyUpdatesAndRestart(info.TargetFullRelease);
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
+        {
+            UseShellExecute = true,
+            Arguments = "/SILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS",
+        });
     }
 
-    private static UpdateManager CreateManager() =>
-        new(new GithubSource(RepoUrl, accessToken: null, prerelease: false));
+    private static HttpClient CreateClient()
+    {
+        var client = new HttpClient { Timeout = TimeSpan.FromMinutes(15) };
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("MailHelper-Update");
+        return client;
+    }
 }

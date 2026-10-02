@@ -24,10 +24,6 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        // S15（08 §4.3）：Velopack 安装/更新钩子必须最先执行——钩子以本进程启动并在此退出；
-        // 未安装环境（源码/裸 exe）下为空操作
-        Velopack.VelopackApp.Build().Run();
-
         DispatcherUnhandledException += (_, args) =>
             WriteCrashLog("DispatcherUnhandled", args.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
@@ -45,6 +41,9 @@ public partial class App : Application
 
         _host = Bootstrapper.BuildHost();
         _host.Start();
+        // S17：静默升级启动安装器后经此回调关闭应用，安装器完成覆盖安装并自动重启
+        _host.Services.GetRequiredService<ViewModels.SettingsViewModel>()
+            .ShutdownCallback = Shutdown;
         // S14-C：类别目录先于 UI 就绪（分类栏/改判/规则编辑统一取自 CategoryCatalog）
         CategoryCatalog.RefreshAsync(
             _host.Services.GetRequiredService<ICategoryStore>()).GetAwaiter().GetResult();

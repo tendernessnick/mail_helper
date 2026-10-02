@@ -157,7 +157,7 @@
                         <TextBlock Text="{Binding UpdateStatus}" Margin="10,0,0,0" VerticalAlignment="Center"
                                    FontSize="11" Foreground="#6B6B6B" TextWrapping="Wrap" MaxWidth="360" />
                     </StackPanel>
-                    <TextBlock Text="更新通过 GitHub Releases 分发；仅接收正式版。开发模式（源码/裸 exe 运行）下不可用。"
+                    <TextBlock Text="更新经 GitHub Releases 分发，只接收正式版；完整安装包下载后静默升级并自动重启。开发模式（源码运行）下不可用。"
                                FontSize="11" Foreground="{StaticResource BrushTextTertiary}" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>

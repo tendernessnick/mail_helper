@@ -105,9 +105,11 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           "channel=$channel" >> $env:GITHUB_OUTPUT
           "pre=$pre"         >> $env:GITHUB_OUTPUT
+          "setupBase=MailHelper-$channel-Setup"       >> $env:GITHUB_OUTPUT
+          "portable=MailHelper-$channel-Portable.zip" >> $env:GITHUB_OUTPUT
           Write-Host "version=$version channel=$channel"
 
-      # 自包含（免装 .NET）；不用单文件——Velopack 以自身压缩格式分发，单文件自解压反而拖慢启动
+      # 自包含（免装 .NET）；不用单文件——安装器以自身压缩格式分发，单文件自解压反而拖慢启动
       - name: Publish (自包含 win-x64，版本随 tag/渠道注入)
         run: >
           dotnet publish src/MailHelper.App -c Release -r win-x64
@@ -115,61 +117,41 @@ jobs:
           -p:SelfContained=true
           -o artifacts/publish
 
-      - name: Pack (Velopack：Setup.exe + 便携 zip + 增量更新包)
+      - name: 便携包（发布目录整体压缩）
         shell: pwsh
         run: |
-          dotnet tool install -g vpk
-          vpk pack --packId MailHelper `
-            --packVersion ${{ steps.ver.outputs.version }} `
-            --packDir artifacts/publish `
-            --mainExe MailHelper.App.exe `
-            --icon src/MailHelper.App/Assets/app.ico `
-            --channel ${{ steps.ver.outputs.channel }} `
-            --outputDir artifacts/velopack
+          New-Item -ItemType Directory -Force artifacts/stage | Out-Null
+          Compress-Archive -Path 'artifacts/publish/*' -DestinationPath "artifacts/stage/${{ steps.ver.outputs.portable }}" -Force
 
-      - name: SHA256 校验清单（08 §4.4 无证书路径）
+      # Inno Setup 向导安装器（自选目录；中文向导语言文件随仓库分发）
+      - name: 编译安装包（Inno Setup）
         shell: pwsh
         run: |
-          Remove-Item artifacts/velopack/SHA256SUMS.txt -ErrorAction SilentlyContinue
-          Get-ChildItem artifacts/velopack -File | ForEach-Object {
-            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
-            "$hash  $($_.Name)" | Out-File artifacts/velopack/SHA256SUMS.txt -Append -Encoding utf8
-          }
+          choco install innosetup -y --no-progress
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "${env:ProgramFiles}\Inno Setup 6\ISCC.exe") |
+            Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw 'ISCC.exe not found' }
+          & $iscc "/DSetupOutputName=${{ steps.ver.outputs.setupBase }}" installer/MailHelper.iss
+          Copy-Item "artifacts/installer/${{ steps.ver.outputs.setupBase }}.exe" artifacts/stage/
 
-      # 上传为 GitHub Release：beta 标 pre-release；--merge 允许同版本重跑合并而非报错
-      # 注意 --publish/--pre/--merge 为无值开关（vpk 1.2.x System.CommandLine 风格）
-      - name: Upload to GitHub Releases
-        shell: pwsh
-        run: |
-          $vpkArgs = @(
-            'upload', 'github',
-            '--repoUrl', "https://github.com/${{ github.repository }}",
-            '--token', "${{ secrets.GITHUB_TOKEN }}",
-            '--channel', "${{ steps.ver.outputs.channel }}",
-            '--publish', '--merge',
-            '--releaseName', "MailHelper v${{ steps.ver.outputs.version }}",
-            '--tag', "v${{ steps.ver.outputs.version }}",
-            '--outputDir', 'artifacts/velopack'
-          )
-          if ('${{ steps.ver.outputs.pre }}' -eq 'true') { $vpkArgs += '--pre' }
-          vpk @vpkArgs
-
-      # vpk 只上传自家认识的文件：校验清单由本步追加为 Release 资产并写入 Release 说明
-      # （脚本先经本地真实 API 演练；重跑时 body 去重、同名资产跳过）
-      - name: Attach SHA256SUMS to Release
+      # 创建（或复用）Release：上传安装包/便携包 + SHA256 清单，说明 = CHANGELOG 小节 + 手册链接 + 校验和
+      - name: Publish to GitHub Releases
         shell: pwsh
         run: >
-          ./tools/attach-sums.ps1
+          ./tools/publish-release.ps1
           -Token "${{ secrets.GITHUB_TOKEN }}"
-          -Dir "artifacts/velopack"
           -Repo "${{ github.repository }}"
           -Tag "v${{ steps.ver.outputs.version }}"
+          -Version "${{ steps.ver.outputs.version }}"
+          -Prerelease "${{ steps.ver.outputs.pre }}"
+          -AssetsDir artifacts/stage
+          -ChangelogPath CHANGELOG.md
 
       # 仅当发布上传失败时保留本地产物用于排查
       - name: Upload release artifacts (失败排查用)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: velopack-${{ steps.ver.outputs.channel }}
-          path: artifacts/velopack
+          name: release-${{ steps.ver.outputs.channel }}
+          path: artifacts/stage
           if-no-files-found: error

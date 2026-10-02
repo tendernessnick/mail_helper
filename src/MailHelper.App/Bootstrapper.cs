@@ -107,6 +107,7 @@ internal static class Bootstrapper
                     sp.GetRequiredService<IAccountStore>(),
                     onSyncIntervalChanged: RestartPeriodicSync,
                     updates: sp.GetRequiredService<Updates.UpdateService>(),
+                    devMode: devMode,
                     setAutostartAsync: enabled =>
                     {
                         var autostart = new AutostartService(

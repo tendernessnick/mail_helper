@@ -37,7 +37,7 @@ MailHelper 自己不做邮箱登录。它读取你电脑上**经典版 Outlook**
 - 主题/发件人/正文全文搜索（`Ctrl+F`），配合「仅未读」清邮件
 - 分类不够用可以在设置里自建类别（名称 + 图标 + 颜色）
 - 关窗后缩到托盘继续同步，图标带未读数，可设开机自启
-- 设置里点「检查更新」，后台增量下载，点一下重启就装好
+- 设置里点「检查更新」，下载好新版安装包后静默升级，应用自动重启
 
 ## 安装
 
@@ -46,13 +46,13 @@ MailHelper 自己不做邮箱登录。它读取你电脑上**经典版 Outlook**
 
 要求 Windows 10 (19041+) 或 Windows 11。不用装 .NET（安装包自带）；WebView2 Runtime 系统一般都有，个别精简版 Win10 缺的话从[微软官网](https://developer.microsoft.com/microsoft-edge/webview2/)补。
 
-程序没买代码签名证书，首次运行 SmartScreen 会拦一下，点「更多信息 → 仍要运行」即可；介意的话先对照发布页 `SHA256SUMS.txt` 里的校验值。不想安装的话，同页也有免安装的 Portable zip，但更新要自己重新下载。
+安装走标准向导：欢迎页 → 隐私说明 → **安装位置（可自选）** → 附加任务（桌面快捷方式）→ 安装。默认装到 `%LocalAppData%\Programs\MailHelper`（当前用户目录，不需要管理员权限）。升级时在同一目录覆盖安装，数据和设置不受影响。
 
-安装器是一键式的，没有选目录的向导：默认装到 `%LocalAppData%\MailHelper`（当前用户目录，不需要管理员权限）。想装到别的位置，用命令行 `MailHelper-stable-Setup.exe --installto "D:\Apps\MailHelper"`，或者直接用便携版。
+程序没买代码签名证书，首次运行 SmartScreen 会拦一下，点「更多信息 → 仍要运行」即可；介意的话先对照发布页 `SHA256SUMS.txt` 里的校验值。不想安装的话，同页也有免安装的 Portable zip，但更新要自己重新下载。
 
 ## 更新
 
-设置 → 关于 → 检查更新。有新版本会自动在后台下载，点「重启并安装更新」完成升级，邮件数据和设置都保留。只会收到正式版。
+设置 → 关于 → 检查更新。发现新版本会自动在后台下载完整安装包（约 75MB），点「重启并安装更新」后静默完成升级并自动重启应用，邮件数据和设置都保留。只会收到正式版。
 
 ## 隐私
 
@@ -78,7 +78,7 @@ dotnet test MailHelper.sln -c Release
 
 ## 许可证
 
-[MIT](LICENSE)。用到的开源库：Velopack、CommunityToolkit.Mvvm、EF Core (SQLite)、Serilog、H.NotifyIcon.Wpf、WebView2。
+[MIT](LICENSE)。用到的开源库：CommunityToolkit.Mvvm、EF Core (SQLite)、Serilog、H.NotifyIcon.Wpf、WebView2；安装器由 Inno Setup 构建。
 
 觉得好用的话，给个 Star。
 

@@ -426,3 +426,17 @@ PROGRESS.md
 **质量**：全量测试 210/210 通过（移除认证/Graph/IMAP 用例 40 个）；0 警告 0 错误；UI 冒烟（含新 Onboarding 路径）通过
 
 **遗留**：语言字典 Strings 其余键无变化；ChannelKind 枚举保留 Graph/Imap 值仅作存量 DB 兼容，不再产生新记录
+
+### S17 —— 2026-10-02 安装向导回归（Inno Setup）+ 应用内更新改静默重装
+
+**决策**：用户要传统安装向导（自选目录）；Velopack 安装器为刻意一键式、无目录页（--instLocation 仅管 scope）→ 回归 Inno Setup，应用内更新改为下载完整安装包静默重装
+
+**完成项与证据**：
+- installer/MailHelper.iss：全中文向导（语言文件 ChineseSimplified.isl 随仓库分发——本机 Inno 自带的该文件内容竟是 404 页）；目录页默认 {localappdata}\Programs\MailHelper；WebView2 检测引导；卸载询问清数据；版本号经 GetVersionNumbersString 取自 publish 产物；/DSetupOutputName 支持 beta/stable 命名
+- UpdateService 重写：GitHub API releases/latest 查版（Version 比较，只认正式版）→ 安装包下载（字节进度）→ /SILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS 静默覆盖安装 → Inno [Run] 自动重启应用；Velopack 包与启动钩子移除
+- CI：vpk 全链路替换为「便携 Compress-Archive + ISCC 编译 + tools/publish-release.ps1（创建/复用 Release、按名替换资产、CHANGELOG 小节作说明、校验和内嵌）」；publish-release.ps1 兼容 PS5.1/pwsh7，DryRun 本地验证
+- 文档：README 安装/更新/开源库行、使用手册（向导流程/装到哪了/FAQ/更新节）、发布操作指南整体重写（S17 形态 + v0.5.0 迁移说明）
+
+**质量**：全量测试 210/210 通过；0 警告 0 错误；本地 ISCC 编译产物 MailHelper-stable-Setup.exe ≈74MB
+
+**迁移注意**：v0.5.0（Velopack 安装）用户的应用内更新找不到 0.6.0+（发布物无 Velopack 元数据），需从发布页手动装一次 v0.6.0；旧 Velopack 副本建议卸载（数据目录不受影响）

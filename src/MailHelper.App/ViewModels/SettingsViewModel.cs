@@ -1,12 +1,12 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MailHelper.Core;
 using MailHelper.Core.Abstractions;
 using MailHelper.Core.Domain;
 using MailHelper.Core.Services;
-using Velopack;
 
 namespace MailHelper.App.ViewModels;
 
@@ -18,22 +18,28 @@ public partial class SettingsViewModel : ObservableObject
     private readonly IAccountStore _accounts;
     private readonly Action<int> _onSyncIntervalChanged; // 周期循环热更新（FR-04）
     private readonly Updates.UpdateService _updates;
-    private UpdateInfo? _pendingUpdate; // 已下载待应用的更新（S15）
+    private readonly bool _devMode;
+    private string? _pendingInstallerPath; // 已下载待安装的更新包（S17）
 
     /// <summary>autostart 读写委托（App 层注入注册表实现，TC-020）。</summary>
     public Func<bool, Task>? SetAutostartAsync { get; init; }
+
+    /// <summary>静默升级启动后由 App 关闭应用；安装器完成覆盖安装并自动重启（S17）。</summary>
+    public Action? ShutdownCallback { get; set; }
 
     public SettingsViewModel(
         SettingsService settings,
         IAccountStore accounts,
         Action<int> onSyncIntervalChanged,
         Updates.UpdateService updates,
+        bool devMode = false,
         Func<bool, Task>? setAutostartAsync = null)
     {
         _settings = settings;
         _accounts = accounts;
         _onSyncIntervalChanged = onSyncIntervalChanged;
         _updates = updates;
+        _devMode = devMode;
         SetAutostartAsync = setAutostartAsync;
     }
 
@@ -42,7 +48,7 @@ public partial class SettingsViewModel : ObservableObject
     private string accountEmail = "—";
 
     [ObservableProperty]
-    private string channel = "Graph";
+    private string channel = "经典版 Outlook";
 
     [ObservableProperty]
     private string lastSync = "—";
@@ -84,7 +90,7 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private int bodyLimitMb = 2048;
 
-    // —— 关于/更新（S15，08 §4.3）——
+    // —— 关于/更新（S17，Inno 安装包路线）——
     [ObservableProperty]
     private string appVersion = Updates.UpdateService.CurrentVersion;
 
@@ -94,13 +100,13 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool isCheckingUpdate;
 
-    /// <summary>更新包已下载，展示「重启并安装」按钮。</summary>
+    /// <summary>更新包已下载，展示「重启并安装更新」按钮。</summary>
     [ObservableProperty]
     private bool updateReady;
 
-    /// <summary>源码/裸 exe 运行（非 Velopack 安装）时禁用入口。</summary>
+    /// <summary>开发模式（源码运行）下禁用入口。</summary>
     [ObservableProperty]
-    private bool canCheckUpdate = Updates.UpdateService.IsInstalled;
+    private bool canCheckUpdate;
 
     public async Task LoadAsync(CancellationToken ct)
     {
@@ -181,7 +187,7 @@ public partial class SettingsViewModel : ObservableObject
         _ = _settings.SetAutostartAsync(enabled, CancellationToken.None); // 04 §7：设置值与注册表同步
     }
 
-    /// <summary>检查更新（S15）：有新版即后台下载，完成后交由用户确认重启安装。</summary>
+    /// <summary>检查更新（S17）：有新版即后台下载完整安装包（字节进度），完成后交由用户确认静默升级。</summary>
     [RelayCommand]
     private async Task CheckUpdateAsync(CancellationToken ct)
     {
@@ -192,7 +198,7 @@ public partial class SettingsViewModel : ObservableObject
 
         IsCheckingUpdate = true;
         UpdateReady = false;
-        _pendingUpdate = null;
+        _pendingInstallerPath = null;
         UpdateStatus = "正在检查更新…";
         try
         {
@@ -203,14 +209,15 @@ public partial class SettingsViewModel : ObservableObject
                 return;
             }
 
-            UpdateStatus = $"发现新版本 v{info.TargetFullRelease.Version}，正在下载…";
-            await _updates.DownloadUpdateAsync(
+            UpdateStatus = $"发现新版本 v{info.Version}，正在后台下载…";
+            _pendingInstallerPath = await _updates.DownloadUpdateAsync(
                 info,
-                percent => UpdateStatus = $"正在下载更新… {percent}%",
+                (read, total) => UpdateStatus = total > 0
+                    ? $"正在下载更新… {read * 100 / total}%"
+                    : $"正在下载更新… {read / 1024 / 1024} MB",
                 CancellationToken.None); // 下载不随 UI 取消中断，进度照常汇报
-            _pendingUpdate = info;
             UpdateReady = true;
-            UpdateStatus = $"v{info.TargetFullRelease.Version} 已就绪，点击「重启并安装」完成更新";
+            UpdateStatus = $"v{info.Version} 已就绪，点「重启并安装更新」完成升级（自动重启应用）";
         }
         catch (Exception ex)
         {
@@ -223,13 +230,16 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
-    /// <summary>应用已下载的更新并重启（Velopack 接管退出/替换/拉起）。</summary>
+    /// <summary>启动静默升级：安装器同目录覆盖安装并自动重启应用，本进程随即退出。</summary>
     [RelayCommand]
     private void ApplyUpdate()
     {
-        if (_pendingUpdate is { } info)
+        if (_pendingInstallerPath is not { } path || !File.Exists(path))
         {
-            _updates.ApplyUpdateAndRestart(info);
+            return;
         }
+
+        _updates.InstallSilently(path);
+        ShutdownCallback?.Invoke();
     }
 }
