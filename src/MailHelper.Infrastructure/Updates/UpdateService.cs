@@ -5,9 +5,9 @@ using System.Text.Json;
 using MailHelper.Core.Abstractions;
 using MailHelper.Infrastructure.SystemIntegration;
 
-namespace MailHelper.App.Updates;
+namespace MailHelper.Infrastructure.Updates;
 
-/// <summary>应用内更新（S17，Inno 安装包路线）：更新源为 GitHub Releases。
+/// <summary>应用内更新（S17，Inno 安装包路线；MS2 自 App 迁入 Infrastructure 供共享 ViewModel 消费）：更新源为 GitHub Releases。
 /// 检查 = releases/latest 与当前程序集版本比较（只认正式版，预发布不推送）；
 /// 下载 = 安装包落临时目录（字节级进度）；应用 = IUpdateInstaller 策略
 /// （MS1 抽取：Windows=WindowsUpdateInstaller 静默重装；macOS 由 Avalonia 侧提供引导安装，docs/10 §9）。</summary>
@@ -19,8 +19,9 @@ public sealed class UpdateService
     private static readonly HttpClient Http = CreateClient();
     private readonly IUpdateInstaller _installer;
 
-    public UpdateService(IUpdateInstaller? installer = null) =>
-        _installer = installer ?? new WindowsUpdateInstaller();
+    /// <summary>installer 为平台策略必选注入（DI 注册 WindowsUpdateInstaller；macOS 由 Avalonia 侧提供，docs/10 §9）。</summary>
+    public UpdateService(IUpdateInstaller installer) =>
+        _installer = installer ?? throw new ArgumentNullException(nameof(installer));
 
     /// <summary>当前版本（AssemblyVersion，CI 以 tag 注入 -p:Version）。</summary>
     public static string CurrentVersion { get; } =

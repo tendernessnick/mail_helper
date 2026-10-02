@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Windows.Threading;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MailHelper.Core;
@@ -9,7 +9,7 @@ using MailHelper.Core.Domain;
 using MailHelper.Core.Services;
 using Microsoft.Extensions.Logging;
 
-namespace MailHelper.App.ViewModels;
+namespace MailHelper.ViewModels;
 
 /// <summary>邮件列表行（05 §3.2 中栏行结构：重要度色条/徽章、发件人、主题、摘要、时间、附件图标）。</summary>
 public partial class MailItemViewModel : ObservableObject
@@ -104,7 +104,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IAccountStore _accounts;
     private readonly IMailProvider _provider;
     private readonly ILogger<MainViewModel> _logger;
-    private readonly Dispatcher _dispatcher;
+    private readonly IMainThreadDispatcher _dispatcher;
     private readonly bool _devMode;
 
     private string? _accountId;
@@ -120,7 +120,8 @@ public partial class MainViewModel : ObservableObject
         IAccountStore accounts,
         IMailProvider provider,
         ILogger<MainViewModel> logger,
-        bool devMode)
+        bool devMode,
+        IMainThreadDispatcher dispatcher)
     {
         _sync = sync;
         _classifier = classifier;
@@ -132,7 +133,7 @@ public partial class MainViewModel : ObservableObject
         _accounts = accounts;
         _provider = provider;
         _logger = logger;
-        _dispatcher = Dispatcher.CurrentDispatcher;
+        _dispatcher = dispatcher;
         _devMode = devMode;
 
         RebuildCategories();
@@ -333,7 +334,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         var results = await _search.SearchAsync(SearchText.Trim(), 200, ct); // FR-13 语法搜索（S10）
-        await _dispatcher.InvokeAsync(() =>
+        await _dispatcher.InvokeOnMainThreadAsync(() =>
         {
             ReplaceMails(results);
             IsSearchMode = true;
@@ -364,7 +365,7 @@ public partial class MainViewModel : ObservableObject
     private async Task MarkReadAsync(string messageId, string category)
     {
         await _store.MarkReadAsync(messageId, CancellationToken.None);
-        await _dispatcher.InvokeAsync(() =>
+        await _dispatcher.InvokeOnMainThreadAsync(() =>
         {
             // 左栏未读数联动（「全部」+ 对应类别；待确认入口计数与此无关）
             foreach (var item in Categories.Where(c =>
@@ -394,7 +395,7 @@ public partial class MainViewModel : ObservableObject
         var unread = await _store.GetUnreadCountsAsync(_accountId, ct);
         var reviewCount = await _store.GetNeedsReviewCountAsync(_accountId, ClassificationService.DefaultReviewThreshold, ct);
 
-        await _dispatcher.InvokeAsync(() =>
+        await _dispatcher.InvokeOnMainThreadAsync(() =>
         {
             ReplaceMails(messages);
             UnreadTotal = unread.Values.Sum(); // 托盘角标（FR-14）
@@ -428,7 +429,7 @@ public partial class MainViewModel : ObservableObject
             await LoadInboxAsync(ct);
         }
 
-        await _dispatcher.InvokeAsync(() =>
+        await _dispatcher.InvokeOnMainThreadAsync(() =>
         {
             SelectedMail = Mails.FirstOrDefault(m => m.Id == messageId) ?? SelectedMail;
         });
@@ -445,7 +446,7 @@ public partial class MainViewModel : ObservableObject
 
     private void OnSyncStateChanged(SyncStateChangedEventArgs e)
     {
-        _dispatcher.BeginInvoke(() =>
+        _dispatcher.Post(() =>
         {
             SyncStatusText = e.NewState switch
             {

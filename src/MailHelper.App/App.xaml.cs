@@ -2,7 +2,7 @@ using System.IO;
 using System.Windows;
 using MailHelper.App.Notifications;
 using MailHelper.Core.Abstractions;
-using MailHelper.App.ViewModels;
+using MailHelper.ViewModels;
 using MailHelper.Core.Services;
 using MailHelper.Infrastructure.SystemIntegration;
 using Microsoft.Extensions.DependencyInjection;

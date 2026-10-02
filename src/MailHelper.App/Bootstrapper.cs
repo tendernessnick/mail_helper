@@ -1,5 +1,5 @@
 using System.IO;
-using MailHelper.App.ViewModels;
+using MailHelper.ViewModels;
 using MailHelper.Core;
 using MailHelper.App.Notifications;
 using MailHelper.Core.Abstractions;
@@ -11,6 +11,7 @@ using MailHelper.Infrastructure.Logging;
 using MailHelper.Infrastructure.Storage;
 using MailHelper.Infrastructure.Sync;
 using MailHelper.Infrastructure.SystemIntegration;
+using MailHelper.Infrastructure.Updates;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -42,12 +43,13 @@ internal static class Bootstrapper
         services.AddSingleton(MailHelperLogging.CreateFileLoggerFactory(paths.LogsDir));
         services.AddLogging(); // 复用上方注册的 Serilog ILoggerFactory（04 §6）
 
-        // —— 平台件（MS1：接口定义于 Core/Abstractions，Windows 实现于 Infrastructure）——
-        services.AddSingleton(_ => paths);
+        // —— 平台件（MS1 接口 + MS2 主线程调度器：Windows 实现注册于此，Avalonia 换实现）——
+        services.AddSingleton<IAppPaths>(_ => paths); // 显式接口类型：否则注册为具体类型，GetRequiredService<IAppPaths> 会炸
         services.AddSingleton(singleInstanceLock);
         services.AddSingleton<IAutoStarter>(_ => new AutostartService(
             @"Software\Microsoft\Windows\CurrentVersion\Run", "MailHelper"));
         services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>();
+        services.AddSingleton<IMainThreadDispatcher>(_ => WpfMainThreadDispatcher.CreateForCurrentThread()); // MS2：UI 线程构造（BuildHost 在 OnStartup 调用）；显式接口类型同上
 
         // —— 基础设施 ——
         services.AddSingleton(_ => new MailRepository(paths.DbPath));
@@ -101,7 +103,7 @@ internal static class Bootstrapper
 
         // —— 设置 / 规则管理 / 语言 / 更新（S9：FR-03/04/10、NFR-12；S15：08 §4.3）——
         services.AddSingleton<SettingsService>();
-        services.AddSingleton<Updates.UpdateService>();
+        services.AddSingleton<UpdateService>();
         services.AddSingleton(sp => new RuleManagementService(
             sp.GetRequiredService<IRulesStore>(),
             sp.GetRequiredService<RuleEngine>(),
@@ -118,7 +120,7 @@ internal static class Bootstrapper
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IAccountStore>(),
             onSyncIntervalChanged: RestartPeriodicSync,
-            updates: sp.GetRequiredService<Updates.UpdateService>(),
+            updates: sp.GetRequiredService<UpdateService>(),
             devMode: devMode,
             setAutostartAsync: enabled =>
             {
@@ -132,8 +134,9 @@ internal static class Bootstrapper
                     autostart.Disable();
                 }
 
-                return Task.CompletedTask;
-            }));
+                        return Task.CompletedTask;
+                    },
+                    writeCrashLog: App.WriteCrashLog));
 
         // —— UI ——
         services.AddSingleton(sp => new MainViewModel(
@@ -147,7 +150,8 @@ internal static class Bootstrapper
             sp.GetRequiredService<IAccountStore>(),
             sp.GetRequiredService<IMailProvider>(),
             sp.GetRequiredService<ILogger<MainViewModel>>(),
-            devMode));
+            devMode,
+            sp.GetRequiredService<IMainThreadDispatcher>()));
         services.AddSingleton<MainWindow>();
         services.AddSingleton<RulesPage>();
         services.AddSingleton<SettingsPage>();

@@ -1,3 +1,4 @@
+using MailHelper.ViewModels;
 using System.Windows;
 using MailHelper.Core;
 using MailHelper.Core.Domain;

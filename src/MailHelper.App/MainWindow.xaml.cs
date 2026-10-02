@@ -1,9 +1,9 @@
+using MailHelper.ViewModels;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using MailHelper.App.ViewModels;
 using MailHelper.Core.Abstractions;
 using Microsoft.Web.WebView2.Core;
 

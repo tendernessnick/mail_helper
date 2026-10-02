@@ -7,8 +7,9 @@ using MailHelper.Core;
 using MailHelper.Core.Abstractions;
 using MailHelper.Core.Domain;
 using MailHelper.Core.Services;
+using MailHelper.Infrastructure.Updates;
 
-namespace MailHelper.App.ViewModels;
+namespace MailHelper.ViewModels;
 
 /// <summary>设置页（FR-03/04/06、05 §3.4 五分组）：账户/同步/通知/外观/高级。
 /// 值变更即时写设置表；开机自启同步写注册表 Run 键（TC-020）；同步间隔变更重启周期循环（FR-04）。</summary>
@@ -17,7 +18,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly SettingsService _settings;
     private readonly IAccountStore _accounts;
     private readonly Action<int> _onSyncIntervalChanged; // 周期循环热更新（FR-04）
-    private readonly Updates.UpdateService _updates;
+    private readonly UpdateService _updates;
     private readonly bool _devMode;
     private string? _pendingInstallerPath; // 已下载待安装的更新包（S17）
 
@@ -27,13 +28,17 @@ public partial class SettingsViewModel : ObservableObject
     /// <summary>静默升级启动后由 App 关闭应用；安装器完成覆盖安装并自动重启（S17）。</summary>
     public Action? ShutdownCallback { get; set; }
 
+    /// <summary>崩溃日志委托（MS2：App 层注入，等价迁移前 App.WriteCrashLog 静态调用）。</summary>
+    public Action<string, Exception?>? WriteCrashLog { get; init; }
+
     public SettingsViewModel(
         SettingsService settings,
         IAccountStore accounts,
         Action<int> onSyncIntervalChanged,
-        Updates.UpdateService updates,
+        UpdateService updates,
         bool devMode = false,
-        Func<bool, Task>? setAutostartAsync = null)
+        Func<bool, Task>? setAutostartAsync = null,
+        Action<string, Exception?>? writeCrashLog = null)
     {
         _settings = settings;
         _accounts = accounts;
@@ -41,6 +46,7 @@ public partial class SettingsViewModel : ObservableObject
         _updates = updates;
         _devMode = devMode;
         SetAutostartAsync = setAutostartAsync;
+        WriteCrashLog = writeCrashLog;
     }
 
     // —— 账户（FR-03）——
@@ -92,7 +98,7 @@ public partial class SettingsViewModel : ObservableObject
 
     // —— 关于/更新（S17，Inno 安装包路线）——
     [ObservableProperty]
-    private string appVersion = Updates.UpdateService.CurrentVersion;
+    private string appVersion = UpdateService.CurrentVersion;
 
     [ObservableProperty]
     private string updateStatus = string.Empty;
@@ -222,7 +228,7 @@ public partial class SettingsViewModel : ObservableObject
         catch (Exception ex)
         {
             UpdateStatus = "检查更新失败，请确认网络后重试";
-            App.WriteCrashLog("CheckUpdate", ex);
+            WriteCrashLog?.Invoke("CheckUpdate", ex);
         }
         finally
         {

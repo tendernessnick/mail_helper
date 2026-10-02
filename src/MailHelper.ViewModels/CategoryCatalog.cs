@@ -1,7 +1,7 @@
 using MailHelper.Core;
 using MailHelper.Core.Abstractions;
 
-namespace MailHelper.App;
+namespace MailHelper.ViewModels;
 
 /// <summary>类别目录（S14-C/CHG-012）：内置七类 + 自定义类别的进程内缓存。
 /// 启动与类别变更后 Refresh；规则编辑/改判/分类栏统一从此取定义。</summary>
