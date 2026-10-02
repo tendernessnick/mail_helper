@@ -9,9 +9,9 @@
 | --- | --- |
 | 更新时间 | 2026-10-02 |
 | 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
-| 当前模块 | Mac 适配设计 **docs/10**（CHG-014）已产出，**停在检查点①等待用户批准**（批准前不写任何生产代码） |
-| 阻塞 | 检查点①（Mac 版总控指令）：docs/10 评审——**等待用户批准**；检查点②（Mac 真机验证包）与检查点③（Apple 证书）按 MS 进度在后续里程碑触发；无其他阻塞 |
-| 下一步 | 用户批准 CHG-014 → 登记 MS0~MS10 任务块 → MS0（CI macos job）→ MS1（平台抽象等价迁移）。**通道路线已唯一：本机经典版 Outlook/Outlook for Mac 登录态直读，无任何 Azure/OAuth 环节**（CHG-013 废弃 OAuth 通道，不再等待 ITSC，该项已从计划移除） |
+| 当前模块 | **MS0 进行中**（CI macos job + 平台边界检索）；docs/10 已获批，MS1–MS10 排队（见 §3.5） |
+| 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
+| 下一步 | MS0 双架构 CI 绿 → MS1 平台抽象等价迁移（feature/mac-platform）→ MS2 共享 ViewModel 合回 main → MS3 起按 §3.5 顺序推进 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -227,6 +227,67 @@
 
 **S14 六项自检**：① 0 警 0 错；② 250/250；③ 零新增依赖；④⑤ 日志红线复核（rule.saved 记类别 ID 非敏感）；⑥ CHG-012 登记完整、docs/ 零改动。
 
+## 3.5 Mac 阶段任务块（MS0–MS10；总控指令 Mac v1.1；分支 `feature/mac-platform`；设计基线 docs/10，CHG-014 已批准 2026-10-02）
+
+> 纪律：每个模块按「定位→计划→测试先行→实现→六项自检→运行验证→收尾」七步闭环；合回 main 前全量回归必须绿（基线 210）；Mac 行为证据=CI macos 真机执行或真机检查单，禁止以 Windows 本机运行宣称 Mac 功能完成。
+
+### MS0 适配设计与 CI（docs/10 §10/§15）
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS0-01 | 基线 | **完成** | git tag mac-baseline；全量 210/210 绿（Core 81 + Services 70 + Integration 59，Release）；首跑 UiSmoke 红灯=本机安装版实例占用全局互斥（环境冲突，已复跑确认） | 2026-10-02 |
+| T-MS0-02 | docs/10 获批 | **完成** | CHG-014 状态=已批准（用户 2026-10-02）；含三项权衡差异批准 | 检查点①通过 |
+| T-MS0-03 | 分支 | **完成** | feature/mac-platform 自 main(78c5a38) 拉出 | MS1/MS2 全程在此分支 |
+| T-MS0-04 | CI macos job | 进行中 | 见本次提交 | osx-arm64/osx-x64 矩阵：build+test（Mac.slnf 子集）+ publish 共享层（MS3 起换 App.Avalonia publish；MS9 加 bundle/DMG）；push 触发扩 feature/** |
+| T-MS0-05 | 平台边界机械检索 | 进行中 | tools/check-platform-boundary.ps1 + CI 步骤 | Core/Core.Services 禁：#if、System.Windows、Registry、COM Interop、osascript/AppleScript |
+| T-MS0-06 | 验证 | 待办 | 双架构 CI 绿（附 run 链接） | 门禁出口 |
+
+### MS1 平台抽象抽取（docs/10 §4；Windows 等价迁移）
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS1-01 | P-02 路径 | 待办 | — | IAppPaths：Bootstrapper/App.xaml.cs 双处硬编码收敛；Windows 路径逐字节不变 |
+| T-MS1-02 | P-03 单实例 | 待办 | — | ISingleInstanceLock：现 static SingleInstance 迁接口实现；语义不变（Mutex+ACL 管道） |
+| T-MS1-03 | P-04 自启动 | 待办 | — | IAutoStarter：AutostartService 实现接口；Bootstrapper 闭包改注入 |
+| T-MS1-04 | P-08 更新安装 | 待办 | — | IUpdateInstaller：UpdateService.InstallSilently 抽取策略；Inno 参数逐字保留 |
+| T-MS1-05 | DI 改造 | 待办 | — | Bootstrapper 注册四接口；App.xaml.cs 消费 ISingleInstanceLock |
+| T-MS1-06 | 验证 | 待办 | — | 全量回归绿 + UiSmoke 运行冒烟截图比对无变化；合回前置条件 |
+
+### MS2 共享 ViewModel（docs/10 ADR-006）—— 待办
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS2-01 | 共享工程 | 待办 | — | MailHelper.ViewModels（net8.0）：MainViewModel/RulesViewModel/SettingsViewModel 迁入；IMainThreadDispatcher 解除 WPF Dispatcher 依赖；阅读 HTML 构建共享化 |
+| T-MS2-02 | WPF 改引用 | 待办 | — | MailHelper.App 改引用共享工程；行为不变 |
+| T-MS2-03 | 验证 | 待办 | — | 等价重构：全量回归绿 + UiSmoke 截图比对；**合回 main**（main 必须仍能发布 Windows 版） |
+
+### MS3 Avalonia 骨架（docs/10 §7）—— 待办
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS3-01 | App 工程 | 待办 | — | MailHelper.App.Avalonia：Shell/导航/Fluent 主题资源字典（05 色卡映射）/双语资源复用 |
+| T-MS3-02 | 验证 | 待办 | — | Windows 运行截图比对 05 章；跨编译 publish osx-arm64 可行证据入 CI |
+
+### MS4 Mac 基础设施 + 通道骨架（docs/10 §6）—— 待办
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS4-01 | P-02/03/04 Mac 实现 | 待办 | — | MacAppPaths/MacSingleInstanceLock(UDS)/LaunchAgent 自启动 + 契约测试（CI macos 真机执行） |
+| T-MS4-02 | P-01 通道骨架 | 待办 | — | OutlookMacMailProvider + IAppleScriptRunner + 脚本资源化 + 假 osascript 测试先行（docs/10 §6.2 协议） |
+| T-MS4-03 | 真机检查单 | 待办 | — | tools/mac/real-mac-checklist 起步（§14 项 1–3） |
+
+### MS5 Avalonia 三栏主界面（docs/10 §5.1/§8.7）—— 待办：虚拟化列表/徽章色卡/四态/净化文本阅读窗格；headless 测试 + 截图比对。
+
+### MS6 通知与菜单栏 Mac（docs/10 §5.2/§5.3/§8.5）—— 待办：Avalonia TrayIcon 菜单/角标/osascript 通知去重/关窗常驻；单测 + 真机检查单。
+
+### MS7 功能对齐 —— 待办：待确认队列/纠正反馈/规则编辑器/设置/FTS 搜索在 Avalonia 落地（复用 Windows 同逻辑测试 + 截图）。
+
+### MS8 AppleScript 通道打磨（docs/10 §6.3–6.5）—— 待办：水位/分页限速/New Outlook 探测与引导/四类错误文案/SyncCoordinator 装配（DEV 可注入 Mac 假通道）；假 osascript 全场景 + CI 真机冒烟；真实邮箱列检查点②。
+
+### MS9 打包与分发（docs/10 §9）—— 待办：.app 组装/icns/DMG/codesign+notarytool 脚本/CI 集成/更新器 Mac 策略；CI 产物结构校验；真机安装列检查点②。
+
+### MS10 发布对齐（docs/10 §12/§14）—— 待办：08 章 mac 变体检查单、运维 FAQ mac 节（自动化权限/Gatekeeper/New Outlook/通知权限）、SHA256 校验、真机核对包汇总。
+
 ## 4. 变更提案（CHG，待用户批准；docs/ 本身不修改）
 
 | 编号 | 发现 | 处理建议 | 状态 |
@@ -243,7 +304,7 @@
 | CHG-010 | 04 §8.1「同步完成事件携带 newMails」：现有 `BatchSyncedEventArgs`（CHG-007）仅含计数，无邮件列表载体；且逐批通知会造成一轮多批的碎片化弹窗 | 提案 SyncCoordinator **追加** `SyncRoundCompleted` 事件（整轮成功推进断点后触发一次）：`SyncRoundCompletedEventArgs(NewMails, IsInitialRound, DurationMs)`——NewMails=本轮全部入库邮件（更新与新增一并交给 notification_log 去重，恰为 04 §8.4 的 NOT EXISTS 语义）；失败/取消轮不触发。既有事件与签名零改动。**已实施** | 已实施，待批准 |
 | CHG-011 | **落地路径调整（用户批准发起，2026-09-30）**：02 章 FR-02/EX-01 预案仅覆盖 Graph→IMAP 双 OAuth 通道；D-65 实况为 CityU 租户全局禁止用户同意，两条 OAuth 通道均被「需要管理员批准」拦截，且用户无 ITSC 管理员权限——预案未覆盖「本机已装经典 Outlook 且已登录」的第三条路 | 提案**追加** Outlook 桌面通道（`ChannelKind.OutlookDesktop`）：COM 晚绑定复用经典 Outlook 本机登录态读取收件箱（不发起任何 OAuth）；`IMailProvider` 追加默认方法 `GetAccountAddressAsync`（仅桌面通道实现）；连接流程按 `provider.Kind` 分支跳过 MSAL。docs/ 零改动；03 §5.4 断点/幂等语义、04 §4.1 增量契约以桌面等价物保持（见 D-66/D-67）。**已实施并经用户真机实测通过（2026-10-01）** | 已实施（用户发起），待归档 |
 | CHG-012 | **02 章附录 A「邮件七类别固定」**：用户验收后提出自定义类别需求（S13 汇报披露能力边界，用户确认扩展）；枚举形态无法承载用户运行期新增类别 | 类别升级为「类别注册表」：内置七 ID 不变（course/career/admin/finance/announce/subscription/other——DB 存量值/规则包/评估集完全兼容，零数据迁移），新增 categories 表承载用户自定义（名称/图标/颜色/排序），删除级联=邮件归其他+规则同删；docs/ 零改动。**已实施（2026-10-01，真机验证通过）** | 已实施（用户发起），待批准 |
-| CHG-014 | **Mac 平台适配（总控指令发起，2026-10-02）**：仓库演进为双平台单代码库；Mac 版通道=Outlook for Mac 经典版 AppleScript 直读（与 CHG-013 同理念，绕开租户 OAuth）；涉及新增 ADR-006（Avalonia 11 + 共享 ViewModel + WPF 冻结维护模式）、ADR-007（Mac 通道）、ADR-008（零原生依赖）、ChannelKind 追加 OutlookMac、FR-14 AC1「通知点击直达」在 Mac v1 不可达（osascript 无点击回传，已知差异）、阅读窗格 v1 改净化文本渲染、通知署名为脚本编辑器 | 设计基线 **docs/10-Mac平台适配设计.md**（差异矩阵 P-01~P-13、平台接口清单 IAppPaths/ISingleInstanceLock/IAutoStarter/IUpdateInstaller/IMainThreadDispatcher、AppleScript 协议与错误映射 MAC-001~005、CI macos job、真机检查单）。**待批准后**才写任何生产代码（检查点①，总控指令唯一强制等待点） | **待批准（检查点①）** |
+| CHG-014 | **Mac 平台适配（总控指令发起，2026-10-02）**：仓库演进为双平台单代码库；Mac 版通道=Outlook for Mac 经典版 AppleScript 直读（与 CHG-013 同理念，绕开租户 OAuth）；涉及新增 ADR-006（Avalonia 11 + 共享 ViewModel + WPF 冻结维护模式）、ADR-007（Mac 通道）、ADR-008（零原生依赖）、ChannelKind 追加 OutlookMac、FR-14 AC1「通知点击直达」在 Mac v1 不可达（osascript 无点击回传，已知差异）、阅读窗格 v1 改净化文本渲染、通知署名为脚本编辑器 | 设计基线 **docs/10-Mac平台适配设计.md**（差异矩阵 P-01~P-13、平台接口清单 IAppPaths/ISingleInstanceLock/IAutoStarter/IUpdateInstaller/IMainThreadDispatcher、AppleScript 协议与错误映射 MAC-001~005、CI macos job、真机检查单）。**已批准（2026-10-02，用户批准，检查点①通过；含三项权衡差异与通道路线确认=仅经典版 Outlook 直读）** | **已批准（检查点①通过）** |
 
 ## 5. 决策记录（文档未写明、自行拍板项，均有依据）
 

@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "MailHelper.sln",
+    "projects": [
+      "src\\MailHelper.Core\\MailHelper.Core.csproj",
+      "src\\MailHelper.Core.Services\\MailHelper.Core.Services.csproj",
+      "src\\MailHelper.Infrastructure\\MailHelper.Infrastructure.csproj",
+      "tests\\MailHelper.Core.Tests\\MailHelper.Core.Tests.csproj",
+      "tests\\MailHelper.Services.Tests\\MailHelper.Services.Tests.csproj"
+    ]
+  }
+}
