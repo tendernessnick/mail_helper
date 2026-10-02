@@ -1,7 +1,7 @@
 <UserControl x:Class="MailHelper.App.RulesPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="clr-namespace:MailHelper.App.ViewModels"
+             xmlns:vm="clr-namespace:MailHelper.ViewModels;assembly=MailHelper.ViewModels"
              xmlns:app="clr-namespace:MailHelper.App">
     <UserControl.Resources>
         <!-- UserControl 构造期解析 StaticResource：自带转换器实例（不能依赖 Window 资源） -->

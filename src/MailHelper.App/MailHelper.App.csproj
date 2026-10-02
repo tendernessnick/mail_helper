@@ -21,5 +21,6 @@
     <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />
     <ProjectReference Include="..\MailHelper.Core.Services\MailHelper.Core.Services.csproj" />
     <ProjectReference Include="..\MailHelper.Infrastructure\MailHelper.Infrastructure.csproj" />
+    <ProjectReference Include="..\MailHelper.ViewModels\MailHelper.ViewModels.csproj" /> <!-- MS2：共享 ViewModel（docs/10 ADR-006） -->
   </ItemGroup>
 </Project>

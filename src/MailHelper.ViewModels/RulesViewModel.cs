@@ -7,7 +7,7 @@ using MailHelper.Core.Domain;
 using MailHelper.Core.Rules;
 using MailHelper.Core.Services;
 
-namespace MailHelper.App.ViewModels;
+namespace MailHelper.ViewModels;
 
 /// <summary>规则列表行（05 §3.3 表格列；Enabled 编辑回调写回服务）。</summary>
 public partial class RuleRowViewModel : ObservableObject

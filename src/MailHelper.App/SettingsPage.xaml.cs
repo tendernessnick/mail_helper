@@ -1,8 +1,8 @@
+using MailHelper.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using MailHelper.Core;
 using MailHelper.Core.Abstractions;
-using MailHelper.App.ViewModels;
 
 namespace MailHelper.App;
 

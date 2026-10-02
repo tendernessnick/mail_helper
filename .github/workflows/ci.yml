@@ -7,7 +7,7 @@ name: ci
 # 版本唯一事实源 = git tag（stable）/ Directory.Build.props + 构建号（beta）。
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'feature/**' ]
     tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ main ]
@@ -27,6 +27,11 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+
+      # docs/10 §7 边界红线：Core/Core.Services 无平台专有代码、无条件编译、无 COM interop、无 AppleScript
+      - name: 平台边界检查
+        shell: pwsh
+        run: ./tools/check-platform-boundary.ps1
 
       - name: Restore
         run: dotnet restore MailHelper.sln
@@ -71,6 +76,63 @@ jobs:
         with:
           name: coverage
           path: '**/coverage.cobertura.xml'
+          if-no-files-found: error
+
+  macos-build-test:
+    # docs/10 §10（MS0）：Mac 子集 build+test+publish 双架构。
+    # MailHelper.Mac.slnf 排除 WPF App 与 net8.0-windows 集成测试（仅 Windows 可构建）；
+    # MS3 起 publish 换 App.Avalonia；MS9 追加 .app/DMG 组装（本阶段不做签名）。
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [ osx-arm64, osx-x64 ]
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: 平台边界检查
+        shell: pwsh
+        run: ./tools/check-platform-boundary.ps1
+
+      - name: Restore
+        run: dotnet restore MailHelper.Mac.slnf
+
+      # 0 警告红线同 Windows（TreatWarningsAsErrors 全仓生效）
+      - name: Build (Release)
+        run: dotnet build MailHelper.Mac.slnf -c Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test MailHelper.Mac.slnf -c Release --no-build
+          --logger "trx"
+
+      - name: 失败用例摘要
+        if: failure()
+        shell: pwsh
+        run: |
+          $names = Get-ChildItem -Recurse -Filter *.trx | ForEach-Object {
+            [xml]$x = Get-Content $_.FullName
+            $x.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' } | ForEach-Object { $_.testName }
+          } | Select-Object -Unique
+          ("### 失败用例 (macOS ${{ matrix.arch }})`n" + ($names | ForEach-Object { "- ❌ $_" } | Out-String)) | Out-File -Append $env:GITHUB_STEP_SUMMARY
+
+      # 共享层对目标 RID 的交叉编译/原生资产解析证据（SQLitePCLRaw osx 原生包等）；MS3 起改为 App.Avalonia
+      - name: Publish 共享层 (自包含 ${{ matrix.arch }})
+        run: >
+          dotnet publish MailHelper.Mac.slnf -c Release -r ${{ matrix.arch }}
+          -o artifacts/publish-mac-${{ matrix.arch }}
+
+      - name: Upload publish artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-mac-${{ matrix.arch }}
+          path: artifacts/publish-mac-${{ matrix.arch }}/
           if-no-files-found: error
 
   release:

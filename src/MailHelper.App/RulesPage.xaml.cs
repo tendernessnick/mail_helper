@@ -1,10 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
-using MailHelper.App.ViewModels;
 using MailHelper.Core;
 using MailHelper.Core.Domain;
 using MailHelper.Core.Rules;
 using MailHelper.Core.Services;
+using MailHelper.ViewModels;
 
 namespace MailHelper.App;
 

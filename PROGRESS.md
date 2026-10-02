@@ -7,11 +7,11 @@
 
 | 项 | 值 |
 | --- | --- |
-| 更新时间 | 2026-10-01 |
-| 里程碑 | **M3 RC→正式发布（S0~S12 全部完成）**；正式 Release 待 UAT |
-| 当前模块 | 全部开发模块完成；**真实邮箱端到端已达成**（CHG-011 Outlook 桌面通道，用户实测通过）；G1/G2/G5/G6 本地全绿，G3/G4 自动化部分完成，G7 UAT 待用户 |
-| 阻塞 | 检查点① **已完成**（2026-09-30：用户自助注册 CityU 单租户应用，ClientId/租户经环境变量注入，登录链路打通至授权页）；检查点② **实质达成**（2026-10-01：CHG-011 Outlook 桌面通道复用本机登录态，用户实测真实 CityU 邮箱同步+自动分类+阅读窗格全通过）；OAuth 通道（Graph/IMAP）仍阻于 RISK-01：CityU 租户全局禁止用户同意 → ITSC 管理员批准后可启用（邮件稿已交付，App ID 30ff03da-b63e-4f1d-a77b-b417ced67a9b）；③签名证书不阻塞 |
-| 下一步 | 用户侧：日常使用+改判教学+自定义类别实践 → S15 候选：深色主题/类别改名与图标编辑/安装包三步验证 + 完整 72h 长稳 → UAT（06 §9）→ 正式 Release；ITSC 批准后可选启用 Graph OAuth 通道 |
+| 更新时间 | 2026-10-02 |
+| 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
+| 当前模块 | **MM0 已收口**（MS0–MS2：设计获批/双架构 CI/平台抽象/共享 ViewModel，216/216 回归绿，已合回 main）；下一步 MS3 Avalonia 骨架 |
+| 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
+| 下一步 | MS3 Avalonia 骨架（Shell/导航/主题/双语）→ MS4 Mac 基础设施 + OutlookMacMailProvider 骨架 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -40,13 +40,23 @@
 - **处理记录**：2026-09-26 用户明确授权 winget 安装 → `winget install Microsoft.DotNet.SDK.8` 成功安装 8.0.425（安装日志：哈希验证通过、退出码 0）→ 随即完成 S0 全部自检。**已解除**。
 - **解除后动作**：会话恢复协议 → 验证 S0 → 进入 S1。
 
-### 2.3 检查点登记（等待用户输入）
+### 2.3 检查点登记
+
+**Windows 阶段（原总控指令）检查点——全部收口**：
 
 | 检查点 | 内容 | 状态 |
 | --- | --- | --- |
-| ① | Azure 多租户应用注册，回报 ClientId → 配置占位符【AZURE_CLIENT_ID】 | ⏳ 待用户（此前所有 Graph 相关代码仅基于 WireMock 与假令牌开发） |
-| ② | 真实学校测试账号：真实登录 / 真实增量同步 50 封 / 真实 IMAP 兜底连通 | ⏳ 待用户（M1 后期） |
-| ③ | 代码签名证书 | ❌ 未提供 → 按 08 章 §4.4 无证书路径（SHA256 + SmartScreen 指引），不阻塞发布 |
+| ① | Azure 应用注册（原 OAuth 路线） | **已废弃**（CHG-013 移除 OAuth 通道，整条路线不再需要；历史：2026-09-30 曾完成 CityU 单租户注册，2026-10-01 起落地改走 CHG-011 桌面通道） |
+| ② | 真实学校账号端到端 | **达成**（2026-10-01：CHG-011 桌面通道，用户实测真实 CityU 邮箱同步+自动分类+阅读窗格全通过） |
+| ③ | 代码签名证书 | 无证书路径（08 §4.4：SHA256 + SmartScreen 指引），不阻塞 |
+
+**Mac 阶段（现行总控指令 v1.1）检查点**：
+
+| 检查点 | 内容 | 状态 |
+| --- | --- | --- |
+| ① | docs/10-Mac平台适配设计（CHG-014）评审 | ⏳ **待用户批准**（唯一强制等待点；批准前不写生产代码） |
+| ② | Mac 真机验证包（用户提供已登录 Outlook for Mac 经典版的 Mac） | 待 MS2/MS8/MS9 交付检查单后执行 |
+| ③ | Apple Developer ID 证书与公证凭据 | 未提供则走未签名 DMG + Gatekeeper 首启指引，不阻塞 |
 
 ## 3. 任务清单（执行顺序按总控指令 S0–S12；括注 07 章 Sprint 映射）
 
@@ -217,6 +227,67 @@
 
 **S14 六项自检**：① 0 警 0 错；② 250/250；③ 零新增依赖；④⑤ 日志红线复核（rule.saved 记类别 ID 非敏感）；⑥ CHG-012 登记完整、docs/ 零改动。
 
+## 3.5 Mac 阶段任务块（MS0–MS10；总控指令 Mac v1.1；分支 `feature/mac-platform`；设计基线 docs/10，CHG-014 已批准 2026-10-02）
+
+> 纪律：每个模块按「定位→计划→测试先行→实现→六项自检→运行验证→收尾」七步闭环；合回 main 前全量回归必须绿（基线 210）；Mac 行为证据=CI macos 真机执行或真机检查单，禁止以 Windows 本机运行宣称 Mac 功能完成。
+
+### MS0 适配设计与 CI（docs/10 §10/§15）
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS0-01 | 基线 | **完成** | git tag mac-baseline；全量 210/210 绿（Core 81 + Services 70 + Integration 59，Release）；首跑 UiSmoke 红灯=本机安装版实例占用全局互斥（环境冲突，已复跑确认） | 2026-10-02 |
+| T-MS0-02 | docs/10 获批 | **完成** | CHG-014 状态=已批准（用户 2026-10-02）；含三项权衡差异批准 | 检查点①通过 |
+| T-MS0-03 | 分支 | **完成** | feature/mac-platform 自 main(78c5a38) 拉出，已推送 origin | MS1/MS2 全程在此分支 |
+| T-MS0-04 | CI macos job | **完成** | run [36986843084](https://github.com/tendernessnick/mail_helper/actions/runs/36986843084)：build-test（win）+ macos-build-test(osx-arm64) + macos-build-test(osx-x64) 全 success，release 正确 skip；本地 osx-arm64 交叉编译发布验证 `libe_sqlite3.dylib` 正确解析 | MailHelper.Mac.slnf 排除 WPF App 与 net8.0-windows 集成测试；push 触发扩 feature/** |
+| T-MS0-05 | 平台边界机械检索 | **完成** | tools/check-platform-boundary.ps1（UTF-8 BOM，与仓库 ps1 约定一致）；Windows job 与 macos job 双侧执行，当前 0 违规 | 检查项：#if 族/System.Windows/Registry/COM interop/osascript |
+| T-MS0-06 | 验证 | **完成** | 双架构 CI 绿（T-MS0-04 run 链接） | 门禁出口通过 |
+
+### MS1 平台抽象抽取（docs/10 §4；Windows 等价迁移）—— **已完成（2026-10-02）**
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS1-01 | P-02 路径 | **完成** | `IAppPaths`（Core/Abstractions/Platform.cs）+ `WindowsAppPaths`；Bootstrapper/App.xaml.cs 双处硬编码收敛；WindowsAppPathsTests 3/3（默认路径=迁移前硬编码逐字节一致锚点） | GetTempFilePath 供崩溃日志/阅读副本使用（现静态实现等价保留） |
+| T-MS1-02 | P-03 单实例 | **完成** | `WindowsSingleInstanceLock`（App/SingleInstance.cs 逐行等价迁移并删原文件）；WindowsSingleInstanceLockTests 3/3（ acquisitions/释放/SHOW 唤起） | mutexName/pipeName 可注入（AutostartService 先例）；记录语义边界：命名互斥同线程可重入，「第二实例失败」以跨进程为前提——测试以另一线程模拟 |
+| T-MS1-03 | P-04 自启动 | **完成** | `AutostartService : IAutoStarter`（逻辑零改动）；既有 AutostartServiceTests 2/2 保持绿 | Bootstrapper 闭包改经 DI 的 IAutoStarter |
+| T-MS1-04 | P-08 更新安装 | **完成** | `IUpdateInstaller` + `WindowsUpdateInstaller`（Inno 参数与 S17 逐字一致）；UpdateService.InstallSilently 改策略委托（1 行，编译期保证） | SettingsViewModel 签名零改动 |
+| T-MS1-05 | DI 改造 | **完成** | Bootstrapper.BuildHost(singleInstanceLock) 显式注入（抢占仍先于 BuildHost——第二实例不做 DB 初始化的时序等价保留）；App.xaml.cs 四处调用点换接口；ClearLocalData 改 IAppPaths.DataDir | static lambda 捕获限制以 RegisterServices 静态方法化解 |
+| T-MS1-06 | 验证 | **完成** | ① Release 构建 0 警 0 错；② 全量 **216/216 绿**（Core 81 + Services 70 + Integration 65，含新增 6 契约测试，既有 210 零删除零削弱）；③ 7 工程漏洞扫描 0；④ 平台边界检查 0 违规；⑤ 新代码零新增日志/错误路径（红线无涉）；⑥ docs/10 §4 接口表已更新为定稿签名；⑦ **Windows 版行为未被改变**——UiSmoke 真机冒烟全绿 + 截图比对（artifacts/screens/s6-inbox.png vs HEAD 基线）：三栏布局/色卡/字体/状态栏零变化，仅 DEV 种子时间漂移 | 中途红灯定性：a) 锁测试与 UiSmoke 抢全局互斥（测试设计缺陷，名称注入修复）；b) Serilog_WritesSyncCompletedToFile 负载偶发（隔离 3/3 绿、修复后全量绿、夹具为每测试唯一 GUID 目录） |
+
+### MS2 共享 ViewModel（docs/10 ADR-006）—— **已完成（2026-10-02）**
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS2-01 | 共享工程 | **完成** | MailHelper.ViewModels（net8.0）：Main/Rules/Settings 三 VM + CategoryCatalog 迁入（命名空间 MailHelper.ViewModels）；IMainThreadDispatcher 抽象 + WpfMainThreadDispatcher（App 层）；UpdateService 迁 Infrastructure/Updates（安装器必选注入，化解 CA1416）；SettingsViewModel 增 WriteCrashLog 委托（模式同 SetAutostartAsync） | UiSmoke 抓出 MS1 潜伏 bug：`AddSingleton(_ => paths)` 泛型推断注册为具体类型，IAppPaths 仅「一键清除」路径解析——已修为显式接口类型注册（同修 IMainThreadDispatcher） |
+| T-MS2-02 | WPF 改引用 | **完成** | App.csproj 引用共享工程；XAML×3 xmlns 更新；App 代码后置 usings 更新；Bootstrapper 注入 dispatcher | 行为不变：XAML 绑定/AutomationProperties.Name 零改动 |
+| T-MS2-03 | 验证 | **完成** | ① 构建 0 警 0 错（7→8 工程）；② 全量 **216/216 绿**；③ 漏洞扫描 0；④ 平台边界 0 违规；⑤ 无新增日志/错误路径；⑥ 接口与 docs/10 §4 定稿一致；⑦ **Windows 版行为未被改变**：UiSmoke 全绿 + 截图比对（MS2 vs MS1 基线）布局/色卡/字体零变化；CI run [36989550301](https://github.com/tendernessnick/mail_helper/actions/runs/36989550301) 全 success | MS1 的 CI 红灯（run 36988416202 windows Test 步骤）未在 MS2（含其全部内容）复现——判定为 CI 慢机 UiSmoke 时序性失败（历史同型：0d64a70/fffcd14/abd9442/a210d1a），非代码回归；持续观察 |
+
+### MS3 Avalonia 骨架（docs/10 §7）—— 待办
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS3-01 | App 工程 | 待办 | — | MailHelper.App.Avalonia：Shell/导航/Fluent 主题资源字典（05 色卡映射）/双语资源复用 |
+| T-MS3-02 | 验证 | 待办 | — | Windows 运行截图比对 05 章；跨编译 publish osx-arm64 可行证据入 CI |
+
+### MS4 Mac 基础设施 + 通道骨架（docs/10 §6）—— 待办
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS4-01 | P-02/03/04 Mac 实现 | 待办 | — | MacAppPaths/MacSingleInstanceLock(UDS)/LaunchAgent 自启动 + 契约测试（CI macos 真机执行） |
+| T-MS4-02 | P-01 通道骨架 | 待办 | — | OutlookMacMailProvider + IAppleScriptRunner + 脚本资源化 + 假 osascript 测试先行（docs/10 §6.2 协议） |
+| T-MS4-03 | 真机检查单 | 待办 | — | tools/mac/real-mac-checklist 起步（§14 项 1–3） |
+
+### MS5 Avalonia 三栏主界面（docs/10 §5.1/§8.7）—— 待办：虚拟化列表/徽章色卡/四态/净化文本阅读窗格；headless 测试 + 截图比对。
+
+### MS6 通知与菜单栏 Mac（docs/10 §5.2/§5.3/§8.5）—— 待办：Avalonia TrayIcon 菜单/角标/osascript 通知去重/关窗常驻；单测 + 真机检查单。
+
+### MS7 功能对齐 —— 待办：待确认队列/纠正反馈/规则编辑器/设置/FTS 搜索在 Avalonia 落地（复用 Windows 同逻辑测试 + 截图）。
+
+### MS8 AppleScript 通道打磨（docs/10 §6.3–6.5）—— 待办：水位/分页限速/New Outlook 探测与引导/四类错误文案/SyncCoordinator 装配（DEV 可注入 Mac 假通道）；假 osascript 全场景 + CI 真机冒烟；真实邮箱列检查点②。
+
+### MS9 打包与分发（docs/10 §9）—— 待办：.app 组装/icns/DMG/codesign+notarytool 脚本/CI 集成/更新器 Mac 策略；CI 产物结构校验；真机安装列检查点②。
+
+### MS10 发布对齐（docs/10 §12/§14）—— 待办：08 章 mac 变体检查单、运维 FAQ mac 节（自动化权限/Gatekeeper/New Outlook/通知权限）、SHA256 校验、真机核对包汇总。
+
 ## 4. 变更提案（CHG，待用户批准；docs/ 本身不修改）
 
 | 编号 | 发现 | 处理建议 | 状态 |
@@ -233,6 +304,7 @@
 | CHG-010 | 04 §8.1「同步完成事件携带 newMails」：现有 `BatchSyncedEventArgs`（CHG-007）仅含计数，无邮件列表载体；且逐批通知会造成一轮多批的碎片化弹窗 | 提案 SyncCoordinator **追加** `SyncRoundCompleted` 事件（整轮成功推进断点后触发一次）：`SyncRoundCompletedEventArgs(NewMails, IsInitialRound, DurationMs)`——NewMails=本轮全部入库邮件（更新与新增一并交给 notification_log 去重，恰为 04 §8.4 的 NOT EXISTS 语义）；失败/取消轮不触发。既有事件与签名零改动。**已实施** | 已实施，待批准 |
 | CHG-011 | **落地路径调整（用户批准发起，2026-09-30）**：02 章 FR-02/EX-01 预案仅覆盖 Graph→IMAP 双 OAuth 通道；D-65 实况为 CityU 租户全局禁止用户同意，两条 OAuth 通道均被「需要管理员批准」拦截，且用户无 ITSC 管理员权限——预案未覆盖「本机已装经典 Outlook 且已登录」的第三条路 | 提案**追加** Outlook 桌面通道（`ChannelKind.OutlookDesktop`）：COM 晚绑定复用经典 Outlook 本机登录态读取收件箱（不发起任何 OAuth）；`IMailProvider` 追加默认方法 `GetAccountAddressAsync`（仅桌面通道实现）；连接流程按 `provider.Kind` 分支跳过 MSAL。docs/ 零改动；03 §5.4 断点/幂等语义、04 §4.1 增量契约以桌面等价物保持（见 D-66/D-67）。**已实施并经用户真机实测通过（2026-10-01）** | 已实施（用户发起），待归档 |
 | CHG-012 | **02 章附录 A「邮件七类别固定」**：用户验收后提出自定义类别需求（S13 汇报披露能力边界，用户确认扩展）；枚举形态无法承载用户运行期新增类别 | 类别升级为「类别注册表」：内置七 ID 不变（course/career/admin/finance/announce/subscription/other——DB 存量值/规则包/评估集完全兼容，零数据迁移），新增 categories 表承载用户自定义（名称/图标/颜色/排序），删除级联=邮件归其他+规则同删；docs/ 零改动。**已实施（2026-10-01，真机验证通过）** | 已实施（用户发起），待批准 |
+| CHG-014 | **Mac 平台适配（总控指令发起，2026-10-02）**：仓库演进为双平台单代码库；Mac 版通道=Outlook for Mac 经典版 AppleScript 直读（与 CHG-013 同理念，绕开租户 OAuth）；涉及新增 ADR-006（Avalonia 11 + 共享 ViewModel + WPF 冻结维护模式）、ADR-007（Mac 通道）、ADR-008（零原生依赖）、ChannelKind 追加 OutlookMac、FR-14 AC1「通知点击直达」在 Mac v1 不可达（osascript 无点击回传，已知差异）、阅读窗格 v1 改净化文本渲染、通知署名为脚本编辑器 | 设计基线 **docs/10-Mac平台适配设计.md**（差异矩阵 P-01~P-13、平台接口清单 IAppPaths/ISingleInstanceLock/IAutoStarter/IUpdateInstaller/IMainThreadDispatcher、AppleScript 协议与错误映射 MAC-001~005、CI macos job、真机检查单）。**已批准（2026-10-02，用户批准，检查点①通过；含三项权衡差异与通道路线确认=仅经典版 Outlook 直读）** | **已批准（检查点①通过）** |
 
 ## 5. 决策记录（文档未写明、自行拍板项，均有依据）
 
@@ -305,7 +377,7 @@
 | D-65 | 检查点②实况（2026-09-30）：CityU 租户用户同意策略=全局禁止（Graph Mail.Read 与 IMAP scope 均提示「需要管理员批准」），RISK-01 触发且预案 1（自助注册单租户应用）不能独立解锁——预案未覆盖「注册放行/同意全禁」的组合 | 真实租户验证即为此暴露事实；结论：唯一合规解锁=ITSC 管理员批准（工单/邮件），已交付用户英文邮件稿；此事实应回写 02 章 EX-01/RISK-01 应急预案（列 CHG 候选，待用户批复） |
 | D-66 | Outlook 桌面通道断点=收件时间水位 `outlook://inbox?received={yyyyMMddTHHmmssZ}`（复用 delta_link 字段）；每轮拉取窗口回退 **24h 晚到窗口**（服务器推送延迟/离线期到达的旧邮件不漏），靠 EntryID 复合键 upsert 幂等防重；首轮断点为 null=全量 | COM 无 delta query 等价物；ReceivedTime 为单调近似水位——时间水位+回退窗口+幂等键三层兜底，语义对齐 03 §5.4 EX-05（断点损坏回退全量） |
 | D-67 | Outlook 桌面通道无远端删除感知（Outlook 删除的邮件本地缓存保留） | 与 IMAP 通道同等限制（03 §5.4 v1.0 明确接受：删除感知列 V1.x）；桌面通道删除同步无事件源，不做轮询比对 |
-| D-68 | **检查点②达成路径=CHG-011 桌面通道**（2026-10-01 用户实测：真实 CityU 邮箱连接→全量同步→自动分类→HTML 阅读窗格全通过）；Graph/IMAP OAuth 通道代码保留，ITSC 批准后经环境变量切换即可启用（D-64 注入机制不变） | RISK-01 的用户侧解法：不申请权限，复用用户已在 Outlook 完成的登录态；是 03 章 MOD-03「统一输出 RemoteMessage 流与 deltaLink」抽象的第三个实现，未破坏通道可切换性 |
+| D-68 | **检查点②达成路径=CHG-011 桌面通道**（2026-10-01 用户实测：真实 CityU 邮箱连接→全量同步→自动分类→HTML 阅读窗格全通过）；~~Graph/IMAP OAuth 通道代码保留，ITSC 批准后经环境变量切换即可启用（D-64 注入机制不变）~~ **【已被 CHG-013（2026-10-02）取代：OAuth 通道代码整体移除，唯一通道=经典版 Outlook 登录态】** | RISK-01 的用户侧解法：不申请权限，复用用户已在 Outlook 完成的登录态；是 03 章 MOD-03「统一输出 RemoteMessage 流与 deltaLink」抽象的第三个实现，未破坏通道可切换性 |
 | D-69 | SenderDomain 匹配语义=根域后缀匹配（`domain == pattern || domain.EndsWith("." + pattern)`） | 03 §5.3 未定义子域语义；真机实证 Canvas 经 `*.instructure.com` 投递域群发，精确相等会漏配；后缀拼界（evil-instructure.com）经测试锁定不误命中 |
 | D-70 | 内置规则包版本迁移（S13-B）：Settings 键 `rules.builtin.applied_version` 记录已应用版本；不一致时机器来源（classified_by≠'user'）邮件回炉重分类 + 断点清空触发全量重拉（顺带回填历史缺失的同步字段） | 04 §7 未定义规则升级语义；断点清空一举两得——规则重跑需要地址已修复的存量，而 COM 通道无 delta 概念只有时间水位；用户改判（EX-08）永不触碰 |
 | D-72 | 类别表示=字符串 ID 全链路（内置 ID 恒定小写；自定义 ID=custom-<8hex>）：Core 不依赖类别存储（RuleSetParser 仅校验内置 ID，自定义 ID 由上层 RuleManagementService/UI 依注册表管理）；删除类别语义=邮件归 other+规则同删（事务） | 枚举→string 的受控迁移；DB messages.category 本就 TEXT 存 ID（零数据迁移根因）；规则引擎投票/排序对类别字符串透明，不破坏 03 §5.3 语义 |
@@ -440,3 +512,23 @@ PROGRESS.md
 **质量**：全量测试 210/210 通过；0 警告 0 错误；本地 ISCC 编译产物 MailHelper-stable-Setup.exe ≈74MB
 
 **迁移注意**：v0.5.0（Velopack 安装）用户的应用内更新找不到 0.6.0+（发布物无 Velopack 元数据），需从发布页手动装一次 v0.6.0；旧 Velopack 副本建议卸载（数据目录不受影响）
+
+### MM0（MS0–MS2）—— 2026-10-02 收口：Mac 阶段基座就绪
+
+**完成项与证据**：
+- docs/10 获批（CHG-014，检查点①；用户同步确认通道路线=仅经典版 Outlook 直读，PROGRESS 过时 Azure 表述已清理）
+- MS0：mac-baseline tag；feature/mac-platform 分支；CI macos job 双架构绿（run 36986843084）；平台边界机械检索入 CI；MailHelper.Mac.slnf
+- MS1：平台抽象四接口落地（IAppPaths/ISingleInstanceLock/IAutoStarter/IUpdateInstaller），Windows 实现等价迁移（SingleInstance.cs 迁 Infrastructure 并删原文件）；+6 契约测试；216/216
+- MS2：MailHelper.ViewModels 共享工程（三 VM + CategoryCatalog）；IMainThreadDispatcher；UpdateService 迁 Infrastructure；WPF 改引用共享工程；216/216 + CI run 36989550301 全 success
+- 发现并修复：DI 泛型推断注册具体类型的潜伏 bug（UiSmoke 抓出）；记录 Windows 命名互斥同线程可重入语义边界
+
+**未完成项与原因**：无阻塞项；MS3 起按 §3.5 顺序推进（Avalonia 骨架为下一步）
+
+**与设计的偏差及处理**：
+- UpdateService 落点由 App 调整为 Infrastructure/Updates（共享 VM 需消费且不能违反 Core.Services 无 SDK 原则）——docs/10 §4 P-08「查版逻辑共享化」的落位细化，已回写文档
+- IAppPaths 成员以属性定稿（文档原为方法示意）——已回写 docs/10 §4
+- IMailProvider 的 OutlookMac 侧按计划在 MS4（本里程碑不涉及）
+
+**对 Windows 版的影响评估**：**无**。回归证据=全量 216/216（基线 210 零删除零削弱）+ UiSmoke 真机冒烟全绿 + 两次截图比对（MS1 vs v0.6.0 基线、MS2 vs MS1）布局/色卡/字体零变化 + CI windows job 绿（run 36989550301）
+
+**下一步计划**：MS3 Avalonia 骨架（App 工程/Shell 导航/Fluent 主题映射 05 色卡/双语资源复用；Windows 上运行截图比对）
