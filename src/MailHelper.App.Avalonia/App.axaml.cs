@@ -20,6 +20,9 @@ namespace MailHelper.App.Avalonia;
 public partial class App : Application
 {
     private ISingleInstanceLock? _instanceLock;
+
+    /// <summary>清除本地数据（FR-03 一键清除；WPF 同名语义）。</summary>
+    internal static Action? RequestClearLocalData { get; set; }
     private IHost? _host;
     private TrayIcon? _trayIcon;
     private CancellationTokenSource? _periodicSyncCts;
@@ -89,6 +92,8 @@ public partial class App : Application
 
             // 通知接线（04 §8 决策层复用；MS6 mac=OsascriptToastSender）
             WireNotifications();
+
+            RequestClearLocalData = ClearLocalDataAndExit;
 
             // 周期同步（FR-04）+ 设置页间隔热更新
             StartPeriodicSync();
@@ -230,6 +235,28 @@ public partial class App : Application
     {
         _periodicSyncCts?.Cancel(); // 旧循环取消优雅退出（S4 语义），新间隔即刻生效
         StartPeriodicSync();
+    }
+
+    /// <summary>FR-03 一键清除：停机 → 删数据目录 → 退出（WPF 等价；提示窗差异=直接退出，晨验可议）。</summary>
+    private void ClearLocalDataAndExit()
+    {
+        try
+        {
+            var dataDir = _host!.Services.GetRequiredService<IAppPaths>().DataDir;
+            _host.StopAsync().GetAwaiter().GetResult();
+            if (Directory.Exists(dataDir))
+            {
+                Directory.Delete(dataDir, recursive: true);
+            }
+        }
+        catch (IOException)
+        {
+        }
+        finally
+        {
+            _forceExit = true;
+            (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
+        }
     }
 
     private void ShutdownCore()

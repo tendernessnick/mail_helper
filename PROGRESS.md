@@ -9,9 +9,9 @@
 | --- | --- |
 | 更新时间 | 2026-10-02 |
 | 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
-| 当前模块 | **MS6 已完成**（托盘/角标/通知/关窗常驻/周期同步，259/259 全绿）；下一步 MS7 功能对齐 |
+| 当前模块 | **MS7 已完成**（规则编辑器/设置/待确认/搜索在 Avalonia 落地，260/260 全绿）；下一步 MS8 AppleScript 通道打磨 |
 | 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
-| 下一步 | MS7 功能对齐（规则编辑器/设置页/待确认队列/FTS 搜索在 Avalonia 落地） |
+| 下一步 | MS8 AppleScript 打磨（水位接线/错误文案/DEV 可注入 Mac 假通道/装配） |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -291,7 +291,15 @@
 
 ### MS6 通知与菜单栏 Mac（docs/10 §5.2/§5.3/§8.5）—— 待办：Avalonia TrayIcon 菜单/角标/osascript 通知去重/关窗常驻；单测 + 真机检查单。
 
-### MS7 功能对齐 —— 待办：待确认队列/纠正反馈/规则编辑器/设置/FTS 搜索在 Avalonia 落地（复用 Windows 同逻辑测试 + 截图）。
+### MS7 功能对齐 —— **已完成（2026-10-03）**
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS7-01 | FR-10 规则编辑器 | **完成** | RulesPage 完整化（列表/四类筛选/启停/删除/试跑预览）+ RuleEditWindow（类型/模式/类别/重要度建议/权重，与 WPF RuleEditDialog 同逻辑；内置规则禁编辑） | RulesViewModel/RuleManagementService 共享零改动 |
+| T-MS7-02 | FR-09/11 待确认+改判 | **完成** | 左栏「待确认」入口+计数徽章（MS5 已落）；改判菜单→ApplyCorrectionAsync→反馈规则生成（headless 断言） | — |
+| T-MS7-03 | FR-13 FTS 搜索 | **完成** | 顶栏搜索框 SearchCommand/ClearSearch + 仅未读 ToggleUnreadOnly（headless 断言过滤） | 复用 SearchService/FTS5 零改动 |
+| T-MS7-04 | FR-03 设置页 | **完成** | 五分组（账户/同步/通知/外观/高级）+ 检查更新（CanCheckUpdate/UpdateReady）+ 自定义类别管理（S14-C 直连 ICategoryStore）+ 清除本地数据（App.RequestClearLocalData 同名语义） | 属性 setter 即保存（VM 内 partial OnChanged，WPF 同构） |
+| T-MS7-05 | 验证 | **完成** | ① 0 警 0 错；② 全量 **260/260**（34+81+70+9+65，5 程序集全绿）；③ 漏洞 0；④ 边界 0 违规；⑤ 无新增日志面；⑥ 行为与 Windows 版一致（VM 共享+API 镜像核对）；⑦ WPF 零改动 | **帧截图** artifacts/screens/avalonia/ms7-{rules,settings}.png |
 
 ### MS8 AppleScript 通道打磨（docs/10 §6.3–6.5）—— 待办：水位/分页限速/New Outlook 探测与引导/四类错误文案/SyncCoordinator 装配（DEV 可注入 Mac 假通道）；假 osascript 全场景 + CI 真机冒烟；真实邮箱列检查点②。
 
