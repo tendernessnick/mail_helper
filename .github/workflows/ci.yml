@@ -145,18 +145,28 @@ jobs:
           } | Select-Object -Unique
           ("### 失败用例 (macOS ${{ matrix.arch }})`n" + ($names | ForEach-Object { "- ❌ $_" } | Out-String)) | Out-File -Append $env:GITHUB_STEP_SUMMARY
 
-      # MS3 起：publish 换 Avalonia App（双架构自包含 = .app/DMG 的载荷基础；MS9 追加 bundle 组装）
+      # MS3 起：publish 换 Avalonia App（双架构自包含 = .app/DMG 的载荷基础）
       - name: Publish App.Avalonia (自包含 ${{ matrix.arch }})
         run: >
           dotnet publish src/MailHelper.App.Avalonia -c Release -r ${{ matrix.arch }}
           -p:SelfContained=true
           -o artifacts/publish-mac-${{ matrix.arch }}
 
-      - name: Upload publish artifacts
+      # MS9：.app 组装 + DMG（无证书路径：CODESIGN_IDENTITY 缺省跳过签名；公证属检查点③）
+      - name: 组装 .app 与 DMG (${{ matrix.arch }})
+        run: |
+          chmod +x tools/mac/*.sh
+          VERSION="$(grep -o '<Version>[^<]*' Directory.Build.props | head -1 | cut -d'>' -f2)-beta.${GITHUB_RUN_NUMBER}"
+          ./tools/mac/bundle.sh artifacts/publish-mac-${{ matrix.arch }} artifacts/app-${{ matrix.arch }} "$VERSION"
+          ./tools/mac/make-dmg.sh artifacts/app-${{ matrix.arch }} "artifacts/MailHelper-beta-osx-${{ matrix.arch }}.dmg"
+          test -d "artifacts/app-${{ matrix.arch }}/MailHelper.app/Contents/MacOS"
+          echo "bundle+DMG OK (${{ matrix.arch }})"
+
+      - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
-          name: publish-mac-${{ matrix.arch }}
-          path: artifacts/publish-mac-${{ matrix.arch }}/
+          name: MailHelper-dmg-${{ matrix.arch }}
+          path: artifacts/MailHelper-beta-osx-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
   release:

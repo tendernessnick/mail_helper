@@ -1,11 +1,34 @@
+using System.Diagnostics;
 using MailHelper.Core.Abstractions;
 
 namespace MailHelper.Infrastructure.SystemIntegration;
 
-/// <summary>IUpdateInstaller Mac 占位（MS4）：真实实现=「引导下载 DMG 手动安装」随 MS9 落地（docs/10 §9，
-/// 自动更新列后续）。解析即抛——Mac 侧更新动作在 MS9 前不应被触发（Avalonia 设置页 MS7 前为占位页）。</summary>
-public sealed class MacUpdateInstallerPending : IUpdateInstaller
+/// <summary>IUpdateInstaller macOS 实现（MS9，docs/10 §9）：挂载已下载的 DMG 引导手动安装
+/// （拖入 Applications；自动更新列后续）。open 调用可注入（契约测试）。</summary>
+public sealed class MacUpdateInstaller : IUpdateInstaller
 {
-    public void Install(string localPackagePath) =>
-        throw new PlatformNotSupportedException("Mac 更新安装随 MS9 落地（docs/10 §9：引导下载 DMG 手动安装）");
+    private readonly Action<string> _open;
+
+    public MacUpdateInstaller(Action<string>? openDmg = null) =>
+        _open = openDmg ?? OpenWithFinder;
+
+    public void Install(string localPackagePath)
+    {
+        if (!File.Exists(localPackagePath))
+        {
+            throw new FileNotFoundException("更新包不存在", localPackagePath);
+        }
+
+        _open(localPackagePath); // 挂载 DMG；用户拖入 Applications 完成安装（发布页/FAQ 引导）
+    }
+
+    private static void OpenWithFinder(string path)
+    {
+        var psi = new ProcessStartInfo("open")
+        {
+            ArgumentList = { path },
+            UseShellExecute = false,
+        };
+        Process.Start(psi);
+    }
 }
