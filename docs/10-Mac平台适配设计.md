@@ -308,3 +308,43 @@ jobs:
 | MS8 | AppleScript 通道打磨（水位/探测/错误文案/装配接入） | §6 |
 | MS9 | 打包分发（.app/DMG/icns/签名脚本/CI 集成/更新器 Mac 策略） | §9 |
 | MS10 | 发布对齐（08 章 mac 变体检查单、FAQ mac 节、SHA256、核对包汇总） | §12/§14 |
+
+---
+
+## 16. Mac 版发布检查单与运维 FAQ（MS10；08 章 mac 变体）
+
+### 16.1 发布检查单（mac 变体，逐项自测后发布）
+
+| # | 项 | 说明 | 状态位 |
+| --- | --- | --- | --- |
+| 1 | 双架构 CI 全绿（build/test/publish/bundle/DMG） | windows build-test + macos arm64/x64 全 success | ☐ |
+| 2 | 既有回归全绿（Windows 基线 210 + 全部新增） | 合并前全量 262+ | ☐ |
+| 3 | DMG 结构核对 | `plutil -lint Info.plist`（bundle.sh 内建）+ artifact 下载验证 | ☐ |
+| 4 | SHA256 清单 | `tools/mac/verify-release.sh <产物目录>` 生成并随发布上传 | ☐ |
+| 5 | Gatekeeper 首启指引（无证书路径） | 发布说明附「右键打开」图文；有证书时公证后无此项 | ☐（检查点③） |
+| 6 | CHANGELOG mac 小节 | 用户可读（macOS 支持公告、已知差异三条：阅读窗格净化渲染/通知署名/无点击直达） | ☐ |
+| 7 | 运维 FAQ mac 节 | 见 16.2 | ☐ |
+| 8 | 真机核对包（§14 十项） | 检查点②执行并回填里程碑报告 | ☐ |
+
+### 16.2 运维 FAQ（mac 节；使用手册 mac 版同源）
+
+| 症状 | 可能原因 | 处理 |
+| --- | --- | --- |
+| 首次连接弹「MailHelper 想要控制 Outlook」 | macOS 自动化权限（TCC）首次触发 | 点「好」；若曾拒绝：系统设置 → 隐私与安全性 → 自动化 → 勾选 Outlook |
+| 连接报「检测到新版 Outlook for Mac」 | 新版界面无脚本字典 | Outlook 菜单 → 勾选「旧版 Outlook」(Legacy Outlook) → 重启 Outlook → 重试 |
+| 收不到通知 | 通知归属「脚本编辑器」（osascript 已知差异） | 系统设置 → 通知 → 脚本编辑器 → 允许；通知点击不直达邮件为已知限制 |
+| 打开 DMG 提示「无法验证开发者」 | 未签名（无证书路径） | 右键 MailHelper.app → 打开 → 再点打开；或系统设置放行（有公证后消失） |
+| 开机未自启 | LaunchAgent 未注册 | 设置 → 高级 → 重新勾选「开机自启动」（`~/Library/LaunchAgents/com.mailhelper.app.plist`） |
+| 阅读窗格无图/样式简朴 | v1 净化文本渲染（无脚本/无远程图片，隐私优先） | 需看原文：邮件在 Outlook 中打开原链；官方 WebView 渲染为后续评估项 |
+
+### 16.3 产物与校验
+
+- DMG：`MailHelper-<channel>-osx-arm64.dmg` / `MailHelper-<channel>-osx-x64.dmg`（CI macos job 产物）。
+- 校验：`tools/mac/verify-release.sh <目录>` 生成 `SHA256SUMS.txt` 并随 Release 上传；用户侧 `shasum -a 256 -c` 校验。
+- 签名/公证（检查点③）：`bundle.sh` 传 `CODESIGN_IDENTITY` 即签名；公证 `notarytool submit` + `stapler staple` 后补入 make-dmg.sh 标注位。
+
+### 16.4 已知差异（发布说明必须如实列出）
+
+1. 阅读窗格为净化文本渲染（不加载远程图片/脚本；原文经「在 Outlook 中打开」）。
+2. 系统通知署名为「脚本编辑器」，点击通知不直达邮件。
+3. 需要经典版 Outlook 界面（新版 Outlook 无脚本字典，§6.4 引导切换）。
