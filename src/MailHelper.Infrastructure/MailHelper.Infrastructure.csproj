@@ -17,6 +17,8 @@
   <ItemGroup>
     <!-- 预置规则包（04 §7：随包分发的只读层，独立于代码可更新） -->
     <None Include="Rules\rules.builtin.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- AppleScript 资源随产物分发（MS4，docs/10 §6.1：脚本资源化 + osascript 进程执行） -->
+    <None Include="Sync\AppleScript\*.applescript" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />

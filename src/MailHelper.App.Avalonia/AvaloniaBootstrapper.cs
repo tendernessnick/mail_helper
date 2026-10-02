@@ -9,6 +9,7 @@ using MailHelper.Core.Services.Rules;
 using MailHelper.Infrastructure.Logging;
 using MailHelper.Infrastructure.Storage;
 using MailHelper.Infrastructure.Sync;
+using MailHelper.Infrastructure.Sync.OutlookMac;
 using MailHelper.Infrastructure.SystemIntegration;
 using MailHelper.Infrastructure.Updates;
 using MailHelper.ViewModels;
@@ -35,34 +36,41 @@ internal static class AvaloniaBootstrapper
 
     private static void RegisterServices(IServiceCollection services, ISingleInstanceLock singleInstanceLock)
     {
-        // 平台件 OS 分支立桩（docs/10 §8.2；MS4 落地 Mac 实现后改为双分支装配）：
-        // MS3 骨架仅支持 Windows 预览运行；osx 双架构为交叉编译发布证据，不在 Mac 上运行
-        if (!OperatingSystem.IsWindows())
+        var devMode = Environment.GetEnvironmentVariable("MAILHELPER_DEV") == "1";
+        var dataDirOverride = Environment.GetEnvironmentVariable("MAILHELPER_DATA_DIR");
+
+        // —— 平台件 OS 分支（docs/10 §4 P-02/03/04；MS4 展开为真实双分支）——
+        IAppPaths paths;
+        IAutoStarter autostart;
+        IUpdateInstaller updateInstaller;
+        if (OperatingSystem.IsWindows())
         {
-            throw new PlatformNotSupportedException(
-                "MailHelper（Avalonia）当前仅支持 Windows 预览；macOS 平台件随 MS4 落地（docs/10 §4 P-02/03/04）");
+            paths = new WindowsAppPaths(dataDirOverride);
+            autostart = new AutostartService(@"Software\Microsoft\Windows\CurrentVersion\Run", "MailHelper");
+            updateInstaller = new WindowsUpdateInstaller();
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            paths = new MacAppPaths(dataDirOverride);
+            autostart = new LaunchAgentAutoStart(Environment.ProcessPath
+                ?? throw new InvalidOperationException("无法定位当前进程可执行文件"));
+            updateInstaller = new MacUpdateInstallerPending(); // MS9：引导下载 DMG（docs/10 §9）
+        }
+        else
+        {
+            throw new PlatformNotSupportedException("MailHelper 支持 Windows 与 macOS");
         }
 
-        RegisterWindowsServices(services, singleInstanceLock);
-    }
-
-    [SupportedOSPlatform("windows")]
-    private static void RegisterWindowsServices(IServiceCollection services, ISingleInstanceLock singleInstanceLock)
-    {
-        var devMode = Environment.GetEnvironmentVariable("MAILHELPER_DEV") == "1";
-        var paths = new WindowsAppPaths(Environment.GetEnvironmentVariable("MAILHELPER_DATA_DIR"));
         Directory.CreateDirectory(paths.DataDir);
-
         MailDatabase.EnsureReady(paths.DbPath);
         services.AddSingleton(MailHelperLogging.CreateFileLoggerFactory(paths.LogsDir));
         services.AddLogging();
 
-        // —— 平台件（与 WPF 版同名接口；Avalonia 主线程调度器为本 UI 实现）——
-        services.AddSingleton<IAppPaths>(_ => paths);
+        // —— 平台件 ——
+        services.AddSingleton(_ => paths);
         services.AddSingleton(singleInstanceLock);
-        services.AddSingleton<IAutoStarter>(_ => new AutostartService(
-            @"Software\Microsoft\Windows\CurrentVersion\Run", "MailHelper")); // MS4：mac=LaunchAgent
-        services.AddSingleton<IUpdateInstaller, WindowsUpdateInstaller>(); // MS9：mac=引导下载 DMG
+        services.AddSingleton(_ => autostart);
+        services.AddSingleton(_ => updateInstaller);
         services.AddSingleton<IMainThreadDispatcher>(_ => new AvaloniaMainThreadDispatcher());
 
         // —— 基础设施（与 WPF 版逐项一致）——
@@ -76,14 +84,33 @@ internal static class AvaloniaBootstrapper
         services.AddSingleton<ICategoryStore>(sp => sp.GetRequiredService<CategoryStore>());
         services.AddSingleton<IBodyCache>(_ => new BodyCacheStore(paths.BodiesDir));
 
-        // —— 通道（CHG-013 唯一通道；DEV 假通道带种子数据；MS8 增 OutlookMac 假通道注入点）——
-        services.AddSingleton<IMailProvider>(sp => devMode
-            ? DevSeed.BuildMailProvider()
-            : new OutlookDesktopMailProvider(
-                new OutlookComMailSource(),
-                sp.GetRequiredService<IBodyCache>(),
-                cacheAccountKey: "acc-1",
-                sp.GetRequiredService<ILogger<OutlookDesktopMailProvider>>()));
+        // —— 通道（CHG-013 唯一通道；DEV 假通道带种子数据）——
+        // 平台分支：Win=COM 直读经典 Outlook / mac=AppleScript 直读 Outlook for Mac（docs/10 ADR-007）
+        services.AddSingleton<IMailProvider>(sp =>
+        {
+            if (devMode)
+            {
+                return DevSeed.BuildMailProvider();
+            }
+
+            if (OperatingSystem.IsWindows())
+            {
+                return new OutlookDesktopMailProvider(
+                    new OutlookComMailSource(),
+                    sp.GetRequiredService<IBodyCache>(),
+                    cacheAccountKey: "acc-1",
+                    sp.GetRequiredService<ILogger<OutlookDesktopMailProvider>>());
+            }
+
+            if (OperatingSystem.IsMacOS())
+            {
+                return new OutlookMacMailProvider(
+                    new OsascriptScriptRunner(),
+                    cacheAccountKey: "acc-1");
+            }
+
+            throw new PlatformNotSupportedException("MailHelper 支持 Windows 与 macOS");
+        });
 
         // —— 规则与分类 ——
         services.AddSingleton(_ => LoadRuleEngine(paths.DbPath));

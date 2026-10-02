@@ -21,24 +21,34 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // 单实例（EX-TC-07 等价语义，MS3 预览形态）：独立于 WPF 版的互斥名称——同机并行开发期两 UI 不互抢；
-            // MS4 起 Windows 沿用本实现、macOS 换 UDS（socket 落数据目录，docs/10 §8.2）
-            if (!OperatingSystem.IsWindows())
+            // 单实例（EX-TC-07 等价语义；docs/10 §8.2）：Win=命名 Mutex+管道（预览用独立名，不与 WPF 安装版互抢）；
+            // mac=UDS 文件锁（socket 落数据目录 → MAILHELPER_DATA_DIR 隔离即测试隔离）
+            ISingleInstanceLock instanceLock;
+            if (OperatingSystem.IsWindows())
             {
-                throw new PlatformNotSupportedException(
-                    "MailHelper（Avalonia）当前仅支持 Windows 预览；macOS 平台件随 MS4 落地（docs/10 §4）");
+                instanceLock = new WindowsSingleInstanceLock(
+                    "Local\\MailHelper-Avalonia-SingleInstance", "MailHelper-Avalonia-SingleInstance-Pipe");
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                instanceLock = new MacSingleInstanceLock(
+                    MacSingleInstanceLock.DefaultSocketPath(new MacAppPaths(
+                        Environment.GetEnvironmentVariable("MAILHELPER_DATA_DIR")).DataDir));
+            }
+            else
+            {
+                throw new PlatformNotSupportedException("MailHelper 支持 Windows 与 macOS");
             }
 
-            _instanceLock = new WindowsSingleInstanceLock(
-                "Local\\MailHelper-Avalonia-SingleInstance", "MailHelper-Avalonia-SingleInstance-Pipe");
-            if (!_instanceLock.TryAcquireFirst())
+            if (!instanceLock.TryAcquireFirst())
             {
-                _instanceLock.NotifyRunningInstance();
+                instanceLock.NotifyRunningInstance();
                 desktop.Shutdown();
                 base.OnFrameworkInitializationCompleted();
                 return;
             }
 
+            _instanceLock = instanceLock;
             _host = AvaloniaBootstrapper.BuildHost(_instanceLock);
             _host.Start();
 

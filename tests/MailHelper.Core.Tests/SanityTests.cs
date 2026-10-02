@@ -36,7 +36,7 @@ public class SanityTests
     public void ChannelAndChangeKindsMatchSpecification()
     {
         Enum.GetValues<ChannelKind>().Should().BeEquivalentTo(
-            new[] { ChannelKind.Graph, ChannelKind.Imap, ChannelKind.OutlookDesktop }); // CHG-011 桌面通道
+            new[] { ChannelKind.Graph, ChannelKind.Imap, ChannelKind.OutlookDesktop, ChannelKind.OutlookMac }); // CHG-011 桌面通道 + CHG-014 Mac 通道（只追加不重排，存量库兼容）
         Enum.GetValues<ChangeKind>().Should().BeEquivalentTo(new[]
         {
             ChangeKind.Added, ChangeKind.Updated, ChangeKind.Removed,

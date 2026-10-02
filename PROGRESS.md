@@ -9,9 +9,9 @@
 | --- | --- |
 | 更新时间 | 2026-10-02 |
 | 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
-| 当前模块 | **MS3 已完成**（Avalonia 骨架：三栏 Shell/主题/导航，截图比对 05 章通过，osx-arm64 跨编译发布成功，216/216×3 轮）；下一步 MS4 Mac 基础设施 + OutlookMacMailProvider 骨架 |
+| 当前模块 | **MS4 已完成**（Mac 平台件三实现 + OutlookMacMailProvider 骨架 + 假 osascript 全场景 32 测试，248/248 全绿）；下一步 MS5 Avalonia 三栏主界面 |
 | 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
-| 下一步 | MS4 Mac 基础设施（MacAppPaths/UDS 锁/LaunchAgent）+ OutlookMacMailProvider 骨架（假 osascript 测试先行） |
+| 下一步 | MS5 Avalonia 三栏主界面（虚拟化列表/徽章色卡/四态/净化文本阅读窗格，headless 测试） |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -271,13 +271,14 @@
 | T-MS3-04 | 验证 | **完成** | ① 构建 0 警 0 错（9 工程）；② 全量 **216/216 × 连续三轮**；③ 漏洞扫描 0（含 Avalonia 新依赖）；④ 边界 0 违规；⑤ 无新增日志/错误路径；⑥ 与 docs/10 §7 结构一致；⑦ **Windows 版行为未被改变**（UiSmoke 于全量内通过；DevSeed 迁移等价）；**截图** artifacts/screens/avalonia/ms3-shell.png（三栏/顶栏/状态栏与 05 §3.2 结构一致，类别色块正确）；**osx-arm64 跨编译发布成功**（112MB 自包含，libAvaloniaNative.dylib/libe_sqlite3.dylib 解析正确） | 左栏计数徽章空=预期（DEV 数据流需「连接」动作，属 MS5 Onboarding 范围） |
 | T-MS3-05 | 红灯根因修复 | **完成** | FirstAcquire 契约测试偶发红（本地 2 次 + CI 2 次同因）：`Task.Run` 线程池**工作窃取**可把「第二实例」任务派回持有互斥的线程→同线程重入假成功；改专用 Thread 后连续三轮全绿——**MS2 期两次 CI 红灯（f6c25c4/a7824c5）真因即此**，推翻「UiSmoke 时序」初步判定 | 修复处含确定性注释；CI 失败注解化管道保留备用 |
 
-### MS4 Mac 基础设施 + 通道骨架（docs/10 §6）—— 待办
+### MS4 Mac 基础设施 + 通道骨架（docs/10 §6）—— **已完成（2026-10-02）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-MS4-01 | P-02/03/04 Mac 实现 | 待办 | — | MacAppPaths/MacSingleInstanceLock(UDS)/LaunchAgent 自启动 + 契约测试（CI macos 真机执行） |
-| T-MS4-02 | P-01 通道骨架 | 待办 | — | OutlookMacMailProvider + IAppleScriptRunner + 脚本资源化 + 假 osascript 测试先行（docs/10 §6.2 协议） |
-| T-MS4-03 | 真机检查单 | 待办 | — | tools/mac/real-mac-checklist 起步（§14 项 1–3） |
+| T-MS4-01 | P-02/03/04 Mac 实现 | **完成** | MacAppPaths（纯托管路径构造）/MacSingleInstanceLock（UDS 文件锁落数据目录；存活探测+残留清理含防误删窗口）/LaunchAgentAutoStart（plist 构造与 launchctl 调用分离可测）+ MacPlatformContractTests 8/8（与 Windows 契约组同形镜像，全平台可跑，真实 mac 行为由 CI macos job 兜底） | MacUpdateInstallerPending 占位（MS9 落地，解析即抛） |
+| T-MS4-02 | P-01 通道骨架 | **完成** | OutlookMacMailProvider（四方法 + Kind=OutlookMac）+ IAppleScriptRunner/OsascriptScriptRunner + 4 脚本资源化（0x1E/0x1F 协议、值内剥离、isot 时间、whose 时间过滤、限量分页）+ WatermarkCodec（otm:1:epoch）+ MAC-001~005 错误映射；**AppleScriptChannelTests 14/14**（四类错误/参数构造/空邮箱/格式漂移/分隔符污染/水位推进/GetAccount）；ChannelKind 追加 OutlookMac（Sanity 基线同步，只追加不重排） | **红测试先行抓出 2 个真 bug**：水位 null 比较永不推进、BuildPlist 字符串拼接失效；字典字段名=草案，检查点②真机核验冻结 |
+| T-MS4-03 | 装配接入 | **完成** | Avalonia App/Bootstrapper OS 双分支展开（Win=现实现 / mac=新实现；通道分支 Win=COM / mac=AppleScript；DEV 恒 DevSeed）；WPF 侧零改动 | 真机检查单随 MS8/MS9 递进（本模块无新增检查项） |
+| T-MS4-04 | 验证 | **完成** | ① 构建 0 警 0 错（10 工程）；② 全量 **248/248**（216 + Mac.Tests 32）；③ 漏洞扫描 0；④ 平台边界 0 违规（自查出 Core 注释含 "AppleScript" 字样一并清除——机械红线不含注释豁免）；⑤ MAC 错误文案入 ConnectionTestResult.Message（UI 透传，无日志红线新面）；⑥ 接口与 docs/10 §4/§6 定稿一致；⑦ Windows 版行为未被改变（WPF 侧零改动；既有 216 全绿；UiSmoke 于全量内通过） | CI macos job 真机执行 Mac.Tests（slnf 已收录）|
 
 ### MS5 Avalonia 三栏主界面（docs/10 §5.1/§8.7）—— 待办：虚拟化列表/徽章色卡/四态/净化文本阅读窗格；headless 测试 + 截图比对。
 
