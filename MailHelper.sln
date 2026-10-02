@@ -20,6 +20,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{C5F29382-FBA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailHelper.ViewModels", "src\MailHelper.ViewModels\MailHelper.ViewModels.csproj", "{947D2BB5-33A4-48B5-A511-626C78924659}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailHelper.App.Avalonia", "src\MailHelper.App.Avalonia\MailHelper.App.Avalonia.csproj", "{9B51417E-AEC3-4ACA-888E-8233617F203F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -58,6 +60,10 @@ Global
 		{947D2BB5-33A4-48B5-A511-626C78924659}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{947D2BB5-33A4-48B5-A511-626C78924659}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{947D2BB5-33A4-48B5-A511-626C78924659}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B51417E-AEC3-4ACA-888E-8233617F203F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B51417E-AEC3-4ACA-888E-8233617F203F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B51417E-AEC3-4ACA-888E-8233617F203F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B51417E-AEC3-4ACA-888E-8233617F203F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -67,5 +73,6 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{947D2BB5-33A4-48B5-A511-626C78924659} = {C5F29382-FBAA-4703-A0DE-C84D8855467C}
+		{9B51417E-AEC3-4ACA-888E-8233617F203F} = {C5F29382-FBAA-4703-A0DE-C84D8855467C}
 	EndGlobalSection
 EndGlobal

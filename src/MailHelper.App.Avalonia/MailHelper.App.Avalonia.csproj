@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Mac 版 UI（docs/10 ADR-006：Avalonia 11 + Fluent，浅深色跟随系统；Windows 上可运行预览，osx 双架构可发布） -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>MailHelper.App.Avalonia</RootNamespace>
+    <ApplicationIcon>..\MailHelper.App\Assets\app.ico</ApplicationIcon> <!-- S14-A 同源图标（Windows 资源管理器/任务栏） -->
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+    <!-- DI 宿主与 WPF 版同构（04 §9；D-04） -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MailHelper.Core\MailHelper.Core.csproj" />
+    <ProjectReference Include="..\MailHelper.Core.Services\MailHelper.Core.Services.csproj" />
+    <ProjectReference Include="..\MailHelper.Infrastructure\MailHelper.Infrastructure.csproj" />
+    <ProjectReference Include="..\MailHelper.ViewModels\MailHelper.ViewModels.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,76 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+  <!--
+    MS3 设计令牌（docs/10 §8.7）：与 WPF DesignTokens.xaml（S13-C）同源镜像。
+    浅色 = WPF 令牌逐值一致；深色 = Fluent 深色板同比例提亮（05 §5.1：P0 #FF5C5C 等）。
+    主题感知令牌必须以 DynamicResource 消费。
+  -->
+
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="BrushPrimary" Color="#0F6CBD" />
+      <SolidColorBrush x:Key="BrushPrimaryHover" Color="#0C5AA0" />
+      <SolidColorBrush x:Key="BrushPrimaryTint" Color="#EFF6FC" />
+      <SolidColorBrush x:Key="BrushWindowBg" Color="#F5F7FA" />
+      <SolidColorBrush x:Key="BrushSurface" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="BrushSurfaceAlt" Color="#FAFBFC" />
+      <SolidColorBrush x:Key="BrushTopBar" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="BrushDivider" Color="#E5E9EF" />
+      <SolidColorBrush x:Key="BrushTextPrimary" Color="#1B1F26" />
+      <SolidColorBrush x:Key="BrushTextSecondary" Color="#5A6270" />
+      <SolidColorBrush x:Key="BrushTextTertiary" Color="#8C93A0" />
+      <SolidColorBrush x:Key="BrushRowHover" Color="#F0F5FB" />
+      <SolidColorBrush x:Key="BrushRowSelected" Color="#E1EEFA" />
+      <SolidColorBrush x:Key="BrushUnreadDot" Color="#0F6CBD" />
+      <SolidColorBrush x:Key="BrushBadgeBg" Color="#E9EDF3" />
+      <SolidColorBrush x:Key="BrushDanger" Color="#D13438" />
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="BrushPrimary" Color="#4DA3E8" />
+      <SolidColorBrush x:Key="BrushPrimaryHover" Color="#6BB6F0" />
+      <SolidColorBrush x:Key="BrushPrimaryTint" Color="#12314D" />
+      <SolidColorBrush x:Key="BrushWindowBg" Color="#1F1F1F" />
+      <SolidColorBrush x:Key="BrushSurface" Color="#272727" />
+      <SolidColorBrush x:Key="BrushSurfaceAlt" Color="#2D2D2D" />
+      <SolidColorBrush x:Key="BrushTopBar" Color="#272727" />
+      <SolidColorBrush x:Key="BrushDivider" Color="#383838" />
+      <SolidColorBrush x:Key="BrushTextPrimary" Color="#F5F5F5" />
+      <SolidColorBrush x:Key="BrushTextSecondary" Color="#B8BCC4" />
+      <SolidColorBrush x:Key="BrushTextTertiary" Color="#8A8F98" />
+      <SolidColorBrush x:Key="BrushRowHover" Color="#2F3A46" />
+      <SolidColorBrush x:Key="BrushRowSelected" Color="#1E3A55" />
+      <SolidColorBrush x:Key="BrushUnreadDot" Color="#4DA3E8" />
+      <SolidColorBrush x:Key="BrushBadgeBg" Color="#33383F" />
+      <SolidColorBrush x:Key="BrushDanger" Color="#FF5C5C" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- ============ 重要度色卡（05 §5.1 逐值，不随主题）============ -->
+  <SolidColorBrush x:Key="BrushP0" Color="#D13438" />
+  <SolidColorBrush x:Key="BrushP1" Color="#F7630C" />
+  <SolidColorBrush x:Key="BrushP2" Color="#0078D4" />
+  <SolidColorBrush x:Key="BrushP3" Color="#8A8886" />
+
+  <!-- ============ 类别色（07 类别语义色，与 WPF 同源）============ -->
+  <SolidColorBrush x:Key="BrushCatCourse" Color="#3A7BD5" />
+  <SolidColorBrush x:Key="BrushCatCareer" Color="#0E9F6E" />
+  <SolidColorBrush x:Key="BrushCatAdmin" Color="#7C5CDB" />
+  <SolidColorBrush x:Key="BrushCatFinance" Color="#D97706" />
+  <SolidColorBrush x:Key="BrushCatAnnounce" Color="#0E7490" />
+  <SolidColorBrush x:Key="BrushCatSubscription" Color="#8C93A0" />
+  <SolidColorBrush x:Key="BrushCatOther" Color="#64748B" />
+
+  <!-- ============ 字体（系统栈：Win=Segoe UI/雅黑，mac=系统中文栈；docs/10 §7）============ -->
+  <sys:Double x:Key="FontSizeCaption">11</sys:Double>
+  <sys:Double x:Key="FontSizeBody">13</sys:Double>
+  <sys:Double x:Key="FontSizeRow">14</sys:Double>
+  <sys:Double x:Key="FontSizeTitle">18</sys:Double>
+
+  <!-- ============ 圆角（05 §5.3）============ -->
+  <CornerRadius x:Key="RadiusSmall">4</CornerRadius>
+  <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
+  <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
+  <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+</ResourceDictionary>

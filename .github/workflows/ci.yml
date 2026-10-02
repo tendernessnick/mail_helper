@@ -123,10 +123,11 @@ jobs:
           } | Select-Object -Unique
           ("### 失败用例 (macOS ${{ matrix.arch }})`n" + ($names | ForEach-Object { "- ❌ $_" } | Out-String)) | Out-File -Append $env:GITHUB_STEP_SUMMARY
 
-      # 共享层对目标 RID 的交叉编译/原生资产解析证据（SQLitePCLRaw osx 原生包等）；MS3 起改为 App.Avalonia
-      - name: Publish 共享层 (自包含 ${{ matrix.arch }})
+      # MS3 起：publish 换 Avalonia App（双架构自包含 = .app/DMG 的载荷基础；MS9 追加 bundle 组装）
+      - name: Publish App.Avalonia (自包含 ${{ matrix.arch }})
         run: >
-          dotnet publish MailHelper.Mac.slnf -c Release -r ${{ matrix.arch }}
+          dotnet publish src/MailHelper.App.Avalonia -c Release -r ${{ matrix.arch }}
+          -p:SelfContained=true
           -o artifacts/publish-mac-${{ matrix.arch }}
 
       - name: Upload publish artifacts

@@ -1,0 +1,107 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:MailHelper.ViewModels;assembly=MailHelper.ViewModels"
+        xmlns:app="clr-namespace:MailHelper.App.Avalonia"
+        x:Class="MailHelper.App.Avalonia.ShellWindow"
+        x:Name="Shell"
+        Title="MailHelper"
+        Width="1280" Height="800"
+        MinWidth="980" MinHeight="620"
+        Background="{DynamicResource BrushWindowBg}"
+        FontFamily="Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI, PingFang SC, Hiragino Sans GB, sans-serif">
+
+  <Window.Resources>
+    <app:ColorHexToBrushConverter x:Key="ColorHexToBrush" />
+  </Window.Resources>
+
+  <Grid RowDefinitions="Auto,*,Auto">
+    <!-- ============ 顶栏（05 §3.2：品牌导航｜搜索居中｜未读筛选）============ -->
+    <Border Grid.Row="0" Background="{DynamicResource BrushTopBar}"
+            BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,0,0,1" Padding="16,9">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="📬" FontSize="18" VerticalAlignment="Center" />
+          <TextBlock Classes="windowTitle" Text="MailHelper" VerticalAlignment="Center" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="24,0,0,0" VerticalAlignment="Center">
+          <Button x:Name="NavInbox" Classes="navItem checked" Content="收件箱" Click="OnNavInbox" />
+          <Button x:Name="NavRules" Classes="navItem" Content="规则" Click="OnNavRules" />
+          <Button x:Name="NavSettings" Classes="navItem" Content="设置" Click="OnNavSettings" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBox x:Name="SearchBox" Width="360" Watermark="搜索主题/发件人/正文…" />
+          <Button Classes="primaryAction" Content="搜索" />
+          <CheckBox x:Name="UnreadOnlyToggle" Content="仅未读" VerticalAlignment="Center" />
+          <TextBlock Classes="statusText" Text="Ctrl+F 搜索 · Ctrl+R 立即同步" VerticalAlignment="Center" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ============ 三栏内容（220 / 弹性 / 40%，05 §3.2/§5.3）============ -->
+    <ContentControl x:Name="PageHost" Grid.Row="1">
+      <!-- 收件箱页（默认） -->
+      <Grid ColumnDefinitions="220,1.5*,*" Margin="12">
+        <!-- 左栏：类别导航 -->
+        <Border Grid.Column="0" Classes="card" Margin="0,0,10,0">
+          <ListBox x:Name="CategoryNav" ItemsSource="{Binding Categories}"
+                   SelectedItem="{Binding SelectedCategory, Mode=TwoWay}"
+                   Background="Transparent" BorderThickness="0" Padding="0,6">
+            <ListBox.ItemTemplate>
+              <DataTemplate DataType="{x:Type vm:CategoryItemViewModel}">
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                  <Border Width="26" Height="26" CornerRadius="7"
+                          Background="{Binding ColorHex, Converter={StaticResource ColorHexToBrush}}">
+                    <TextBlock Text="{Binding Icon}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <TextBlock Text="{Binding Label}" FontSize="13"
+                             Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center" />
+                  <Border Background="{DynamicResource BrushBadgeBg}" CornerRadius="{StaticResource RadiusPill}"
+                          Padding="7,1" VerticalAlignment="Center" Margin="4,0,0,0"
+                          IsVisible="{Binding Count, Converter={x:Static app:CountToVisibilityConverter.Instance}}">
+                    <TextBlock Text="{Binding Count}" FontSize="11"
+                               Foreground="{DynamicResource BrushTextSecondary}" />
+                  </Border>
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Border>
+
+        <!-- 中栏：邮件列表（MS3 骨架：空态；MS5 落地虚拟化列表/徽章/四态） -->
+        <Border Grid.Column="1" Classes="card" Margin="0,0,10,0" Padding="24">
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8">
+            <TextBlock Text="🗂" FontSize="34" HorizontalAlignment="Center" />
+            <TextBlock Classes="placeholderText" Text="该分类暂无邮件" />
+            <TextBlock Classes="placeholderText" FontSize="12"
+                       Text="邮件列表（虚拟化/徽章/排序过滤）随 MS5 落地；当前为骨架预览" />
+          </StackPanel>
+        </Border>
+
+        <!-- 右栏：阅读窗格（MS3 骨架空态；MS5 落地净化文本渲染） -->
+        <Border Grid.Column="2" Classes="card" Padding="24">
+          <StackPanel VerticalAlignment="Center" Spacing="8">
+            <TextBlock Text="✉️" FontSize="34" HorizontalAlignment="Center" />
+            <TextBlock Classes="placeholderText" Text="选择一封邮件查看" />
+            <TextBlock Classes="placeholderText" FontSize="12"
+                       Text="阅读窗格（净化 HTML 渲染/改判入口）随 MS5 落地" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </ContentControl>
+
+    <!-- ============ 状态栏（05 §3.2 底栏：状态灯 + 同步状态 + 立即同步）============ -->
+    <Border Grid.Row="2" Background="{DynamicResource BrushTopBar}"
+            BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0" Padding="16,6">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7">
+          <Ellipse Width="8" Height="8" Fill="{DynamicResource BrushUnreadDot}" VerticalAlignment="Center" />
+          <TextBlock Classes="statusText" Text="{Binding SyncStatusText}" VerticalAlignment="Center" />
+        </StackPanel>
+        <Button Grid.Column="2" Classes="primaryAction" Content="⟳ 立即同步"
+                Command="{Binding SyncNowCommand}" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

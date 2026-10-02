@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MailHelper.App.Avalonia.RulesPage">
+  <!-- MS3 占位（05 §3.3 布局骨架）：规则管理随 MS7 对齐 Windows 版完整行为 -->
+  <Border Background="{DynamicResource BrushSurface}"
+          CornerRadius="{StaticResource RadiusLarge}" Margin="12" Padding="24">
+    <StackPanel Spacing="10" VerticalAlignment="Center" HorizontalAlignment="Center">
+      <TextBlock Text="📋" FontSize="34" HorizontalAlignment="Center" />
+      <TextBlock Text="分类规则" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"
+                 Foreground="{DynamicResource BrushTextPrimary}" />
+      <TextBlock Classes="placeholderText"
+                 Text="规则列表 / 新建 / 试跑预览随 MS7 落地；ViewModel 已共享（RulesViewModel）" />
+    </StackPanel>
+  </Border>
+</UserControl>

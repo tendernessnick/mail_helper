@@ -15,7 +15,7 @@ public class WindowsSingleInstanceLockTests
         ($"Local\\mh-test-{Guid.NewGuid():N}", $"mh-test-pipe-{Guid.NewGuid():N}");
 
     [Fact]
-    public async Task FirstAcquire_Succeeds_SecondFails_DisposeReleases()
+    public void FirstAcquire_Succeeds_SecondFails_DisposeReleases()
     {
         var (mutexName, pipeName) = UniqueNames();
         var first = new WindowsSingleInstanceLock(mutexName, pipeName);
@@ -23,10 +23,15 @@ public class WindowsSingleInstanceLockTests
         {
             first.TryAcquireFirst().Should().BeTrue();
 
-            // 第二实例语义=独立进程：Windows 命名互斥体同线程可重入（WaitOne 递归计数假成功），
-            // 必须以另一线程模拟真实跨进程竞争
+            // 第二实例语义=独立进程：Windows 命名互斥体同线程可重入（WaitOne 递归计数假成功）。
+            // 必须保证跨线程执行——不能用 Task.Run：线程池工作窃取可能把任务派回持有互斥的线程本身
+            //（负载下偶发，已实测），专用 Thread 才是确定性隔离。
             using var second = new WindowsSingleInstanceLock(mutexName, pipeName);
-            (await Task.Run(() => second.TryAcquireFirst())).Should().BeFalse("互斥被首实例持有（跨线程视角）");
+            bool? secondResult = null;
+            var contender = new Thread(() => secondResult = second.TryAcquireFirst());
+            contender.Start();
+            contender.Join();
+            secondResult.Should().BeFalse("互斥被首实例持有（跨线程视角）");
         }
 
         // 释放后同名可再次成为首实例（等价原静态类 StopListening 语义）

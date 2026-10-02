@@ -6,6 +6,7 @@
       "src\\MailHelper.Core.Services\\MailHelper.Core.Services.csproj",
       "src\\MailHelper.Infrastructure\\MailHelper.Infrastructure.csproj",
       "src\\MailHelper.ViewModels\\MailHelper.ViewModels.csproj",
+      "src\\MailHelper.App.Avalonia\\MailHelper.App.Avalonia.csproj",
       "tests\\MailHelper.Core.Tests\\MailHelper.Core.Tests.csproj",
       "tests\\MailHelper.Services.Tests\\MailHelper.Services.Tests.csproj"
     ]

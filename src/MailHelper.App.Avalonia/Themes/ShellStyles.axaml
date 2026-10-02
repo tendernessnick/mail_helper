@@ -1,0 +1,76 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- MS3 外壳样式：顶栏导航 / 列表容器 / 状态栏（对应 WPF Shell 样式语义；全部引用 DesignTokens） -->
+
+  <Style Selector="TextBlock.windowTitle">
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+  </Style>
+
+  <!-- 顶栏导航按钮（pill 形态） -->
+  <Style Selector="Button.navItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="14,6" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusPill}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.navItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushRowHover}" />
+  </Style>
+  <Style Selector="Button.navItem.checked">
+    <Setter Property="Background" Value="{DynamicResource BrushPrimaryTint}" />
+    <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- 主操作按钮（立即同步） -->
+  <Style Selector="Button.primaryAction">
+    <Setter Property="Background" Value="{DynamicResource BrushPrimary}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Padding" Value="14,6" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.primaryAction:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushPrimaryHover}" />
+  </Style>
+
+  <!-- 三栏容器卡片 -->
+  <Style Selector="Border.card">
+    <Setter Property="Background" Value="{DynamicResource BrushSurface}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <!-- 左栏导航项 -->
+  <Style Selector="ListBox#CategoryNav ListBoxItem">
+    <Setter Property="Padding" Value="10,7" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+    <Setter Property="Margin" Value="6,1" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ListBox#CategoryNav ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushRowHover}" />
+  </Style>
+  <Style Selector="ListBox#CategoryNav ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushRowSelected}" />
+  </Style>
+
+  <!-- 空态/占位文案 -->
+  <Style Selector="TextBlock.placeholderText">
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextTertiary}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </Style>
+
+  <!-- 状态栏文本 -->
+  <Style Selector="TextBlock.statusText">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}" />
+  </Style>
+</Styles>
