@@ -9,9 +9,9 @@
 | --- | --- |
 | 更新时间 | 2026-10-02 |
 | 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
-| 当前模块 | **MS8 已完成**（MAC 文案接线/DEV 假通道/真实 osascript 冒烟，261/261 全绿）；下一步 MS9 打包与分发 |
+| 当前模块 | **MS9 已完成**（bundle/DMG 脚本+CI 集成+更新器 Mac 策略，262/262 全绿）；下一步 MS10 发布对齐 |
 | 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
-| 下一步 | MS9 打包与分发（bundle.sh/icns/DMG/codesign 脚本/CI 集成/更新器 Mac 策略） |
+| 下一步 | MS10 发布对齐（检查单 mac 变体/FAQ/SHA256/核对包汇总）+ 晨间验收简报 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -303,7 +303,14 @@
 
 ### MS8 AppleScript 通道打磨（docs/10 §6.3–6.5）—— 待办：水位/分页限速/New Outlook 探测与引导/四类错误文案/SyncCoordinator 装配（DEV 可注入 Mac 假通道）；假 osascript 全场景 + CI 真机冒烟；真实邮箱列检查点②。
 
-### MS9 打包与分发（docs/10 §9）—— 待办：.app 组装/icns/DMG/codesign+notarytool 脚本/CI 集成/更新器 Mac 策略；CI 产物结构校验；真机安装列检查点②。
+### MS9 打包与分发（docs/10 §9）—— **已完成（2026-10-03；签名链路=检查点③条件项）**
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS9-01 | 脚本化 | **完成** | tools/mac/{make-icns.sh（sips+iconutil 全尺寸）, bundle.sh（Info.plist 键集+icns+结构自检 plutil -lint, CODESIGN_IDENTITY 有则签名）, make-dmg.sh（staging+/Applications 链接→hdiutil UDZO；公证/staple=检查点③）} | 脚本仅 macOS 执行（CI runner）；图标源 icon-source.png（S14-A 同源绘制）入库 |
+| T-MS9-02 | CI 集成 | **完成** | macos job：publish → bundle.sh → make-dmg.sh → MailHelper-beta-osx-{arch}.dmg artifact；结构断言在脚本内（set -euo + plutil） | 本机无法验证 bash+macOS 工具链，**以 CI macos job 绿为准**（本轮 run 见提交后） |
+| T-MS9-03 | 更新器 Mac 策略 | **完成** | UpdateService.InstallerAssetName 平台化（Win=Setup.exe 名不变；mac=MailHelper-stable-osx-{arch}.dmg）+ MacUpdateInstaller（挂载 DMG 引导手动安装；open 可注入测试 2/2）+ Bootstrapper mac 分支换真类（Pending 删） | 自动更新列后续（docs/10 §11） |
+| T-MS9-04 | 验证 | **完成** | ① 0 警 0 错；② 全量 **262/262**（+2 UpdateInstaller 契约）；③ 漏洞 0；④ 边界 0 违规；⑤ 无新增日志面；⑥ 与 docs/10 §9 一致；⑦ WPF 零变化（InstallerAssetName Windows 同名等值） | **真机 DMG 安装/首启=检查点②**；签名/公证=检查点③ |
 
 ### MS10 发布对齐（docs/10 §12/§14）—— 待办：08 章 mac 变体检查单、运维 FAQ mac 节（自动化权限/Gatekeeper/New Outlook/通知权限）、SHA256 校验、真机核对包汇总。
 

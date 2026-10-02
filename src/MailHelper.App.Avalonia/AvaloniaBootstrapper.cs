@@ -55,7 +55,7 @@ public static class AvaloniaBootstrapper
             paths = new MacAppPaths(dataDirOverride);
             autostart = new LaunchAgentAutoStart(Environment.ProcessPath
                 ?? throw new InvalidOperationException("无法定位当前进程可执行文件"));
-            updateInstaller = new MacUpdateInstallerPending(); // MS9：引导下载 DMG（docs/10 §9）
+            updateInstaller = new MacUpdateInstaller(); // MS9：挂载 DMG 引导手动安装
         }
         else
         {

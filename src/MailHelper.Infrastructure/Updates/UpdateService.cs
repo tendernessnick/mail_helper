@@ -2,6 +2,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Runtime.InteropServices;
 using MailHelper.Core.Abstractions;
 using MailHelper.Infrastructure.SystemIntegration;
 
@@ -14,7 +15,12 @@ namespace MailHelper.Infrastructure.Updates;
 public sealed class UpdateService
 {
     public const string RepoUrl = "https://github.com/tendernessnick/mail_helper";
-    public const string InstallerAssetName = "MailHelper-stable-Setup.exe";
+
+    /// <summary>更新资产名（MS9 平台化）：Win=Inno Setup.exe（S17 名不变）；mac=对应架构 DMG（docs/10 §9）。</summary>
+    public static string InstallerAssetName =>
+        OperatingSystem.IsMacOS()
+            ? $"MailHelper-stable-osx-{(System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? "arm64" : "x64")}.dmg"
+            : "MailHelper-stable-Setup.exe";
 
     private static readonly HttpClient Http = CreateClient();
     private readonly IUpdateInstaller _installer;

@@ -108,6 +108,34 @@ public class MacPlatformContractTests
         }
     }
 
+    // —— IUpdateInstaller（P-08，MS9：挂载 DMG 引导安装）——
+
+    [Fact]
+    public void UpdateInstaller_OpensDownloadedDmg()
+    {
+        var opened = new List<string>();
+        var installer = new MacUpdateInstaller(opened.Add);
+        var path = Path.Combine(Path.GetTempPath(), $"mh-update-{Guid.NewGuid():N}.dmg");
+        File.WriteAllText(path, "dmg-payload"); // 存在性校验需要真实文件
+        try
+        {
+            installer.Install(path);
+            opened.Should().ContainSingle().Which.Should().Be(path, "open 目标=已下载的 DMG 路径");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void UpdateInstaller_MissingPackage_Throws()
+    {
+        var installer = new MacUpdateInstaller(_ => { });
+        var act = () => installer.Install(Path.Combine(Path.GetTempPath(), "mh-missing-" + Guid.NewGuid() + ".dmg"));
+        act.Should().Throw<FileNotFoundException>();
+    }
+
     // —— IAutoStarter（P-04，LaunchAgent）——
 
     [Fact]
