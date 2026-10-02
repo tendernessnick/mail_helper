@@ -65,6 +65,13 @@ jobs:
           } | Select-Object -Unique
           ("### 失败用例`n" + ($names | ForEach-Object { "- ❌ $_" } | Out-String)) | Out-File -Append $env:GITHUB_STEP_SUMMARY
           foreach ($n in $names) { Write-Host "::error title=失败用例::$n" }
+          # UiSmoke 专属诊断：App 启动输出（提前退出根因）打进注解（匿名可读）
+          $uiOut = Join-Path $env:TEMP 'mh-ui-app-output.txt'
+          if (($names -join ' ') -match 'UiSmokeTests' -and (Test-Path $uiOut)) {
+            Get-Content $uiOut | Select-Object -First 30 | ForEach-Object {
+              Write-Host ("::error title=UiSmoke App输出::{0}" -f $_)
+            }
+          }
 
       - name: Upload test results (失败排查用)
         if: failure()
