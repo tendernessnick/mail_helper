@@ -9,9 +9,9 @@
 | --- | --- |
 | 更新时间 | 2026-10-02 |
 | 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
-| 当前模块 | **MS4 已完成**（Mac 平台件三实现 + OutlookMacMailProvider 骨架 + 假 osascript 全场景 32 测试，248/248 全绿）；下一步 MS5 Avalonia 三栏主界面 |
+| 当前模块 | **MS5 已完成**（Avalonia 三栏主界面 + 净化阅读窗格 + headless 测试 9/9，257/257 全绿）；下一步 MS6 通知与菜单栏（Mac） |
 | 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
-| 下一步 | MS5 Avalonia 三栏主界面（虚拟化列表/徽章色卡/四态/净化文本阅读窗格，headless 测试） |
+| 下一步 | MS6 通知与菜单栏 Mac（Avalonia TrayIcon/角标/osascript 通知/去重/关窗常驻） |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -280,7 +280,14 @@
 | T-MS4-03 | 装配接入 | **完成** | Avalonia App/Bootstrapper OS 双分支展开（Win=现实现 / mac=新实现；通道分支 Win=COM / mac=AppleScript；DEV 恒 DevSeed）；WPF 侧零改动 | 真机检查单随 MS8/MS9 递进（本模块无新增检查项） |
 | T-MS4-04 | 验证 | **完成** | ① 构建 0 警 0 错（10 工程）；② 全量 **248/248**（216 + Mac.Tests 32）；③ 漏洞扫描 0；④ 平台边界 0 违规（自查出 Core 注释含 "AppleScript" 字样一并清除——机械红线不含注释豁免）；⑤ MAC 错误文案入 ConnectionTestResult.Message（UI 透传，无日志红线新面）；⑥ 接口与 docs/10 §4/§6 定稿一致；⑦ Windows 版行为未被改变（WPF 侧零改动；既有 216 全绿；UiSmoke 于全量内通过） | CI macos job 真机执行 Mac.Tests（slnf 已收录）|
 
-### MS5 Avalonia 三栏主界面（docs/10 §5.1/§8.7）—— 待办：虚拟化列表/徽章色卡/四态/净化文本阅读窗格；headless 测试 + 截图比对。
+### MS5 Avalonia 三栏主界面（docs/10 §5.1/§8.7）—— **已完成（2026-10-02）**
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| T-MS5-01 | FR-12 列表/徽章 | **完成** | 三栏 Shell 完整化：虚拟化邮件列表（ListBox 默认虚拟化栈）+ 行模板（重要度色条/类别色头像/未读点/P 徽章/时间右对齐）+ 左栏未读计数徽章 + 四态（空态/Onboarding 双态/错误态经状态栏/离线文案） | MailItemViewModel 增纯展示属性 ImportanceColor/ImportanceLabel（WPF 忽略，等价无扰） |
+| T-MS5-02 | §5.1 阅读窗格 | **完成** | HtmlSanitizer（白名单块提取：script/style/iframe/img 剔除、仅 http(s) 链接、链接独立 SanitizedLinkBlock 块）+ BodyCache HTML → 块渲染 + 链接可点击（仅 http/https 打开）+ 无正文回落纯文本预览；改判入口（CategoryCatalog 动态菜单 → ApplyCorrectionAsync） | HtmlSanitizerTests 4/4 |
+| T-MS5-03 | §12.4 headless | **完成** | MailHelper.App.Avalonia.Tests（Avalonia.Headless.XUnit 11.3.22 + Skia 帧）：Onboarding→连接→列表、选中→已读+阅读块、仅未读过滤、改判生效、**帧截图**（零窗口/零焦点抢占）9/9 | Bootstrapper 转 public 供测试复用；Avalonia 11.3 标记=[AvaloniaFact] |
+| T-MS5-04 | 验证 | **完成** | ① 0 警 0 错（11 工程）；② 全量 **257/257**；③ 漏洞 0；④ 边界 0 违规；⑤ 无新增日志面；⑥ 与 docs/10 §5.1/§8.7 一致；⑦ Windows 版行为未被改变（WPF 零改动，既有测试全绿）；**截图** artifacts/screens/avalonia/ms5-inbox.png（三栏对齐 05 §3.2）+ ms5-onboarding.png | 教训：抢前台截屏在人机共用机器上不可靠且有侵扰（曾误截用户窗口并已删除）——永久改用 headless 帧截图 |
 
 ### MS6 通知与菜单栏 Mac（docs/10 §5.2/§5.3/§8.5）—— 待办：Avalonia TrayIcon 菜单/角标/osascript 通知去重/关窗常驻；单测 + 真机检查单。
 

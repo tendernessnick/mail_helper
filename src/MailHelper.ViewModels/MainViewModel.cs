@@ -39,6 +39,24 @@ public partial class MailItemViewModel : ObservableObject
 
     public string ImportanceText => Importance.ToString();
 
+    /// <summary>重要度色值（05 §5.1 浅色卡；MS5 Avalonia 行模板消费，WPF 用自有转换器忽略本属性）。</summary>
+    public string ImportanceColor => Importance switch
+    {
+        Importance.P0 => "#D13438",
+        Importance.P1 => "#F7630C",
+        Importance.P2 => "#0078D4",
+        _ => "#8A8886",
+    };
+
+    /// <summary>重要度徽章文案（05 §7 无障碍：徽章附可读名）。</summary>
+    public string ImportanceLabel => Importance switch
+    {
+        Importance.P0 => "P0 紧急",
+        Importance.P1 => "P1 重要",
+        Importance.P2 => "P2 普通",
+        _ => "P3 低",
+    };
+
     /// <summary>S13-C 头像首字母（发件人显示名首个字符；CJK 原样）。</summary>
     public string Initial => string.IsNullOrWhiteSpace(FromDisplay)
         ? "?"

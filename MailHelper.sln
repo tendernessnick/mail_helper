@@ -26,6 +26,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{5CCE3599
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailHelper.Mac.Tests", "tests\MailHelper.Mac.Tests\MailHelper.Mac.Tests.csproj", "{C695F3BD-6ECD-4AC5-B7B6-1D259E18518D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MailHelper.App.Avalonia.Tests", "tests\MailHelper.App.Avalonia.Tests\MailHelper.App.Avalonia.Tests.csproj", "{BCD0E742-6E51-45A8-A2CC-9DE24AB63E53}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -72,6 +74,10 @@ Global
 		{C695F3BD-6ECD-4AC5-B7B6-1D259E18518D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C695F3BD-6ECD-4AC5-B7B6-1D259E18518D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C695F3BD-6ECD-4AC5-B7B6-1D259E18518D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCD0E742-6E51-45A8-A2CC-9DE24AB63E53}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCD0E742-6E51-45A8-A2CC-9DE24AB63E53}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCD0E742-6E51-45A8-A2CC-9DE24AB63E53}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCD0E742-6E51-45A8-A2CC-9DE24AB63E53}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -83,5 +89,6 @@ Global
 		{947D2BB5-33A4-48B5-A511-626C78924659} = {C5F29382-FBAA-4703-A0DE-C84D8855467C}
 		{9B51417E-AEC3-4ACA-888E-8233617F203F} = {C5F29382-FBAA-4703-A0DE-C84D8855467C}
 		{C695F3BD-6ECD-4AC5-B7B6-1D259E18518D} = {5CCE3599-FF47-4182-B86D-B9DC9F7E736C}
+		{BCD0E742-6E51-45A8-A2CC-9DE24AB63E53} = {5CCE3599-FF47-4182-B86D-B9DC9F7E736C}
 	EndGlobalSection
 EndGlobal

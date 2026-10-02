@@ -73,4 +73,20 @@
     <Setter Property="FontSize" Value="12" />
     <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}" />
   </Style>
+
+  <!-- 阅读窗格正文块（MS5） -->
+  <Style Selector="TextBlock.readerText">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="LineHeight" Value="21" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+  </Style>
+  <Style Selector="Button.readerLink">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+  </Style>
 </Styles>
