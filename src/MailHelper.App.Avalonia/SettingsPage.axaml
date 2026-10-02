@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="MailHelper.App.Avalonia.SettingsPage">
+  <!-- MS3 占位（05 §3.4 五分组骨架）：设置随 MS7 对齐 Windows 版完整行为 -->
+  <Border Background="{DynamicResource BrushSurface}"
+          CornerRadius="{StaticResource RadiusLarge}" Margin="12" Padding="24">
+    <StackPanel Spacing="10" VerticalAlignment="Center" HorizontalAlignment="Center">
+      <TextBlock Text="⚙️" FontSize="34" HorizontalAlignment="Center" />
+      <TextBlock Text="设置" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"
+                 Foreground="{DynamicResource BrushTextPrimary}" />
+      <TextBlock Classes="placeholderText"
+                 Text="账户/同步/通知/外观/高级五分组随 MS7 落地；ViewModel 已共享（SettingsViewModel）" />
+    </StackPanel>
+  </Border>
+</UserControl>

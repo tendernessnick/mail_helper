@@ -2,10 +2,10 @@ using MailHelper.Core;
 using MailHelper.Core.Domain;
 using MailHelper.Infrastructure.Sync;
 
-namespace MailHelper.App;
+namespace MailHelper.Infrastructure.Sync;
 
-/// <summary>DEV 模式种子数据（M1 出口：假令牌环境下全链路演示；20 封覆盖 7 类别 × P0-P3 × 中英文）。</summary>
-internal static class DevSeed
+/// <summary>DEV 模式种子数据（MS3 起双 UI 共用）（M1 出口：假令牌环境下全链路演示；20 封覆盖 7 类别 × P0-P3 × 中英文）。</summary>
+public static class DevSeed
 {
     public static FakeMailProvider BuildMailProvider()
     {

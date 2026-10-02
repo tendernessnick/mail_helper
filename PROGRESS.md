@@ -9,9 +9,9 @@
 | --- | --- |
 | 更新时间 | 2026-10-02 |
 | 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
-| 当前模块 | **MM0 已收口**（MS0–MS2：设计获批/双架构 CI/平台抽象/共享 ViewModel，216/216 回归绿，已合回 main）；下一步 MS3 Avalonia 骨架 |
+| 当前模块 | **MS3 已完成**（Avalonia 骨架：三栏 Shell/主题/导航，截图比对 05 章通过，osx-arm64 跨编译发布成功，216/216×3 轮）；下一步 MS4 Mac 基础设施 + OutlookMacMailProvider 骨架 |
 | 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
-| 下一步 | MS3 Avalonia 骨架（Shell/导航/主题/双语）→ MS4 Mac 基础设施 + OutlookMacMailProvider 骨架 |
+| 下一步 | MS4 Mac 基础设施（MacAppPaths/UDS 锁/LaunchAgent）+ OutlookMacMailProvider 骨架（假 osascript 测试先行） |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -261,12 +261,15 @@
 | T-MS2-02 | WPF 改引用 | **完成** | App.csproj 引用共享工程；XAML×3 xmlns 更新；App 代码后置 usings 更新；Bootstrapper 注入 dispatcher | 行为不变：XAML 绑定/AutomationProperties.Name 零改动 |
 | T-MS2-03 | 验证 | **完成** | ① 构建 0 警 0 错（7→8 工程）；② 全量 **216/216 绿**；③ 漏洞扫描 0；④ 平台边界 0 违规；⑤ 无新增日志/错误路径；⑥ 接口与 docs/10 §4 定稿一致；⑦ **Windows 版行为未被改变**：UiSmoke 全绿 + 截图比对（MS2 vs MS1 基线）布局/色卡/字体零变化；CI run [36989550301](https://github.com/tendernessnick/mail_helper/actions/runs/36989550301) 全 success | MS1 的 CI 红灯（run 36988416202 windows Test 步骤）未在 MS2（含其全部内容）复现——判定为 CI 慢机 UiSmoke 时序性失败（历史同型：0d64a70/fffcd14/abd9442/a210d1a），非代码回归；持续观察 |
 
-### MS3 Avalonia 骨架（docs/10 §7）—— 待办
+### MS3 Avalonia 骨架（docs/10 §7）—— **已完成（2026-10-02）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-MS3-01 | App 工程 | 待办 | — | MailHelper.App.Avalonia：Shell/导航/Fluent 主题资源字典（05 色卡映射）/双语资源复用 |
-| T-MS3-02 | 验证 | 待办 | — | Windows 运行截图比对 05 章；跨编译 publish osx-arm64 可行证据入 CI |
+| T-MS3-01 | App 工程 | **完成** | MailHelper.App.Avalonia（net8.0 + Avalonia **11.3.22**，11 线最新稳定；12.x 已出但按获批 ADR-006 取 11 线，升级走变更提案）；Fluent + `RequestedThemeVariant=Default` 跟随系统；DesignTokens.axaml 浅色=WPF 令牌逐值镜像、深色=Fluent 深色板提亮（P0 #FF5C5C）；Shell 三栏（220/1.5*/*≈05 §5.3）+ 顶栏导航 pill + 状态栏；规则/设置占位页（MS7 落地完整功能） | i18n：LanguageService/Strings 复用接入（WPF 现状为中文直书 XAML，Avalonia 同形态对齐；完整双语接线列 MS7 对齐项） |
+| T-MS3-02 | 平台件立桩 | **完成** | OS 守卫模式（非 Windows 抛明确 PlatformNotSupportedException）；AvaloniaMainThreadDispatcher（IMainThreadDispatcher 第二实现）；DevSeed 迁 Infrastructure（双 UI 共用）；Avalonia 预览用独立互斥名（不与 WPF 安装版互抢） | MS4 将守卫展开为真实 Mac 分支 |
+| T-MS3-03 | CI 接入 | **完成** | slnf 增 App.Avalonia（macos job 真机编译）；publish 换 `App.Avalonia -r <arch> -p:SelfContained=true` | docs/10 §10 MS3 里程碑动作 |
+| T-MS3-04 | 验证 | **完成** | ① 构建 0 警 0 错（9 工程）；② 全量 **216/216 × 连续三轮**；③ 漏洞扫描 0（含 Avalonia 新依赖）；④ 边界 0 违规；⑤ 无新增日志/错误路径；⑥ 与 docs/10 §7 结构一致；⑦ **Windows 版行为未被改变**（UiSmoke 于全量内通过；DevSeed 迁移等价）；**截图** artifacts/screens/avalonia/ms3-shell.png（三栏/顶栏/状态栏与 05 §3.2 结构一致，类别色块正确）；**osx-arm64 跨编译发布成功**（112MB 自包含，libAvaloniaNative.dylib/libe_sqlite3.dylib 解析正确） | 左栏计数徽章空=预期（DEV 数据流需「连接」动作，属 MS5 Onboarding 范围） |
+| T-MS3-05 | 红灯根因修复 | **完成** | FirstAcquire 契约测试偶发红（本地 2 次 + CI 2 次同因）：`Task.Run` 线程池**工作窃取**可把「第二实例」任务派回持有互斥的线程→同线程重入假成功；改专用 Thread 后连续三轮全绿——**MS2 期两次 CI 红灯（f6c25c4/a7824c5）真因即此**，推翻「UiSmoke 时序」初步判定 | 修复处含确定性注释；CI 失败注解化管道保留备用 |
 
 ### MS4 Mac 基础设施 + 通道骨架（docs/10 §6）—— 待办
 

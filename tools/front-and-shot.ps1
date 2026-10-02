@@ -2,6 +2,7 @@
 # 用法: powershell -File tools/front-and-shot.ps1 [-OutPath artifacts\screens\s13.png] [-Maximize]
 param(
     [string]$OutPath = "artifacts\screens\s13.png",
+    [string]$ProcessName = "MailHelper.App",
     [switch]$Maximize
 )
 
@@ -18,7 +19,7 @@ public class MhWin32 {
 "@
 [MhWin32]::SetProcessDPIAware() | Out-Null  # 截物理像素（高 DPI 屏 Bounds 虚拟化问题，S6 教训）
 
-$p = Get-Process MailHelper.App -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+$p = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
 if (-not $p) { Write-Output "NOT_RUNNING"; exit 1 }
 
 if ($Maximize) { [MhWin32]::ShowWindow($p.MainWindowHandle, 3) | Out-Null }
