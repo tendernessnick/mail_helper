@@ -8,6 +8,7 @@ using MailHelper.Core.Services;
 using MailHelper.Core.Services.Rules;
 using MailHelper.Infrastructure.Logging;
 using MailHelper.Infrastructure.Storage;
+using MailHelper.Infrastructure.Notifications;
 using MailHelper.Infrastructure.Sync;
 using MailHelper.Infrastructure.Sync.OutlookMac;
 using MailHelper.Infrastructure.SystemIntegration;
@@ -129,9 +130,12 @@ public static class AvaloniaBootstrapper
             "acc-1",
             sp.GetRequiredService<ILogger<ClassificationService>>()));
 
-        // —— 通知（决策层复用；MS6 接 osascript 发送实现）——
+        // —— 通知（决策层复用；MS6：mac=OsascriptToastSender / Win 预览=no-op——正式 Windows 用户走 WPF 版）——
         services.AddSingleton(_ => new NotificationRepository(paths.DbPath));
         services.AddSingleton<INotificationStore>(sp => sp.GetRequiredService<NotificationRepository>());
+        services.AddSingleton<IToastSender>(_ => OperatingSystem.IsMacOS()
+            ? new OsascriptToastSender(new OsascriptScriptRunner())
+            : new NoopToastSender());
         services.AddSingleton<NotificationService>();
 
         // —— 反馈闭环 ——
@@ -159,7 +163,7 @@ public static class AvaloniaBootstrapper
         services.AddSingleton(sp => new SettingsViewModel(
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IAccountStore>(),
-            onSyncIntervalChanged: _ => { /* MS6：周期同步热更新接线 */ },
+            onSyncIntervalChanged: minutes => RaisePeriodicSyncChanged(minutes), // MS6：间隔热更新（WPF 同构）
             updates: sp.GetRequiredService<UpdateService>(),
             devMode: devMode,
             setAutostartAsync: enabled =>
@@ -194,6 +198,13 @@ public static class AvaloniaBootstrapper
         // —— UI（本 App 专有）——
         services.AddSingleton<ShellWindow>();
     }
+
+    /// <summary>周期同步热更新事件（WPF Bootstrapper.PeriodicSyncChanged 同构；App 桥接重启循环）。</summary>
+    internal static event Action<int>? PeriodicSyncChanged;
+
+    internal static Action<int>? OnSyncIntervalChangedRequested { get; set; }
+
+    internal static void RaisePeriodicSyncChanged(int minutes) => PeriodicSyncChanged?.Invoke(minutes);
 
     /// <summary>规则引擎装配：与 WPF Bootstrapper.LoadRuleEngine 同构（内置包 ∪ rules 表用户/反馈规则）。</summary>
     private static RuleEngine LoadRuleEngine(string dbPath)
