@@ -154,6 +154,17 @@ jobs:
           if ('${{ steps.ver.outputs.pre }}' -eq 'true') { $vpkArgs += '--pre' }
           vpk @vpkArgs
 
+      # vpk 只上传自家认识的文件：校验清单由本步追加为 Release 资产并写入 Release 说明
+      # （脚本先经本地真实 API 演练；重跑时 body 去重、同名资产跳过）
+      - name: Attach SHA256SUMS to Release
+        shell: pwsh
+        run: >
+          ./tools/attach-sums.ps1
+          -Token "${{ secrets.GITHUB_TOKEN }}"
+          -Dir "artifacts/velopack"
+          -Repo "${{ github.repository }}"
+          -Tag "v${{ steps.ver.outputs.version }}"
+
       # 仅当发布上传失败时保留本地产物用于排查
       - name: Upload release artifacts (失败排查用)
         if: failure()
