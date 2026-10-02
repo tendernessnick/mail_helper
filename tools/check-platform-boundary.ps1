@@ -22,6 +22,7 @@ $rules = @(
     @{ Pattern = 'osascript|AppleScript';                          Name = 'AppleScript' }
 )
 
+$repoFullPath = (Resolve-Path $RepoRoot).Path.TrimEnd('\', '/')
 $violations = New-Object System.Collections.Generic.List[string]
 foreach ($t in $targets) {
     $dir = Join-Path $RepoRoot ($t -replace '/', [IO.Path]::DirectorySeparatorChar)
@@ -35,7 +36,8 @@ foreach ($t in $targets) {
                 $lineNo++
                 foreach ($r in $rules) {
                     if ($line -match $r.Pattern) {
-                        $rel = [IO.Path]::GetRelativePath($RepoRoot, $file.FullName)
+                        # PS5.1 兼容：.NET Framework 无 [IO.Path]::GetRelativePath
+                        $rel = $file.FullName.Substring($repoFullPath.Length).TrimStart('\').TrimStart('/')
                         $violations.Add("${rel}:${lineNo} [$($r.Name)] $line") | Out-Null
                     }
                 }
