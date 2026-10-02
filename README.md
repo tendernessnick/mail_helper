@@ -16,7 +16,7 @@
 | 便携版（免安装） | 同一发布页 → `MailHelper-stable-Portable.zip` | 解压即用，更新需重新下载 |
 | 尝鲜（beta） | [全部 Pre-releases](https://github.com/tendernessnick/mail_helper/releases) | 每次提交 main 自动产出，稳定性不作保证 |
 
-安装后，应用内 **设置 → 关于 → 检查更新** 即可随时升级到最新正式版。详细说明见下文[下载、安装与更新](#下载安装与更新)。
+安装后，应用内 **设置 → 关于 → 检查更新** 即可随时升级到最新正式版。完整操作说明见 **[📖 使用手册](docs/使用手册.md)**。
 
 ---
 
@@ -135,7 +135,7 @@ vpk pack --packId MailHelper --packVersion 0.4.0 --packDirectory artifacts/publi
 
 ## 仓库约定
 
-- 分支策略与提交规范见 [08-构建发布与运维手册](docs/08-构建发布与运维手册.md)；发版流程与排障见 [发布操作指南](docs/发布操作指南.md)。
+- 分支策略与提交规范见 [08-构建发布与运维手册](docs/08-构建发布与运维手册.md)；发版流程与排障见 [发布操作指南](docs/发布操作指南.md)；最终用户文档见 [使用手册](docs/使用手册.md)。
 - 代码结构：`src/`（App/Services/Core/Infrastructure 四层）+ `tests/`（Core/Services/Integration 三测试工程）+ `tools/`（覆盖率门禁/长稳脚本）。
 - 发布链路：push main 自动发 beta 预发布，打 tag `v*.*.*` 自动发正式版（CI：[.github/workflows/ci.yml](.github/workflows/ci.yml)）。
 - 进度事实源：[PROGRESS.md](PROGRESS.md)（S0~S14 完成，S15 开源发布链路）。
