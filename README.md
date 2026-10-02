@@ -48,6 +48,8 @@ MailHelper 自己不做邮箱登录。它读取你电脑上**经典版 Outlook**
 
 程序没买代码签名证书，首次运行 SmartScreen 会拦一下，点「更多信息 → 仍要运行」即可；介意的话先对照发布页 `SHA256SUMS.txt` 里的校验值。不想安装的话，同页也有免安装的 Portable zip，但更新要自己重新下载。
 
+安装器是一键式的，没有选目录的向导：默认装到 `%LocalAppData%\MailHelper`（当前用户目录，不需要管理员权限）。想装到别的位置，用命令行 `MailHelper-stable-Setup.exe --installto "D:\Apps\MailHelper"`，或者直接用便携版。
+
 ## 更新
 
 设置 → 关于 → 检查更新。有新版本会自动在后台下载，点「重启并安装更新」完成升级，邮件数据和设置都保留。只会收到正式版。
