@@ -167,3 +167,28 @@ public class ShellScreenshotTests
         }
     }
 }
+
+/// <summary>关窗常驻（FR-14 AC3；MS6）：Close → 取消并隐藏；进程显式退出才结束。</summary>
+public class CloseToTrayTests
+{
+    [AvaloniaFact]
+    public void Closing_Window_Hides_InsteadOfExit()
+    {
+        var (host, shell) = TestBootstrap.BuildShell();
+        try
+        {
+            shell.Show();
+            Dispatcher.UIThread.RunJobs();
+            shell.IsVisible.Should().BeTrue();
+
+            shell.Close(); // WM_CLOSE 等价 → App 的 Closing 处理器取消并 Hide
+            Dispatcher.UIThread.RunJobs();
+
+            shell.IsVisible.Should().BeFalse("关窗应隐藏至托盘而非退出（FR-14 AC3）");
+        }
+        finally
+        {
+            host.Dispose(); // 显式退出路径
+        }
+    }
+}
