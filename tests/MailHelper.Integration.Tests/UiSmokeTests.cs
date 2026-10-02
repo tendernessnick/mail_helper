@@ -88,13 +88,14 @@ public class UiSmokeTests
             var mainWindows = new[] { process };
 
             // Onboarding：勾选隐私 → 连接（05 §3.1 / 09 §6.3）
+            // 慢机 CI 冷启动（JIT+建库+首屏渲染）可超 30s：预算放宽至 60s（run#11 实测 15s 必现超时）
             var privacy = Retry(() => Find(mainWindows, automation, w => w.FindFirstDescendant(cf =>
                 cf.ByControlType(FlaUI.Core.Definitions.ControlType.CheckBox))),
-                TimeSpan.FromSeconds(15), "隐私复选框")!.AsCheckBox();
+                TimeSpan.FromSeconds(60), "隐私复选框")!.AsCheckBox();
             privacy.IsChecked = true;
 
             Retry(() => Find(mainWindows, automation, w => w.FindFirstDescendant(cf => cf.ByText("连接学校邮箱"))),
-                TimeSpan.FromSeconds(10), "连接按钮")!.AsButton().Invoke();
+                TimeSpan.FromSeconds(30), "连接按钮")!.AsButton().Invoke();
 
             // 同步+分类后列表出现并加载满（M1 出口全链路：登录→同步→分类→浏览）
             var itemCount = Retry(() =>
