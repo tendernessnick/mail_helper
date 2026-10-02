@@ -46,7 +46,7 @@ jobs:
           --collect:"XPlat Code Coverage" --settings coverlet.runsettings
           --logger "trx"
 
-      # 失败时把失败用例名写进 Job Summary（公开可见）并上传 TRX，便于无 token 排查
+      # 失败时把失败用例名写进 Job Summary + check-run 注解（后者可匿名读取，便于无 token 排查）并上传 TRX
       - name: 失败用例摘要
         if: failure()
         shell: pwsh
@@ -56,6 +56,7 @@ jobs:
             $x.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' } | ForEach-Object { $_.testName }
           } | Select-Object -Unique
           ("### 失败用例`n" + ($names | ForEach-Object { "- ❌ $_" } | Out-String)) | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          foreach ($n in $names) { Write-Host "::error title=失败用例::$n" }
 
       - name: Upload test results (失败排查用)
         if: failure()
