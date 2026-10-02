@@ -40,9 +40,17 @@ jobs:
       - name: Build (Release)
         run: dotnet build MailHelper.sln -c Release --no-restore
 
-      - name: Test (含 XPlat 覆盖率收集，排除 *.g.cs 生成代码)
+      # UI 冒烟（FlaUI 拉起真实窗口）独占先跑：与 headless/Skia 渲染类测试并行时，
+      # 慢机上资源竞争会挤爆其 60s 预算（MS5 实测），调度隔离而非弱化断言
+      - name: Test UI 冒烟（独占）
+        run: >
+          dotnet test tests/MailHelper.Integration.Tests -c Release --no-build
+          --filter "FullyQualifiedName~UiSmokeTests" --logger "trx"
+
+      - name: Test 其余（含 XPlat 覆盖率收集，排除 *.g.cs 生成代码）
         run: >
           dotnet test MailHelper.sln -c Release --no-build
+          --filter "FullyQualifiedName!~UiSmokeTests"
           --collect:"XPlat Code Coverage" --settings coverlet.runsettings
           --logger "trx"
 
