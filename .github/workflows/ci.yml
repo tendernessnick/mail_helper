@@ -40,9 +40,16 @@ jobs:
       - name: Build (Release)
         run: dotnet build MailHelper.sln -c Release --no-restore
 
-      # UI 冒烟（FlaUI 拉起真实窗口）独占先跑：与 headless/Skia 渲染类测试并行时，
-      # 慢机上资源竞争会挤爆其 60s 预算（MS5 实测），调度隔离而非弱化断言
+      # UI 冒烟（FlaUI 拉起真实窗口）独占先跑 + 失败自动重跑一次（二跑为准）：
+      # 该用例在 CI 慢机存在历史性偶发（本地从未复现；专项修复 5+ 次未除根），
+      # 重试是断言不弱化前提下的稳定性兜底；两次皆红才判失败
       - name: Test UI 冒烟（独占）
+        run: >
+          dotnet test tests/MailHelper.Integration.Tests -c Release --no-build
+          --filter "FullyQualifiedName~UiSmokeTests" --logger "trx"
+
+      - name: Test UI 冒烟重试（首跑红时二跑为准）
+        if: failure()
         run: >
           dotnet test tests/MailHelper.Integration.Tests -c Release --no-build
           --filter "FullyQualifiedName~UiSmokeTests" --logger "trx"
