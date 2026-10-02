@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MailHelper.Core.Abstractions;
 using MailHelper.Core.Services;
+using MailHelper.Infrastructure.Storage;
 using MailHelper.Infrastructure.SystemIntegration;
 using MailHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,9 @@ public partial class App : Application
 
             _ = _host.Services.GetRequiredService<LanguageService>()
                 .ApplyAsync(System.Threading.CancellationToken.None); // NFR-12（文化/日期形态）
+
+            CategoryCatalog.RefreshAsync(
+                _host.Services.GetRequiredService<ICategoryStore>()).GetAwaiter().GetResult(); // S14-C：目录先于 UI 就绪
 
             var shell = _host.Services.GetRequiredService<ShellWindow>();
             shell.DataContext = _host.Services.GetRequiredService<MainViewModel>();

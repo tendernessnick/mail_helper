@@ -19,13 +19,13 @@ using Microsoft.Extensions.Logging;
 
 namespace MailHelper.App.Avalonia;
 
-/// <summary>通用主机与依赖注入（Avalonia 版，MS3）：与 WPF Bootstrapper 同构——
+/// <summary>通用主机与依赖注入（Avalonia 版，MS3；public 供 headless 测试复用）：与 WPF Bootstrapper 同构——
 /// 领域/服务/存储注册逐项一致，仅平台件与 UI 类型按本 UI 就位。
 /// 真实模式：唯一通道 = 本机经典版 Outlook 登录态（OutlookDesktopMailProvider，CHG-013）；
 /// DEV 模式（MAILHELPER_DEV=1）：DevSeed 假通道 + 种子数据。
 /// 平台件演进：MS4 起 IAppPaths/IAutoStarter/ISingleInstanceLock 按 OS 分支（Windows 现 / Mac 新实现）；
 /// MS9 起 IUpdateInstaller 增 Mac 引导安装实现。</summary>
-internal static class AvaloniaBootstrapper
+public static class AvaloniaBootstrapper
 {
     public static IHost BuildHost(ISingleInstanceLock singleInstanceLock)
     {
