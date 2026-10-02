@@ -53,22 +53,24 @@ public sealed class WindowsSingleInstanceLock(string? mutexName = null, string? 
         }
     }
 
-    /// <summary>首实例开始监听唤起请求（进程生命周期后台任务，Dispose 时取消）。</summary>
+    /// <summary>首实例开始监听唤起请求（进程生命周期后台任务，Dispose 时取消）。
+    /// 缺陷修复（MS3，维持语义）：首根管道在返回前同步创建——原实现在后台任务内建管，
+    /// 慢机上二次启动的 Connect(500ms) 窗口可能早于管道就绪而扑空（唤起被静默吞掉）。</summary>
     public void StartListening(Action activate)
     {
         _listenCts = new CancellationTokenSource();
         var ct = _listenCts.Token;
+        var current = CreateServerPipe(); // 同步首根：本方法返回即保证客户端可连接
         _ = Task.Run(async () =>
         {
             while (!ct.IsCancellationRequested)
             {
                 try
                 {
-                    var pipe = CreateServerPipe();
-                    await pipe.WaitForConnectionAsync(ct);
+                    await current.WaitForConnectionAsync(ct);
                     var buffer = new byte[16];
-                    _ = await pipe.ReadAsync(buffer, ct);
-                    pipe.Dispose();
+                    _ = await current.ReadAsync(buffer, ct);
+                    current.Dispose();
                     if (Encoding.UTF8.GetString(buffer).StartsWith("SHOW"))
                     {
                         activate();
@@ -76,12 +78,16 @@ public sealed class WindowsSingleInstanceLock(string? mutexName = null, string? 
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
+                    current.Dispose();
                     break;
                 }
                 catch (IOException)
                 {
-                    // 客户端异常断开：继续下一轮监听
+                    // 客户端异常断开：换新管道继续监听
+                    current.Dispose();
                 }
+
+                current = CreateServerPipe();
             }
         }, ct);
     }
