@@ -94,7 +94,6 @@ public partial class CategoryItemViewModel : ObservableObject
 /// <summary>主视图模型：Onboarding ↔ 三栏收件箱（05 §2 信息架构；D-44：单窗双态）。</summary>
 public partial class MainViewModel : ObservableObject
 {
-    private readonly AuthService _auth;
     private readonly SyncCoordinator _sync;
     private readonly ClassificationService _classifier;
     private readonly FeedbackService _feedback;
@@ -111,7 +110,6 @@ public partial class MainViewModel : ObservableObject
     private string? _accountId;
 
     public MainViewModel(
-        AuthService auth,
         SyncCoordinator sync,
         ClassificationService classifier,
         FeedbackService feedback,
@@ -124,7 +122,6 @@ public partial class MainViewModel : ObservableObject
         ILogger<MainViewModel> logger,
         bool devMode)
     {
-        _auth = auth;
         _sync = sync;
         _classifier = classifier;
         _feedback = feedback;
@@ -260,50 +257,31 @@ public partial class MainViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            if (_provider.Kind == ChannelKind.OutlookDesktop)
+            // CHG-013：唯一通道 = 本机经典版 Outlook 登录态，无 OAuth 环节，直接探测 COM 可达性
+            string? address;
+            try
             {
-                // CHG-011：桌面通道复用本机 Outlook 登录态，无 OAuth 登录环节，直接探测 COM 可达性
-                string? address;
-                try
-                {
-                    address = await _provider.GetAccountAddressAsync(ct);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "ui.outlook_connect_failed");
-                    SyncStatusText = "连接失败：读不到本机经典版 Outlook（请确认它已打开并登录学校邮箱后重试）。";
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(address))
-                {
-                    SyncStatusText = "连接失败：Outlook 未返回登录账户（请确认已配置学校邮箱账户）。";
-                    return;
-                }
-
-                _accountId = "acc-1";
-                await _accounts.UpsertAccountAsync(new Account(
-                    _accountId, address, null, null, ChannelKind.OutlookDesktop, null,
-                    AccountStatus.Active, DateTime.UtcNow), ct);
-                var domain = address.Contains('@') ? address[(address.LastIndexOf('@') + 1)..] : "unknown";
-                _logger.LogInformation("ui.outlook_connected account_domain={Domain}", domain); // 隐私：只记域名
-                IsOnboarding = false;
-                await RunInitialSyncAsync(ct);
+                address = await _provider.GetAccountAddressAsync(ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "ui.outlook_connect_failed");
+                SyncStatusText = "连接失败：读不到本机经典版 Outlook（请确认它已打开并登录学校邮箱后重试）。";
                 return;
             }
 
-            var result = await _auth.SignInAsync(ct);
-            if (!result.IsSuccess)
+            if (string.IsNullOrWhiteSpace(address))
             {
-                SyncStatusText = $"登录失败：{result.ErrorCode} {result.Message}";
+                SyncStatusText = "连接失败：Outlook 未返回登录账户（请确认已配置学校邮箱账户）。";
                 return;
             }
 
-            var email = result.Token?.Email ?? "dev@localhost";
             _accountId = "acc-1";
             await _accounts.UpsertAccountAsync(new Account(
-                _accountId, email, null, result.Token?.TenantId, ChannelKind.Graph, null,
+                _accountId, address, null, null, ChannelKind.OutlookDesktop, null,
                 AccountStatus.Active, DateTime.UtcNow), ct);
+            var domain = address.Contains('@') ? address[(address.LastIndexOf('@') + 1)..] : "unknown";
+            _logger.LogInformation("ui.outlook_connected account_domain={Domain}", domain); // 隐私：只记域名
             IsOnboarding = false;
             await RunInitialSyncAsync(ct);
         }

@@ -7,7 +7,6 @@ using MailHelper.Core.Domain;
 using MailHelper.Core.Rules;
 using MailHelper.Core.Services;
 using MailHelper.Core.Services.Rules;
-using MailHelper.Infrastructure.Auth;
 using MailHelper.Infrastructure.Logging;
 using MailHelper.Infrastructure.Storage;
 using MailHelper.Infrastructure.Sync;
@@ -19,8 +18,8 @@ using Microsoft.Extensions.Logging;
 namespace MailHelper.App;
 
 /// <summary>通用主机与依赖注入（总控指令四.1；03/04 章分层）。
-/// 真实模式：TokenService(MSAL) + GraphMailProvider；DEV 模式（MAILHELPER_DEV=1）：假令牌 + 假邮件通道，
-/// 存储与分类全真实——M1 出口「假令牌环境下登录/同步/分类/三栏浏览全链路」（07 章）。
+/// 真实模式：唯一通道 = 本机经典版 Outlook 登录态（OutlookDesktopMailProvider，COM 直读，CHG-013）；
+/// DEV 模式（MAILHELPER_DEV=1）：假邮件通道 + 种子数据，存储与分类全真实。
 /// 数据目录可用 MAILHELPER_DATA_DIR 覆盖（UI 冒烟测试用独立临时目录）。</summary>
 internal static class Bootstrapper
 {
@@ -49,93 +48,18 @@ internal static class Bootstrapper
                 services.AddSingleton<ICategoryStore>(sp => sp.GetRequiredService<CategoryStore>()); // S14-C/CHG-012
                 services.AddSingleton<IBodyCache>(_ => new BodyCacheStore(Path.Combine(dataDir, "bodies")));
 
-                // —— 认证（DEV 假令牌 / 真实 MSAL：MAILHELPER_CLIENT_ID 注入即启用，检查点①）——
-                var realClientId = Environment.GetEnvironmentVariable("MAILHELPER_CLIENT_ID");
-                var tenantId = Environment.GetEnvironmentVariable("MAILHELPER_TENANT_ID");
-                var forceImap = Environment.GetEnvironmentVariable("MAILHELPER_FORCE_IMAP") == "1"; // FR-02 预案 2 强制切换
-                var useOutlook = Environment.GetEnvironmentVariable("MAILHELPER_CHANNEL") == "Outlook"; // CHG-011 桌面通道
-                if (devMode)
-                {
-                    services.AddSingleton<ITokenProvider>(_ => new FakeTokenProvider
-                    {
-                        InteractiveResult = AuthResult.Ok(new AuthToken(
-                            "dev-access-token", DateTimeOffset.UtcNow.AddHours(8), "dev-account",
-                            "dev@connect.hku.hk", "dev-tenant", new[] { "Mail.Read" })),
-                    });
-                }
-                else
-                {
-                    services.AddSingleton<ITokenProvider>(_ => new TokenService(
-                        realClientId ?? TokenService.PlaceholderClientId, // 检查点①：经环境变量注入
-                        Path.Combine(dataDir, "tokens"),
-                        scopes: forceImap ? [ImapMailProvider.ImapScope] : null, // 预案 2：IMAP scope 交互登录
-                        tenantId: tenantId,
-                        redirectUri: tenantId is { Length: > 0 } ? "http://localhost" : null)); // 单租户验证：loopback 免协议注册
-                }
-
-                services.AddSingleton<AuthService>();
-
-                // —— 规则与分类（内置 JSON + rules 表用户/反馈规则合并）——
-                services.AddSingleton(_ => LoadRuleEngine(dbPath));
-                services.AddSingleton<IClassifier>(sp => sp.GetRequiredService<RuleEngine>());
-
-                // —— 同步（DEV 假通道带种子数据 / 真实 Graph REST 或 IMAP 兜底，按账户通道 FR-02）——
-                if (devMode)
-                {
-                    services.AddSingleton<IMailProvider>(_ => DevSeed.BuildMailProvider());
-                }
-                else if (useOutlook)
-                {
-                    // CHG-011 落地路径调整：复用经典 Outlook 本机登录态（COM），绕开租户 OAuth 同意限制
-                    services.AddSingleton<IMailProvider>(sp => new OutlookDesktopMailProvider(
+                // —— 通道（CHG-013 唯一通道：本机经典版 Outlook 登录态，COM 直读；DEV 假通道带种子数据）——
+                services.AddSingleton<IMailProvider>(sp => devMode
+                    ? DevSeed.BuildMailProvider()
+                    : new OutlookDesktopMailProvider(
                         new OutlookComMailSource(),
                         sp.GetRequiredService<IBodyCache>(),
                         cacheAccountKey: "acc-1",
                         sp.GetRequiredService<ILogger<OutlookDesktopMailProvider>>()));
-                }
-                else if (forceImap)
-                {
-                    // FR-02 AC1 预案 2 强制通道：绕过账户记录直接走 IMAP（诊断/验证用）
-                    services.AddSingleton<IMailProvider>(sp => new ImapMailProvider(
-                        sp.GetRequiredService<ITokenProvider>(),
-                        () => new ImapKitClientAdapter(),
-                        Environment.GetEnvironmentVariable("MAILHELPER_IMAP_USER")
-                            ?? throw new InvalidOperationException("IMAP 通道需 MAILHELPER_IMAP_USER 指定登录邮箱"),
-                        sp.GetRequiredService<ILogger<ImapMailProvider>>()));
-                }
-                else
-                {
-                    var channel = new AccountRepository(dbPath)
-                        .FindAllAsync(CancellationToken.None).GetAwaiter().GetResult()
-                        .FirstOrDefault()?.Channel ?? ChannelKind.Graph;
-                    if (channel == ChannelKind.Imap)
-                    {
-                        // FR-02 AC1 预案 2：Graph 被拒时切换 IMAP XOAUTH2（MailKit，04 §4.3）
-                        services.AddSingleton<IMailProvider>(sp =>
-                        {
-                            var accountEmail = new AccountRepository(dbPath)
-                                .FindAllAsync(CancellationToken.None).GetAwaiter().GetResult()
-                                .First(a => a.Channel == ChannelKind.Imap).Email;
-                            var imapTokens = new TokenService(
-                                realClientId ?? TokenService.PlaceholderClientId,
-                                Path.Combine(dataDir, "tokens"),
-                                [ImapMailProvider.ImapScope],
-                                tenantId: tenantId,
-                                redirectUri: tenantId is { Length: > 0 } ? "http://localhost" : null);
-                            return new ImapMailProvider(
-                                imapTokens,
-                                () => new ImapKitClientAdapter(),
-                                accountEmail,
-                                sp.GetRequiredService<ILogger<ImapMailProvider>>());
-                        });
-                    }
-                    else
-                    {
-                        services.AddSingleton<IMailProvider>(sp => new GraphMailProvider(
-                            sp.GetRequiredService<ITokenProvider>(),
-                            options: new GraphHttpOptions()));
-                    }
-                }
+
+                // —— 规则与分类（内置 JSON + rules 表用户/反馈规则合并）——
+                services.AddSingleton(_ => LoadRuleEngine(dbPath));
+                services.AddSingleton<IClassifier>(sp => sp.GetRequiredService<RuleEngine>());
 
                 services.AddSingleton(sp => new SyncCoordinator(
                     sp.GetRequiredService<IMailProvider>(),
@@ -180,7 +104,6 @@ internal static class Bootstrapper
                 services.AddSingleton<RulesViewModel>();
                 services.AddSingleton(sp => new SettingsViewModel(
                     sp.GetRequiredService<SettingsService>(),
-                    sp.GetRequiredService<AuthService>(),
                     sp.GetRequiredService<IAccountStore>(),
                     onSyncIntervalChanged: RestartPeriodicSync,
                     updates: sp.GetRequiredService<Updates.UpdateService>(),
@@ -202,7 +125,6 @@ internal static class Bootstrapper
 
                 // —— UI ——
                 services.AddSingleton(sp => new MainViewModel(
-                    sp.GetRequiredService<AuthService>(),
                     sp.GetRequiredService<SyncCoordinator>(),
                     sp.GetRequiredService<ClassificationService>(),
                     sp.GetRequiredService<FeedbackService>(),

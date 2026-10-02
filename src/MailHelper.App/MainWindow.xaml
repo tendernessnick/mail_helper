@@ -125,8 +125,11 @@
                     <Button Content="连接学校邮箱" Style="{StaticResource PrimaryButton}" FontSize="15"
                             Padding="18,10" HorizontalAlignment="Center"
                             Command="{Binding ConnectCommand}" />
+                    <TextBlock Text="需要本机已安装并登录「经典版 Outlook」（Office 桌面版），MailHelper 经它同步学校邮箱"
+                               Foreground="{StaticResource BrushTextSecondary}" FontSize="11.5"
+                               HorizontalAlignment="Center" Margin="0,14,0,0" TextWrapping="Wrap" MaxWidth="330" />
                     <CheckBox IsChecked="{Binding PrivacyAccepted}" Style="{StaticResource ModernCheck}"
-                              Margin="0,26,0,0" HorizontalAlignment="Center">
+                              Margin="0,14,0,0" HorizontalAlignment="Center">
                         <TextBlock Text="同意《隐私说明》：邮件数据仅保存在本机，分类完全在本地完成，不上传任何服务器"
                                    TextWrapping="Wrap" MaxWidth="330" />
                     </CheckBox>

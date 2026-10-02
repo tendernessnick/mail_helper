@@ -2,6 +2,8 @@
 
 > 一款运行于 Windows 的桌面应用程序，帮助港校学生自动同步、分类、标记学生邮箱（Office 365 / Outlook）中的邮件，按「类别 + 重要程度」组织收件箱，让重要的事不再被淹没。
 
+> **⚠️ 使用前提**：本机需安装并登录 **经典版 Outlook**（Office 桌面版自带的 Outlook 桌面客户端）。MailHelper 经它同步学校邮箱——**不支持新版 Outlook for Windows 和网页版 Outlook**；同样也无需任何 OAuth 授权，只要经典版 Outlook 能正常收发学校邮件即可。
+
 [![CI](https://github.com/tendernessnick/mail_helper/actions/workflows/ci.yml/badge.svg)](https://github.com/tendernessnick/mail_helper/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/tendernessnick/mail_helper)](https://github.com/tendernessnick/mail_helper/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -22,15 +24,15 @@
 
 ## 一句话定位
 
-学生在港校录取后会收到海量混杂邮件（课程、实习/CV、校园事务、缴费、通知……）。MailHelper 通过 Microsoft Graph API 定时增量同步邮箱，使用本地规则引擎自动分类并标注 P0–P3 重要程度，以「侧边分类栏 + 邮件列表 + 阅读窗格」的三栏界面呈现，支持托盘常驻后台运行。
+学生在港校录取后会收到海量混杂邮件（课程、实习/CV、校园事务、缴费、通知……）。MailHelper 经本机**经典版 Outlook** 的已登录账户定时增量同步邮箱，使用本地规则引擎自动分类并标注 P0–P3 重要程度，以「侧边分类栏 + 邮件列表 + 阅读窗格」的三栏界面呈现，支持托盘常驻后台运行。
 
 ## 技术栈（已评审确定）
 
 | 层面 | 选型 | 说明 |
 | --- | --- | --- |
 | 客户端框架 | C# / .NET 8 + WPF（MVVM） | 原生 Windows，自包含发布 |
-| 身份认证 | MSAL.NET（OAuth 2.0 + PKCE） | 微软官方认证库，令牌缓存 DPAPI 加密 |
-| 邮件接入 | Microsoft Graph API（主）+ IMAP XOAUTH2（兜底） | delta query 增量同步，避免全量拉取 |
+| 邮件接入 | 经典版 Outlook 本机登录态（COM 自动化，CHG-013 唯一通道） | 复用 Outlook 已登录的学校账户，零 OAuth 环节、不受租户授权策略限制 |
+| 身份认证 | 无独立认证（随 Outlook 登录态） | 不存任何令牌，凭据仅在 Outlook/微软侧 |
 | 本地存储 | SQLite + EF Core 8 | 邮件缓存、规则、配置全部本地化 |
 | 分类方案 | 本地规则引擎（发件人/关键词/正则加权评分） | 预留 `IClassifier` 扩展点，后期可接入 LLM |
 | 打包发布 | dotnet publish 自包含 + Velopack + GitHub Actions | tag 自动发版（Setup.exe/便携版/增量更新），应用内检查更新 |
@@ -119,7 +121,7 @@ vpk pack --packId MailHelper --packVersion 0.4.0 --packDirectory artifacts/publi
 
 ### 安装
 
-双击 `Setup.exe` 即可，无需预装 .NET（自包含）。系统要求：Windows 10 (19041+) / Windows 11；WebView2 Runtime（Win11 内置，个别 Win10 精简系统缺失时从[微软官网](https://developer.microsoft.com/microsoft-edge/webview2/)安装）。
+双击 `Setup.exe` 即可，无需预装 .NET（自包含）。系统要求：**本机安装并登录经典版 Outlook**（Office 桌面版，随学校版 Office 分发）；Windows 10 (19041+) / Windows 11；WebView2 Runtime（Win11 内置，个别 Win10 精简系统缺失时从[微软官网](https://developer.microsoft.com/microsoft-edge/webview2/)安装）。
 
 **SmartScreen 提示**：当前未做代码签名（08 §4.4 无证书路径），首次运行请选「更多信息 → 仍要运行」，并建议核对发布页 `SHA256SUMS.txt` 校验值。
 

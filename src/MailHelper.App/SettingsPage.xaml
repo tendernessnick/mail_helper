@@ -21,8 +21,7 @@
                     <TextBlock Text="上次同步" Foreground="#6B6B6B" FontSize="11" />
                     <TextBlock Text="{Binding LastSync}" Margin="0,0,0,10" />
                     <StackPanel Orientation="Horizontal">
-                        <Button Content="登出（保留本地缓存）" Padding="10,5" Command="{Binding LogoutCommand}" />
-                        <Button Content="清除本地数据…" Padding="10,5" Margin="10,0,0,0" Click="OnClearDataClick" />
+                        <Button Content="清除本地数据…" Padding="10,5" Click="OnClearDataClick" />
                     </StackPanel>
                 </StackPanel>
             </Border>

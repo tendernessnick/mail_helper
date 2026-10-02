@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MailHelper.Core;
 using MailHelper.Core.Abstractions;
+using MailHelper.Core.Domain;
 using MailHelper.Core.Services;
 using Velopack;
 
@@ -14,7 +15,6 @@ namespace MailHelper.App.ViewModels;
 public partial class SettingsViewModel : ObservableObject
 {
     private readonly SettingsService _settings;
-    private readonly AuthService _auth;
     private readonly IAccountStore _accounts;
     private readonly Action<int> _onSyncIntervalChanged; // 周期循环热更新（FR-04）
     private readonly Updates.UpdateService _updates;
@@ -25,14 +25,12 @@ public partial class SettingsViewModel : ObservableObject
 
     public SettingsViewModel(
         SettingsService settings,
-        AuthService auth,
         IAccountStore accounts,
         Action<int> onSyncIntervalChanged,
         Updates.UpdateService updates,
         Func<bool, Task>? setAutostartAsync = null)
     {
         _settings = settings;
-        _auth = auth;
         _accounts = accounts;
         _onSyncIntervalChanged = onSyncIntervalChanged;
         _updates = updates;
@@ -104,8 +102,6 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool canCheckUpdate = Updates.UpdateService.IsInstalled;
 
-    public event EventHandler? SignOutCompleted;
-
     public async Task LoadAsync(CancellationToken ct)
     {
         IntervalMinutes = await _settings.GetSyncIntervalMinutesAsync(ct);
@@ -123,7 +119,13 @@ public partial class SettingsViewModel : ObservableObject
         if (account is { } a)
         {
             AccountEmail = a.Email;
-            Channel = a.Channel.ToString(); // FR-03：接入通道（Graph/IMAP）
+            Channel = a.Channel switch // FR-03：接入通道显示（CHG-013 起恒为经典版 Outlook）
+            {
+                ChannelKind.OutlookDesktop => "经典版 Outlook",
+                ChannelKind.Imap => "IMAP",
+                ChannelKind.Graph => "Graph",
+                _ => a.Channel.ToString(),
+            };
             var checkpoint = await _accounts.GetCheckpointAsync(a.Id, ct);
             LastSync = checkpoint?.LastSyncAtUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—";
         }
@@ -177,13 +179,6 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         _ = _settings.SetAutostartAsync(enabled, CancellationToken.None); // 04 §7：设置值与注册表同步
-    }
-
-    [RelayCommand]
-    private async Task LogoutAsync(CancellationToken ct)
-    {
-        await _auth.SignOutAsync(ct); // AC：撤销令牌+删缓存，保留本地分类缓存供查阅（FR-03）
-        SignOutCompleted?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>检查更新（S15）：有新版即后台下载，完成后交由用户确认重启安装。</summary>

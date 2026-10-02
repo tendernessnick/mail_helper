@@ -412,3 +412,17 @@ PROGRESS.md
 **质量**：全量测试 250/250 通过；0 警告 0 错误；本地 publish+vpk pack 冒烟通过
 
 **待办**：首次推送后盯 CI 绿 → tag v0.4.0 发首个正式 Release → 真机验证应用内更新闭环（0.4.0→下一版）
+
+### S16 —— 2026-10-02 通道收敛（CHG-013：仅经典版 Outlook，随 v0.5.0）
+
+**决策**：用户拍板——放弃 OAuth 系通道（真实租户授权不可行，检查点①长期阻塞），唯一通道 = 本机经典版 Outlook 登录态（COM 直读）
+
+**完成项与证据**：
+- 移除 GraphMailProvider / ImapMailProvider / ImapClientAdapter / TokenService(MSAL) / AuthService / FakeTokenProvider / DpapiFileProtector / AuthErrorMapper 及 ITokenProvider、AuthModels 抽象；MailKit、Microsoft.Identity.Client、ProtectedData 包移除
+- Bootstrapper 通道装配收敛两态（DEV 假通道 / OutlookDesktop）；MainViewModel.ConnectAsync 仅剩 Outlook 探测分支；设置页移除登出按钮（无令牌可撤销）、通道恒显「经典版 Outlook」；Onboarding 卡片加「需经典版 Outlook」前提提示
+- FakeMailProvider.Kind=OutlookDesktop + GetAccountAddressAsync（DEV/UI 冒烟走同真实路径，无 Outlook 环境可测）
+- 文档同步：README 前提声明+技术栈、使用手册（连接流程/FAQ/附录/已知限制）、CHANGELOG 0.5.0、docs/02 FR-01~03 废弃注记、docs/03 ADR-002 标记替代 + 新增 ADR-005
+
+**质量**：全量测试 210/210 通过（移除认证/Graph/IMAP 用例 40 个）；0 警告 0 错误；UI 冒烟（含新 Onboarding 路径）通过
+
+**遗留**：语言字典 Strings 其余键无变化；ChannelKind 枚举保留 Graph/Imap 值仅作存量 DB 兼容，不再产生新记录

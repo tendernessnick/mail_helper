@@ -2,6 +2,19 @@
 
 本文件遵循 08 §5 发布检查单第 3 项：用户可读文案，随版本发布更新。
 
+## 0.5.0（2026-10-02，通道收敛：仅经典版 Outlook）
+
+### 重大变更（CHG-013）
+- **唯一同步通道 = 本机经典版 Outlook**：复用已登录的 Outlook 桌面账户（COM 直读），「连接学校邮箱」零 OAuth 环节，不再受学校租户授权策略限制
+- **移除 Graph / IMAP XOAUTH2 通道及整个 MSAL 认证栈**（MailKit、Microsoft.Identity.Client、DPAPI 令牌缓存依赖一并移除）；`MAILHELPER_FORCE_IMAP` / `MAILHELPER_CHANNEL` / `MAILHELPER_CLIENT_ID` 等环境变量不再生效
+- 设置页账户组移除「登出」按钮（无令牌可撤销），「接入通道」恒显示「经典版 Outlook」
+
+### 使用前提
+- **本机需安装并登录经典版 Outlook**（Office 桌面版）；不支持新版 Outlook for Windows 与网页版 Outlook
+
+### 质量
+- 全量测试 210/210 通过（随通道移除精简认证/Graph/IMAP 用例 40 个）；0 警告 0 错误
+
 ## 0.4.0（2026-10-01，开源发布版：应用内更新）
 
 ### 新功能

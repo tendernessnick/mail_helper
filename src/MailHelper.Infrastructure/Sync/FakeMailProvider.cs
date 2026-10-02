@@ -9,7 +9,16 @@ public sealed class FakeMailProvider : IMailProvider
 {
     private string? _completedLink;
 
-    public ChannelKind Kind => ChannelKind.Graph;
+    public ChannelKind Kind => ChannelKind.OutlookDesktop; // CHG-013：唯一真实通道为经典版 Outlook，DEV 假通道同语义
+
+    /// <summary>连接探测返回的登录账户地址（DEV 模式 Onboarding 用）。</summary>
+    public string? AccountAddress { get; set; } = "dev@connect.hku.hk";
+
+    /// <summary>探测抛出的异常（模拟 Outlook 未打开/未登录）。</summary>
+    public Exception? ProbeError { get; set; }
+
+    public Task<string?> GetAccountAddressAsync(CancellationToken ct) =>
+        ProbeError is not null ? Task.FromException<string?>(ProbeError) : Task.FromResult(AccountAddress);
 
     /// <summary>逐页输出（FetchDeltaAsync 从头枚举全部页）。</summary>
     public List<IReadOnlyList<RemoteMessage>> Pages { get; } = new();

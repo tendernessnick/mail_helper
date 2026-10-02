@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- 基础设施层（03 章 L4）：Graph/IMAP/MSAL/EF Core/文件与配置；实现 Core 定义的接口，经 DI 注入 -->
+  <!-- 基础设施层（03 章 L4）：Outlook COM/EF Core/文件与配置；实现 Core 定义的接口，经 DI 注入 -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
@@ -8,15 +8,11 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
-    <!-- 04 §4.3 指定：IMAP 兜底通道（XOAUTH2 + UID 水位） -->
-    <PackageReference Include="MailKit" Version="4.16.0" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.90.1" />
     <PackageReference Include="Serilog" Version="4.4.0" />
     <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <!-- 显式覆盖 EF Core 8.0.10 的传递依赖 2.1.6（GHSA-2m69-gcr7-jv3q High）：自检③红线 -->
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
     <!-- 预置规则包（04 §7：随包分发的只读层，独立于代码可更新） -->
