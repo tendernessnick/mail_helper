@@ -9,9 +9,9 @@
 | --- | --- |
 | 更新时间 | 2026-10-02 |
 | 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
-| 当前模块 | **MS7 已完成**（规则编辑器/设置/待确认/搜索在 Avalonia 落地，260/260 全绿）；下一步 MS8 AppleScript 通道打磨 |
+| 当前模块 | **MS8 已完成**（MAC 文案接线/DEV 假通道/真实 osascript 冒烟，261/261 全绿）；下一步 MS9 打包与分发 |
 | 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
-| 下一步 | MS8 AppleScript 打磨（水位接线/错误文案/DEV 可注入 Mac 假通道/装配） |
+| 下一步 | MS9 打包与分发（bundle.sh/icns/DMG/codesign 脚本/CI 集成/更新器 Mac 策略） |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 

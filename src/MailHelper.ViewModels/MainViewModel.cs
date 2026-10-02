@@ -7,6 +7,7 @@ using MailHelper.Core;
 using MailHelper.Core.Abstractions;
 using MailHelper.Core.Domain;
 using MailHelper.Core.Services;
+using MailHelper.Infrastructure.Sync.OutlookMac;
 using Microsoft.Extensions.Logging;
 
 namespace MailHelper.ViewModels;
@@ -281,6 +282,13 @@ public partial class MainViewModel : ObservableObject
             try
             {
                 address = await _provider.GetAccountAddressAsync(ct);
+            }
+            catch (MacChannelException macEx)
+            {
+                // MS8（CHG-014 §6.5）：Mac 通道四类错误的用户可读文案（TCC 引导/New Outlook 切换等）
+                _logger.LogWarning(macEx, "ui.outlook_connect_failed err_code={ErrCode}", macEx.ErrorCode);
+                SyncStatusText = $"连接失败：{macEx.Message}";
+                return;
             }
             catch (Exception ex)
             {

@@ -105,9 +105,11 @@ public static class AvaloniaBootstrapper
 
             if (OperatingSystem.IsMacOS())
             {
-                return new OutlookMacMailProvider(
-                    new OsascriptScriptRunner(),
-                    cacheAccountKey: "acc-1");
+                // MS8：DEV 可注入 Mac 假通道（mac 无 Outlook 亦可 UI 冒烟；总控指令四.4）
+                var fakeChannel = Environment.GetEnvironmentVariable("MAILHELPER_FAKE_CHANNEL");
+                return fakeChannel == "OutlookMac"
+                    ? new OutlookMacMailProvider(FakeAppleScriptRunner.WithDevSeed(), cacheAccountKey: "acc-1")
+                    : new OutlookMacMailProvider(new OsascriptScriptRunner(), cacheAccountKey: "acc-1");
             }
 
             throw new PlatformNotSupportedException("MailHelper 支持 Windows 与 macOS");
