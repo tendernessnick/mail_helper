@@ -9,9 +9,9 @@
 | --- | --- |
 | 更新时间 | 2026-10-02 |
 | 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
-| 当前模块 | **MS0/MS1 已完成**（双架构 CI 绿；平台抽象四接口落地，216/216 回归绿）；下一步 MS2 共享 ViewModel |
+| 当前模块 | **MM0 已收口**（MS0–MS2：设计获批/双架构 CI/平台抽象/共享 ViewModel，216/216 回归绿，已合回 main）；下一步 MS3 Avalonia 骨架 |
 | 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
-| 下一步 | MS2 共享 ViewModel（IMainThreadDispatcher + 阅读构建共享化，等价重构）→ 合回 main → MS3 Avalonia 骨架 |
+| 下一步 | MS3 Avalonia 骨架（Shell/导航/主题/双语）→ MS4 Mac 基础设施 + OutlookMacMailProvider 骨架 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -253,13 +253,13 @@
 | T-MS1-05 | DI 改造 | **完成** | Bootstrapper.BuildHost(singleInstanceLock) 显式注入（抢占仍先于 BuildHost——第二实例不做 DB 初始化的时序等价保留）；App.xaml.cs 四处调用点换接口；ClearLocalData 改 IAppPaths.DataDir | static lambda 捕获限制以 RegisterServices 静态方法化解 |
 | T-MS1-06 | 验证 | **完成** | ① Release 构建 0 警 0 错；② 全量 **216/216 绿**（Core 81 + Services 70 + Integration 65，含新增 6 契约测试，既有 210 零删除零削弱）；③ 7 工程漏洞扫描 0；④ 平台边界检查 0 违规；⑤ 新代码零新增日志/错误路径（红线无涉）；⑥ docs/10 §4 接口表已更新为定稿签名；⑦ **Windows 版行为未被改变**——UiSmoke 真机冒烟全绿 + 截图比对（artifacts/screens/s6-inbox.png vs HEAD 基线）：三栏布局/色卡/字体/状态栏零变化，仅 DEV 种子时间漂移 | 中途红灯定性：a) 锁测试与 UiSmoke 抢全局互斥（测试设计缺陷，名称注入修复）；b) Serilog_WritesSyncCompletedToFile 负载偶发（隔离 3/3 绿、修复后全量绿、夹具为每测试唯一 GUID 目录） |
 
-### MS2 共享 ViewModel（docs/10 ADR-006）—— 待办
+### MS2 共享 ViewModel（docs/10 ADR-006）—— **已完成（2026-10-02）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-MS2-01 | 共享工程 | 待办 | — | MailHelper.ViewModels（net8.0）：MainViewModel/RulesViewModel/SettingsViewModel 迁入；IMainThreadDispatcher 解除 WPF Dispatcher 依赖；阅读 HTML 构建共享化 |
-| T-MS2-02 | WPF 改引用 | 待办 | — | MailHelper.App 改引用共享工程；行为不变 |
-| T-MS2-03 | 验证 | 待办 | — | 等价重构：全量回归绿 + UiSmoke 截图比对；**合回 main**（main 必须仍能发布 Windows 版） |
+| T-MS2-01 | 共享工程 | **完成** | MailHelper.ViewModels（net8.0）：Main/Rules/Settings 三 VM + CategoryCatalog 迁入（命名空间 MailHelper.ViewModels）；IMainThreadDispatcher 抽象 + WpfMainThreadDispatcher（App 层）；UpdateService 迁 Infrastructure/Updates（安装器必选注入，化解 CA1416）；SettingsViewModel 增 WriteCrashLog 委托（模式同 SetAutostartAsync） | UiSmoke 抓出 MS1 潜伏 bug：`AddSingleton(_ => paths)` 泛型推断注册为具体类型，IAppPaths 仅「一键清除」路径解析——已修为显式接口类型注册（同修 IMainThreadDispatcher） |
+| T-MS2-02 | WPF 改引用 | **完成** | App.csproj 引用共享工程；XAML×3 xmlns 更新；App 代码后置 usings 更新；Bootstrapper 注入 dispatcher | 行为不变：XAML 绑定/AutomationProperties.Name 零改动 |
+| T-MS2-03 | 验证 | **完成** | ① 构建 0 警 0 错（7→8 工程）；② 全量 **216/216 绿**；③ 漏洞扫描 0；④ 平台边界 0 违规；⑤ 无新增日志/错误路径；⑥ 接口与 docs/10 §4 定稿一致；⑦ **Windows 版行为未被改变**：UiSmoke 全绿 + 截图比对（MS2 vs MS1 基线）布局/色卡/字体零变化；CI run [36989550301](https://github.com/tendernessnick/mail_helper/actions/runs/36989550301) 全 success | MS1 的 CI 红灯（run 36988416202 windows Test 步骤）未在 MS2（含其全部内容）复现——判定为 CI 慢机 UiSmoke 时序性失败（历史同型：0d64a70/fffcd14/abd9442/a210d1a），非代码回归；持续观察 |
 
 ### MS3 Avalonia 骨架（docs/10 §7）—— 待办
 
@@ -512,3 +512,23 @@ PROGRESS.md
 **质量**：全量测试 210/210 通过；0 警告 0 错误；本地 ISCC 编译产物 MailHelper-stable-Setup.exe ≈74MB
 
 **迁移注意**：v0.5.0（Velopack 安装）用户的应用内更新找不到 0.6.0+（发布物无 Velopack 元数据），需从发布页手动装一次 v0.6.0；旧 Velopack 副本建议卸载（数据目录不受影响）
+
+### MM0（MS0–MS2）—— 2026-10-02 收口：Mac 阶段基座就绪
+
+**完成项与证据**：
+- docs/10 获批（CHG-014，检查点①；用户同步确认通道路线=仅经典版 Outlook 直读，PROGRESS 过时 Azure 表述已清理）
+- MS0：mac-baseline tag；feature/mac-platform 分支；CI macos job 双架构绿（run 36986843084）；平台边界机械检索入 CI；MailHelper.Mac.slnf
+- MS1：平台抽象四接口落地（IAppPaths/ISingleInstanceLock/IAutoStarter/IUpdateInstaller），Windows 实现等价迁移（SingleInstance.cs 迁 Infrastructure 并删原文件）；+6 契约测试；216/216
+- MS2：MailHelper.ViewModels 共享工程（三 VM + CategoryCatalog）；IMainThreadDispatcher；UpdateService 迁 Infrastructure；WPF 改引用共享工程；216/216 + CI run 36989550301 全 success
+- 发现并修复：DI 泛型推断注册具体类型的潜伏 bug（UiSmoke 抓出）；记录 Windows 命名互斥同线程可重入语义边界
+
+**未完成项与原因**：无阻塞项；MS3 起按 §3.5 顺序推进（Avalonia 骨架为下一步）
+
+**与设计的偏差及处理**：
+- UpdateService 落点由 App 调整为 Infrastructure/Updates（共享 VM 需消费且不能违反 Core.Services 无 SDK 原则）——docs/10 §4 P-08「查版逻辑共享化」的落位细化，已回写文档
+- IAppPaths 成员以属性定稿（文档原为方法示意）——已回写 docs/10 §4
+- IMailProvider 的 OutlookMac 侧按计划在 MS4（本里程碑不涉及）
+
+**对 Windows 版的影响评估**：**无**。回归证据=全量 216/216（基线 210 零删除零削弱）+ UiSmoke 真机冒烟全绿 + 两次截图比对（MS1 vs v0.6.0 基线、MS2 vs MS1）布局/色卡/字体零变化 + CI windows job 绿（run 36989550301）
+
+**下一步计划**：MS3 Avalonia 骨架（App 工程/Shell 导航/Fluent 主题映射 05 色卡/双语资源复用；Windows 上运行截图比对）
