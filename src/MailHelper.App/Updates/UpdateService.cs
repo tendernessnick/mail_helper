@@ -2,19 +2,25 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using MailHelper.Core.Abstractions;
+using MailHelper.Infrastructure.SystemIntegration;
 
 namespace MailHelper.App.Updates;
 
 /// <summary>应用内更新（S17，Inno 安装包路线）：更新源为 GitHub Releases。
 /// 检查 = releases/latest 与当前程序集版本比较（只认正式版，预发布不推送）；
-/// 下载 = 安装包落临时目录（字节级进度）；应用 = /SILENT 同目录覆盖安装，
-/// 由安装器接管关闭应用与完成后的自动重启。</summary>
+/// 下载 = 安装包落临时目录（字节级进度）；应用 = IUpdateInstaller 策略
+/// （MS1 抽取：Windows=WindowsUpdateInstaller 静默重装；macOS 由 Avalonia 侧提供引导安装，docs/10 §9）。</summary>
 public sealed class UpdateService
 {
     public const string RepoUrl = "https://github.com/tendernessnick/mail_helper";
     public const string InstallerAssetName = "MailHelper-stable-Setup.exe";
 
     private static readonly HttpClient Http = CreateClient();
+    private readonly IUpdateInstaller _installer;
+
+    public UpdateService(IUpdateInstaller? installer = null) =>
+        _installer = installer ?? new WindowsUpdateInstaller();
 
     /// <summary>当前版本（AssemblyVersion，CI 以 tag 注入 -p:Version）。</summary>
     public static string CurrentVersion { get; } =
@@ -86,16 +92,9 @@ public sealed class UpdateService
         return target;
     }
 
-    /// <summary>启动静默升级（/SILENT 同目录覆盖安装）；调用方随后退出应用，
-    /// 安装完成后由安装器自动重启 MailHelper。</summary>
-    public void InstallSilently(string installerPath)
-    {
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
-        {
-            UseShellExecute = true,
-            Arguments = "/SILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS",
-        });
-    }
+    /// <summary>启动静默升级（IUpdateInstaller 策略，Windows=Inno /SILENT 同目录覆盖安装）；
+    /// 调用方随后退出应用，安装完成后由安装器自动重启 MailHelper。</summary>
+    public void InstallSilently(string installerPath) => _installer.Install(installerPath);
 
     private static HttpClient CreateClient()
     {

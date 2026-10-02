@@ -9,9 +9,9 @@
 | --- | --- |
 | 更新时间 | 2026-10-02 |
 | 里程碑 | Windows v0.6.0 已发布（S0~S17 全部完成）；**Mac 阶段启动**（feature/mac-platform 分支，mac-baseline tag 已打，210 测试基线全绿） |
-| 当前模块 | **MS0 进行中**（CI macos job + 平台边界检索）；docs/10 已获批，MS1–MS10 排队（见 §3.5） |
+| 当前模块 | **MS0/MS1 已完成**（双架构 CI 绿；平台抽象四接口落地，216/216 回归绿）；下一步 MS2 共享 ViewModel |
 | 阻塞 | 无阻塞。检查点①已通过（CHG-014 获批）；检查点②（Mac 真机）与③（Apple 证书）按里程碑触发；无其他阻塞 |
-| 下一步 | MS0 双架构 CI 绿 → MS1 平台抽象等价迁移（feature/mac-platform）→ MS2 共享 ViewModel 合回 main → MS3 起按 §3.5 顺序推进 |
+| 下一步 | MS2 共享 ViewModel（IMainThreadDispatcher + 阅读构建共享化，等价重构）→ 合回 main → MS3 Avalonia 骨架 |
 
 ## 1. 工程书内化基线（关键索引，供后续直接引用）
 
@@ -237,21 +237,21 @@
 | --- | --- | --- | --- | --- |
 | T-MS0-01 | 基线 | **完成** | git tag mac-baseline；全量 210/210 绿（Core 81 + Services 70 + Integration 59，Release）；首跑 UiSmoke 红灯=本机安装版实例占用全局互斥（环境冲突，已复跑确认） | 2026-10-02 |
 | T-MS0-02 | docs/10 获批 | **完成** | CHG-014 状态=已批准（用户 2026-10-02）；含三项权衡差异批准 | 检查点①通过 |
-| T-MS0-03 | 分支 | **完成** | feature/mac-platform 自 main(78c5a38) 拉出 | MS1/MS2 全程在此分支 |
-| T-MS0-04 | CI macos job | 进行中 | 见本次提交 | osx-arm64/osx-x64 矩阵：build+test（Mac.slnf 子集）+ publish 共享层（MS3 起换 App.Avalonia publish；MS9 加 bundle/DMG）；push 触发扩 feature/** |
-| T-MS0-05 | 平台边界机械检索 | 进行中 | tools/check-platform-boundary.ps1 + CI 步骤 | Core/Core.Services 禁：#if、System.Windows、Registry、COM Interop、osascript/AppleScript |
-| T-MS0-06 | 验证 | 待办 | 双架构 CI 绿（附 run 链接） | 门禁出口 |
+| T-MS0-03 | 分支 | **完成** | feature/mac-platform 自 main(78c5a38) 拉出，已推送 origin | MS1/MS2 全程在此分支 |
+| T-MS0-04 | CI macos job | **完成** | run [36986843084](https://github.com/tendernessnick/mail_helper/actions/runs/36986843084)：build-test（win）+ macos-build-test(osx-arm64) + macos-build-test(osx-x64) 全 success，release 正确 skip；本地 osx-arm64 交叉编译发布验证 `libe_sqlite3.dylib` 正确解析 | MailHelper.Mac.slnf 排除 WPF App 与 net8.0-windows 集成测试；push 触发扩 feature/** |
+| T-MS0-05 | 平台边界机械检索 | **完成** | tools/check-platform-boundary.ps1（UTF-8 BOM，与仓库 ps1 约定一致）；Windows job 与 macos job 双侧执行，当前 0 违规 | 检查项：#if 族/System.Windows/Registry/COM interop/osascript |
+| T-MS0-06 | 验证 | **完成** | 双架构 CI 绿（T-MS0-04 run 链接） | 门禁出口通过 |
 
-### MS1 平台抽象抽取（docs/10 §4；Windows 等价迁移）
+### MS1 平台抽象抽取（docs/10 §4；Windows 等价迁移）—— **已完成（2026-10-02）**
 
 | 编号 | 对应 | 状态 | 证据 | 备注 |
 | --- | --- | --- | --- | --- |
-| T-MS1-01 | P-02 路径 | 待办 | — | IAppPaths：Bootstrapper/App.xaml.cs 双处硬编码收敛；Windows 路径逐字节不变 |
-| T-MS1-02 | P-03 单实例 | 待办 | — | ISingleInstanceLock：现 static SingleInstance 迁接口实现；语义不变（Mutex+ACL 管道） |
-| T-MS1-03 | P-04 自启动 | 待办 | — | IAutoStarter：AutostartService 实现接口；Bootstrapper 闭包改注入 |
-| T-MS1-04 | P-08 更新安装 | 待办 | — | IUpdateInstaller：UpdateService.InstallSilently 抽取策略；Inno 参数逐字保留 |
-| T-MS1-05 | DI 改造 | 待办 | — | Bootstrapper 注册四接口；App.xaml.cs 消费 ISingleInstanceLock |
-| T-MS1-06 | 验证 | 待办 | — | 全量回归绿 + UiSmoke 运行冒烟截图比对无变化；合回前置条件 |
+| T-MS1-01 | P-02 路径 | **完成** | `IAppPaths`（Core/Abstractions/Platform.cs）+ `WindowsAppPaths`；Bootstrapper/App.xaml.cs 双处硬编码收敛；WindowsAppPathsTests 3/3（默认路径=迁移前硬编码逐字节一致锚点） | GetTempFilePath 供崩溃日志/阅读副本使用（现静态实现等价保留） |
+| T-MS1-02 | P-03 单实例 | **完成** | `WindowsSingleInstanceLock`（App/SingleInstance.cs 逐行等价迁移并删原文件）；WindowsSingleInstanceLockTests 3/3（ acquisitions/释放/SHOW 唤起） | mutexName/pipeName 可注入（AutostartService 先例）；记录语义边界：命名互斥同线程可重入，「第二实例失败」以跨进程为前提——测试以另一线程模拟 |
+| T-MS1-03 | P-04 自启动 | **完成** | `AutostartService : IAutoStarter`（逻辑零改动）；既有 AutostartServiceTests 2/2 保持绿 | Bootstrapper 闭包改经 DI 的 IAutoStarter |
+| T-MS1-04 | P-08 更新安装 | **完成** | `IUpdateInstaller` + `WindowsUpdateInstaller`（Inno 参数与 S17 逐字一致）；UpdateService.InstallSilently 改策略委托（1 行，编译期保证） | SettingsViewModel 签名零改动 |
+| T-MS1-05 | DI 改造 | **完成** | Bootstrapper.BuildHost(singleInstanceLock) 显式注入（抢占仍先于 BuildHost——第二实例不做 DB 初始化的时序等价保留）；App.xaml.cs 四处调用点换接口；ClearLocalData 改 IAppPaths.DataDir | static lambda 捕获限制以 RegisterServices 静态方法化解 |
+| T-MS1-06 | 验证 | **完成** | ① Release 构建 0 警 0 错；② 全量 **216/216 绿**（Core 81 + Services 70 + Integration 65，含新增 6 契约测试，既有 210 零删除零削弱）；③ 7 工程漏洞扫描 0；④ 平台边界检查 0 违规；⑤ 新代码零新增日志/错误路径（红线无涉）；⑥ docs/10 §4 接口表已更新为定稿签名；⑦ **Windows 版行为未被改变**——UiSmoke 真机冒烟全绿 + 截图比对（artifacts/screens/s6-inbox.png vs HEAD 基线）：三栏布局/色卡/字体/状态栏零变化，仅 DEV 种子时间漂移 | 中途红灯定性：a) 锁测试与 UiSmoke 抢全局互斥（测试设计缺陷，名称注入修复）；b) Serilog_WritesSyncCompletedToFile 负载偶发（隔离 3/3 绿、修复后全量绿、夹具为每测试唯一 GUID 目录） |
 
 ### MS2 共享 ViewModel（docs/10 ADR-006）—— 待办
 

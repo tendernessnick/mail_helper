@@ -75,16 +75,16 @@ Windows 版（WPF，v0.6.0，210 测试全绿）已交付，唯一邮件通道�
 
 > 盘点方法：全仓检索平台专有 API（详见 CHG-014 提案说明）。定义一律放 `MailHelper.Core/Abstractions`（纯签名、零平台 API）；实现放 Infrastructure（可共享）或各自 App（UI 专有）。
 
-| 接口 | 职责（成员示意） | Windows 实现 | Mac 实现 | 现状 |
+| 接口 | 职责（成员为 MS1 定稿签名） | Windows 实现 | Mac 实现 | 现状 |
 | --- | --- | --- | --- | --- |
-| `IAppPaths` | `GetDataDir()` / `GetLogsDir()` / `GetBodiesDir()` / `GetTempFilePath(name)` / `GetCrashLogPath()` | `%AppData%\MailHelper`（保留 `MAILHELPER_DATA_DIR` 覆盖语义，产出路径与现状逐字节一致） | `~/Library/Application Support/MailHelper`（同覆盖语义） | **新增**：消灭 Bootstrapper/App.xaml.cs 双处硬编码 |
-| `ISingleInstanceLock` | `TryAcquireFirst()` / `NotifyRunning()` / `StartListening(activate)` / `Dispose()`（语义对齐现 `SingleInstance` 静态类） | 现实现迁移（Mutex + ACL 命名管道） | UDS 文件锁 + `SHOW` 协议 | **新增**：现 `SingleInstance.cs` 为 App 内静态类 |
-| `IAutoStarter` | `Enable()` / `Disable()` / `IsEnabled()` | 现 `AutostartService`（注册表 Run 键）实现接口 | LaunchAgent plist 写删 + `launchctl` | **新增**：现实现类存在但无接口 |
-| `IUpdateInstaller` | `InstallAsync(localPackagePath, ct)`（安装/引导安装） | Inno `/SILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS`（现逻辑迁移） | `open` DMG + 设置页引导文案（手动安装） | **新增**：现 UpdateService 内联静默安装 |
-| `IMainThreadDispatcher` | `Post(Action)` / `InvokeAsync(Func<Task>)` | 包装 `System.Windows.Threading.Dispatcher` | 包装 `Avalonia.Threading.Dispatcher` | **新增**：解除 MainViewModel 对 WPF Dispatcher 的依赖（MS2 等价重构） |
-| `IToastSender`（已有） | `SendAsync(ToastNotification, ct)` | 现 `ToastSender`（WinRT，留在 WPF App） | `OsascriptToastSender`（Avalonia App，经 `IAppleScriptRunner` 或直接进程调用） | 接口已存在（Core/Abstractions/Notifications.cs） |
-| `IOutlookMailSource`（已有，Infrastructure 内部） | COM 源抽象（可测试替换点） | `OutlookComMailSource` | `OutlookAppleScriptSource`（同接口语义：枚举摘要、按 id 取正文、连接探测） | 接口已存在（`OutlookDesktopMailProvider.cs:10`）；Mac 复用该缝或并列新源，MS4 定稿 |
-| AppleScript 执行器（新增内部抽象） | `RunAsync(scriptName, args, timeout, ct) → (exitCode, stdout, stderr)` | —（Windows 侧无实现需求） | `OsascriptScriptRunner`（`osascript` 进程）+ 假实现（测试） | **新增**：AppleScript 全部封装在 Infrastructure Mac 通道内，Core/Core.Services 零 AppleScript 字符串 |
+| `IAppPaths` | `DataDir` / `LogsDir` / `BodiesDir` / `DbPath`（属性）+ `GetTempFilePath(name)` | `WindowsAppPaths`：%AppData%\MailHelper（保留 `MAILHELPER_DATA_DIR` 覆盖语义，产出路径与迁移前硬编码逐字节一致） | `MacAppPaths`：`~/Library/Application Support/MailHelper`（同覆盖语义，MS4） | **已落地（MS1）**：消灭 Bootstrapper/App.xaml.cs 双处硬编码 |
+| `ISingleInstanceLock` | `TryAcquireFirst()` / `NotifyRunningInstance()` / `StartListening(activate)` + `IDisposable`（Dispose=释放互斥并停止监听） | `WindowsSingleInstanceLock`：Mutex + ACL 命名管道（自 App/SingleInstance.cs 等价迁移；mutexName/pipeName 可注入供契约测试隔离） | `MacSingleInstanceLock`：UDS 文件锁 + `SHOW` 协议（MS4） | **已落地（MS1）**；已知语义边界：Windows 命名互斥同线程可重入，「第二实例失败」以跨进程为前提 |
+| `IAutoStarter` | `IsEnabled`（属性）/ `Enable()` / `Disable()` | `AutostartService` 实现接口（注册表 Run 键，逻辑零改动） | `MacAutoStarter`：LaunchAgent plist + `launchctl`（MS4） | **已落地（MS1）** |
+| `IUpdateInstaller` | `Install(localPackagePath)`（同步，Process.Start 即返） | `WindowsUpdateInstaller`：Inno `/SILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS`（参数与 S17 逐字一致） | `MacUpdateInstaller`：引导下载 DMG 手动安装（MS9） | **已落地（MS1）**：UpdateService.InstallSilently 改为策略委托 |
+| `IMainThreadDispatcher` | `Post(Action)` / `InvokeAsync(Func<Task>)`（MS2 定稿） | 包装 `System.Windows.Threading.Dispatcher` | 包装 `Avalonia.Threading.Dispatcher` | **MS2**：解除 MainViewModel 对 WPF Dispatcher 的依赖 |
+| `IToastSender`（已有） | `SendAsync(ToastNotification, ct)` | 现 `ToastSender`（WinRT，留在 WPF App） | `OsascriptToastSender`（Avalonia App，经 osascript 进程） | 接口已存在（Core/Abstractions/Notifications.cs） |
+| `IOutlookMailSource`（已有，Infrastructure 内部） | COM 源抽象（可测试替换点） | `OutlookComMailSource` | `OutlookAppleScriptSource`（同接口语义：枚举摘要、按 id 取正文、连接探测，MS4 定稿） | 接口已存在（`OutlookDesktopMailProvider.cs:10`） |
+| AppleScript 执行器（新增内部抽象） | `RunAsync(scriptName, args, timeout, ct) → (exitCode, stdout, stderr)` | —（Windows 侧无实现需求） | `OsascriptScriptRunner`（`osascript` 进程）+ 假实现（测试） | **MS4**：AppleScript 全部封装在 Infrastructure Mac 通道内，Core/Core.Services 零 AppleScript 字符串 |
 
 > 通知与托盘按总控指令要求处置：`IToastSender` 已在 Core 定义（App 可共享位置），满足要求；托盘为纯 App 层控件（无跨 UI 共享价值），不设接口、两套 UI 各自持有。
 

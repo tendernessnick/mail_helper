@@ -4,6 +4,7 @@ using MailHelper.App.Notifications;
 using MailHelper.Core.Abstractions;
 using MailHelper.App.ViewModels;
 using MailHelper.Core.Services;
+using MailHelper.Infrastructure.SystemIntegration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Toolkit.Uwp.Notifications;
@@ -13,6 +14,7 @@ namespace MailHelper.App;
 public partial class App : Application
 {
     private IHost? _host;
+    private ISingleInstanceLock? _instanceLock;
 
     internal static TrayIconController? Tray { get; private set; }
 
@@ -31,15 +33,17 @@ public partial class App : Application
         TaskScheduler.UnobservedTaskException += (_, args) =>
             WriteCrashLog("UnobservedTask", args.Exception);
 
-        // 单实例（EX-TC-07）：二次启动唤起既有窗口后退出
-        if (!SingleInstance.TryAcquireFirstInstance())
+        // 单实例（EX-TC-07）：二次启动唤起既有窗口后退出。
+        // 抢占先于 BuildHost（等价迁移前顺序：第二实例不做任何 DB 初始化）
+        _instanceLock = new WindowsSingleInstanceLock();
+        if (!_instanceLock.TryAcquireFirst())
         {
-            SingleInstance.NotifyRunningInstance();
+            _instanceLock.NotifyRunningInstance();
             Shutdown();
             return;
         }
 
-        _host = Bootstrapper.BuildHost();
+        _host = Bootstrapper.BuildHost(_instanceLock);
         _host.Start();
         // S17：静默升级启动安装器后经此回调关闭应用，安装器完成覆盖安装并自动重启
         _host.Services.GetRequiredService<ViewModels.SettingsViewModel>()
@@ -58,7 +62,7 @@ public partial class App : Application
         InitializeTray(viewModel);
         ListenForToastActivation(viewModel);
         WireNotifications();
-        SingleInstance.StartListening(() => Dispatcher.Invoke(() => ((MainWindow)MainWindow).ShowFromTray()));
+        _instanceLock.StartListening(() => Dispatcher.Invoke(() => ((MainWindow)MainWindow).ShowFromTray()));
 
         MainWindow.Show();
     }
@@ -126,13 +130,12 @@ public partial class App : Application
         StartPeriodicSync();
     }
 
-    /// <summary>FR-03 一键清除：删除数据目录（数据库/正文缓存/令牌/日志），完成后提示重启。</summary>
+    /// <summary>FR-03 一键清除：删除数据目录（数据库/正文缓存/日志），完成后提示重启。</summary>
     private void ClearLocalDataAndPromptRestart()
     {
         try
         {
-            var dataDir = Environment.GetEnvironmentVariable("MAILHELPER_DATA_DIR")
-                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "MailHelper");
+            var dataDir = _host!.Services.GetRequiredService<IAppPaths>().DataDir;
             _host?.StopAsync().GetAwaiter().GetResult();
             if (Directory.Exists(dataDir))
             {
@@ -187,7 +190,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         Tray?.Dispose();
-        SingleInstance.StopListening();
+        _instanceLock?.Dispose(); // 释放互斥并停止唤起监听（等价原 SingleInstance.StopListening）
         // OnExit 是同步边界；Host.Dispose 内部完成停止与清理
         _host?.Dispose();
         base.OnExit(e);
