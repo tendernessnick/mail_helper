@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="MailHelper.App.Avalonia.RuleEditWindow"
+        Title="规则编辑"
+        Width="420" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource BrushWindowBg}">
+  <!-- 规则编辑弹窗（FR-10 / 05 §2 RuleEdit；与 WPF RuleEditDialog 同逻辑） -->
+  <StackPanel Margin="20" Spacing="10">
+    <TextBlock Text="类型" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
+    <ComboBox x:Name="KindBox" HorizontalAlignment="Stretch">
+      <ComboBoxItem Content="发件人地址" />
+      <ComboBoxItem Content="发件人域名" />
+      <ComboBoxItem Content="主题正则" />
+      <ComboBoxItem Content="主题关键词" />
+    </ComboBox>
+
+    <TextBlock Text="模式" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
+    <TextBox x:Name="PatternBox" Watermark="如 moodle.hku.hk / tuition|payment due" />
+
+    <TextBlock Text="目标类别（可空=仅重要度线索）" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
+    <ComboBox x:Name="CategoryBox" HorizontalAlignment="Stretch" />
+
+    <TextBlock Text="重要度建议" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
+    <ComboBox x:Name="ImportanceBox" HorizontalAlignment="Stretch">
+      <ComboBoxItem Content="（无）" />
+      <ComboBoxItem Content="P3" />
+      <ComboBoxItem Content="P2" />
+      <ComboBoxItem Content="P1" />
+      <ComboBoxItem Content="P0" />
+    </ComboBox>
+
+    <TextBlock Text="权重（留空=类型默认）" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
+    <TextBox x:Name="WeightBox" Watermark="8" />
+
+    <CheckBox x:Name="EnabledBox" Content="启用" IsChecked="True" />
+
+    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,6,0,0">
+      <Button Content="取消" Click="OnCancelClick" />
+      <Button Classes="primaryAction" Content="保存" Click="OnSaveClick" />
+    </StackPanel>
+  </StackPanel>
+</Window>

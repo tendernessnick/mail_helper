@@ -19,17 +19,22 @@ public partial class ShellWindow : Window
     private readonly RulesViewModel _rules;
     private readonly SettingsViewModel _settings;
     private readonly IBodyCache _bodyCache;
+    private readonly ICategoryStore _categories;
+    private readonly IAutoStarter _autostart;
     private Control? _inboxView;
 
     /// <summary>阅读窗格正文块（净化白名单；SelectedMail 变化时重建）。</summary>
     public IReadOnlyList<SanitizedBlock> ReaderBlocks { get; private set; } = Array.Empty<SanitizedBlock>();
 
-    public ShellWindow(MainViewModel inbox, RulesViewModel rules, SettingsViewModel settings, IBodyCache bodyCache)
+    public ShellWindow(MainViewModel inbox, RulesViewModel rules, SettingsViewModel settings, IBodyCache bodyCache,
+        ICategoryStore categories, IAutoStarter autostart)
     {
         InitializeComponent();
         _rules = rules;
         _settings = settings;
         _bodyCache = bodyCache;
+        _categories = categories;
+        _autostart = autostart;
         _inboxView = (Control)PageHost.Content!;
         AttachRulesContent();
 
@@ -155,7 +160,7 @@ public partial class ShellWindow : Window
 
     private void OnNavSettings(object? sender, RoutedEventArgs e)
     {
-        _settingsView ??= new SettingsPage { DataContext = _settings };
+        _settingsView ??= new SettingsPage(_categories, _autostart) { DataContext = _settings };
         SwitchNav(NavSettings, _settingsView);
     }
 

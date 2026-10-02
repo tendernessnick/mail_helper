@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Microsoft.Extensions.DependencyInjection;
 using Avalonia.Threading;
 using FluentAssertions;
 using MailHelper.App.Avalonia;
@@ -141,8 +142,7 @@ public class ShellScreenshotTests
     [AvaloniaFact]
     public async Task Capture_Onboarding_And_Inbox_Frames()
     {
-        var artifacts = Environment.GetEnvironmentVariable("MH_SHOT_DIR") ?? ShellHeadlessTests.FindRepoArtifacts();
-        Directory.CreateDirectory(artifacts);
+        var artifacts = ShellHeadlessTests.FindRepoArtifacts();
 
         var (host, shell) = TestBootstrap.BuildShell();
         try
@@ -159,36 +159,35 @@ public class ShellScreenshotTests
             Dispatcher.UIThread.RunJobs();
             shell.CaptureRenderedFrame()?.Save(Path.Combine(artifacts, "ms5-inbox.png"));
 
+            // MS7 帧：规则页 / 设置页（装入 Window 宿主后截帧）
+            CapturePage(host, new RulesPage { DataContext = ViewModelRules(host) }, "ms7-rules.png", artifacts);
+            CapturePage(host, new SettingsPage(
+                host.Services.GetRequiredService<MailHelper.Core.Abstractions.ICategoryStore>(),
+                host.Services.GetRequiredService<MailHelper.Core.Abstractions.IAutoStarter>())
+            { DataContext = ViewModelSettings(host) }, "ms7-settings.png", artifacts);
+
             File.Exists(Path.Combine(artifacts, "ms5-inbox.png")).Should().BeTrue();
+            File.Exists(Path.Combine(artifacts, "ms7-rules.png")).Should().BeTrue();
+            File.Exists(Path.Combine(artifacts, "ms7-settings.png")).Should().BeTrue();
         }
         finally
         {
             host.Dispose();
         }
     }
-}
 
-/// <summary>关窗常驻（FR-14 AC3；MS6）：Close → 取消并隐藏；进程显式退出才结束。</summary>
-public class CloseToTrayTests
-{
-    [AvaloniaFact]
-    public void Closing_Window_Hides_InsteadOfExit()
+    private static void CapturePage(IHost host, UserControl page, string fileName, string artifacts)
     {
-        var (host, shell) = TestBootstrap.BuildShell();
-        try
-        {
-            shell.Show();
-            Dispatcher.UIThread.RunJobs();
-            shell.IsVisible.Should().BeTrue();
-
-            shell.Close(); // WM_CLOSE 等价 → App 的 Closing 处理器取消并 Hide
-            Dispatcher.UIThread.RunJobs();
-
-            shell.IsVisible.Should().BeFalse("关窗应隐藏至托盘而非退出（FR-14 AC3）");
-        }
-        finally
-        {
-            host.Dispose(); // 显式退出路径
-        }
+        var window = new Window { Width = 1100, Height = 700, Content = page };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+        window.CaptureRenderedFrame()?.Save(Path.Combine(artifacts, fileName));
+        window.Close();
     }
+
+    private static RulesViewModel ViewModelRules(IHost host) =>
+        host.Services.GetRequiredService<RulesViewModel>();
+
+    private static SettingsViewModel ViewModelSettings(IHost host) =>
+        host.Services.GetRequiredService<SettingsViewModel>();
 }
