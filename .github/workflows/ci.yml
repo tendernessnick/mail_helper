@@ -108,7 +108,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ osx-arm64, osx-x64 ]
+        arch: [ arm64, x64 ]
     runs-on: macos-14
     steps:
       - name: Checkout
@@ -143,29 +143,29 @@ jobs:
             [xml]$x = Get-Content $_.FullName
             $x.TestRun.Results.UnitTestResult | Where-Object { $_.outcome -eq 'Failed' } | ForEach-Object { $_.testName }
           } | Select-Object -Unique
-          ("### 失败用例 (macOS ${{ matrix.arch }})`n" + ($names | ForEach-Object { "- ❌ $_" } | Out-String)) | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          ("### 失败用例 (macOS osx-${{ matrix.arch }})`n" + ($names | ForEach-Object { "- ❌ $_" } | Out-String)) | Out-File -Append $env:GITHUB_STEP_SUMMARY
 
       # MS3 起：publish 换 Avalonia App（双架构自包含 = .app/DMG 的载荷基础）
-      - name: Publish App.Avalonia (自包含 ${{ matrix.arch }})
+      - name: Publish App.Avalonia (自包含 osx-${{ matrix.arch }})
         run: >
-          dotnet publish src/MailHelper.App.Avalonia -c Release -r ${{ matrix.arch }}
+          dotnet publish src/MailHelper.App.Avalonia -c Release -r osx-${{ matrix.arch }}
           -p:SelfContained=true
-          -o artifacts/publish-mac-${{ matrix.arch }}
+          -o artifacts/publish-mac-osx-${{ matrix.arch }}
 
       # MS9：.app 组装 + DMG（无证书路径：CODESIGN_IDENTITY 缺省跳过签名；公证属检查点③）
-      - name: 组装 .app 与 DMG (${{ matrix.arch }})
+      - name: 组装 .app 与 DMG (osx-${{ matrix.arch }})
         run: |
           chmod +x tools/mac/*.sh
           VERSION="$(grep -o '<Version>[^<]*' Directory.Build.props | head -1 | cut -d'>' -f2)-beta.${GITHUB_RUN_NUMBER}"
-          ./tools/mac/bundle.sh artifacts/publish-mac-${{ matrix.arch }} artifacts/app-${{ matrix.arch }} "$VERSION"
-          ./tools/mac/make-dmg.sh artifacts/app-${{ matrix.arch }} "artifacts/MailHelper-beta-osx-${{ matrix.arch }}.dmg"
-          test -d "artifacts/app-${{ matrix.arch }}/MailHelper.app/Contents/MacOS"
-          echo "bundle+DMG OK (${{ matrix.arch }})"
+          ./tools/mac/bundle.sh artifacts/publish-mac-osx-${{ matrix.arch }} artifacts/app-osx-${{ matrix.arch }} "$VERSION"
+          ./tools/mac/make-dmg.sh artifacts/app-osx-${{ matrix.arch }} "artifacts/MailHelper-beta-osx-${{ matrix.arch }}.dmg"
+          test -d "artifacts/app-osx-${{ matrix.arch }}/MailHelper.app/Contents/MacOS"
+          echo "bundle+DMG OK (osx-${{ matrix.arch }})"
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MailHelper-dmg-${{ matrix.arch }}
+          name: MailHelper-dmg-osx-${{ matrix.arch }}
           path: artifacts/MailHelper-beta-osx-${{ matrix.arch }}.dmg
           if-no-files-found: error
 
@@ -268,7 +268,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ osx-arm64, osx-x64 ]
+        arch: [ arm64, x64 ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -278,18 +278,18 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Publish App.Avalonia (自包含 ${{ matrix.arch }})
+      - name: Publish App.Avalonia (自包含 osx-${{ matrix.arch }})
         run: >
-          dotnet publish src/MailHelper.App.Avalonia -c Release -r ${{ matrix.arch }}
+          dotnet publish src/MailHelper.App.Avalonia -c Release -r osx-${{ matrix.arch }}
           -p:Version=${{ needs.release.outputs.version }}
           -p:SelfContained=true
-          -o artifacts/publish-mac-${{ matrix.arch }}
+          -o artifacts/publish-mac-osx-${{ matrix.arch }}
 
       - name: 组装 .app 与 DMG
         run: |
           chmod +x tools/mac/*.sh
-          ./tools/mac/bundle.sh artifacts/publish-mac-${{ matrix.arch }} artifacts/app-${{ matrix.arch }} "${{ needs.release.outputs.version }}"
-          ./tools/mac/make-dmg.sh artifacts/app-${{ matrix.arch }} "artifacts/MailHelper-${{ needs.release.outputs.channel }}-osx-${{ matrix.arch }}.dmg"
+          ./tools/mac/bundle.sh artifacts/publish-mac-osx-${{ matrix.arch }} artifacts/app-osx-${{ matrix.arch }} "${{ needs.release.outputs.version }}"
+          ./tools/mac/make-dmg.sh artifacts/app-osx-${{ matrix.arch }} "artifacts/MailHelper-${{ needs.release.outputs.channel }}-osx-${{ matrix.arch }}.dmg"
 
       # 挂 DMG 到 windows release job 已创建的 Release；SHA256SUMS 合并（下载→追加→clobber）
       - name: 上传 DMG 与校验和到 Release
