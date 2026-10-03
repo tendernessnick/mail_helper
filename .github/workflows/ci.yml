@@ -299,9 +299,9 @@ jobs:
           TAG="${{ needs.release.outputs.tag }}"
           DMG="artifacts/MailHelper-${{ needs.release.outputs.channel }}-osx-${{ matrix.arch }}.dmg"
           shasum -a 256 "$DMG" > mac-sums.txt
-          gh release download "$TAG" --pattern "SHA256SUMS.txt" --output sums.txt || echo "" > sums.txt
-          cat mac-sums.txt >> sums.txt
-          sort -u sums.txt -o sums.txt
+          gh release download "$TAG" --pattern "SHA256SUMS.txt" --output SHA256SUMS.txt 2>/dev/null || echo "" > SHA256SUMS.txt
+          grep -v "osx-" SHA256SUMS.txt > tmp.txt || true
+          cat tmp.txt mac-sums.txt > SHA256SUMS.txt && rm tmp.txt
           gh release upload "$TAG" "$DMG" --clobber
-          gh release upload "$TAG" sums.txt --clobber
+          gh release upload "$TAG" SHA256SUMS.txt --clobber
           echo "DMG 已挂载到 $TAG"
