@@ -32,6 +32,7 @@
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="24,0,0,0" VerticalAlignment="Center">
             <Button x:Name="NavInbox" Classes="navItem checked" Content="收件箱" Click="OnNavInbox" />
+            <Button x:Name="NavSchedule" Classes="navItem" Content="日程" Click="OnNavSchedule" />
             <Button x:Name="NavRules" Classes="navItem" Content="规则" Click="OnNavRules" />
             <Button x:Name="NavSettings" Classes="navItem" Content="设置" Click="OnNavSettings" />
           </StackPanel>

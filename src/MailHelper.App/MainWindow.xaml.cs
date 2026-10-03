@@ -21,14 +21,26 @@ public partial class MainWindow : Window
         MainViewModel viewModel,
         ISettingsStore settings,
         RulesPage rulesPage,
-        SettingsPage settingsPage)
+        SettingsPage settingsPage,
+        SchedulePage schedulePage)
     {
         InitializeComponent();
         _viewModel = viewModel;
         _settings = settings;
         DataContext = viewModel;
+        ScheduleHost.Content = schedulePage; // S18/CHG-015：日程页（DI 页面挂载，UserControl 带 ctor 注入）
         RulesHost.Content = rulesPage; // DI 页面挂载（UserControl 带 ctor 注入，不能在 XAML 实例化）
         SettingsHost.Content = settingsPage;
+
+        // S18：切到日程页时进入即刷新（同步轮外的人工兜底路径）
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainViewModel.IsScheduleView)
+                && schedulePage.DataContext is ScheduleViewModel scheduleVm)
+            {
+                _ = scheduleVm.RefreshAsync(CancellationToken.None);
+            }
+        };
 
         // S14 修复（用户验收缺陷根因）：WebView2 光栅化比例被错固定为 200%（devicePixelRatio=2），
         // 系统 DPI 实为 166.67% → 内容渲染比控件大 20%，右缘被裁。显式对齐窗口真实 DPI。

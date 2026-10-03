@@ -44,6 +44,9 @@ internal sealed class MessageEntity
     public long? ClassifiedAtUtc { get; set; }
     public string? RemoteChangeKey { get; set; }
     public bool IsDeletedRemote { get; set; }
+
+    /// <summary>S18/CHG-015：DDL 提取扫描置位时间（null=待扫描；扫过即置位，与是否解析出条目无关）。</summary>
+    public long? DdlScannedAtUtc { get; set; }
 }
 
 internal sealed class RuleEntity
@@ -95,4 +98,24 @@ internal sealed class CategoryEntity
     public string Icon { get; set; } = string.Empty;
     public string ColorHex { get; set; } = string.Empty;
     public int Sort { get; set; }
+}
+
+/// <summary>日程条目（S18/CHG-015：schedule_items 表；时间列 Unix 秒，D-23）。
+/// message_id 为软引用（不设 FK）：来源邮件仅用于追溯，邮件行不受日程生命周期约束。</summary>
+internal sealed class ScheduleItemEntity
+{
+    public string Id { get; set; } = string.Empty;
+    public string AccountId { get; set; } = string.Empty;
+    public string? MessageId { get; set; }
+    public string Source { get; set; } = "canvas";
+    public string Title { get; set; } = string.Empty;
+    public string? Course { get; set; }
+    public string? CourseCode { get; set; }
+    public string? Link { get; set; }
+    public string DedupeKey { get; set; } = string.Empty;
+    public long DueAtUtc { get; set; }
+    public int Status { get; set; }
+    public long? RemindedDueAt { get; set; }
+    public long CreatedAtUtc { get; set; }
+    public long UpdatedAtUtc { get; set; }
 }

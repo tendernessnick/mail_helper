@@ -147,6 +147,18 @@ public static class AvaloniaBootstrapper
         services.AddSingleton<IRulesStore>(sp => sp.GetRequiredService<RuleRepository>());
         services.AddSingleton<FeedbackService>();
 
+        // —— 日程（S18/CHG-015：Canvas DDL 识别 + 提醒）——
+        services.AddSingleton(_ => new ScheduleRepository(paths.DbPath));
+        services.AddSingleton<IScheduleStore>(sp => sp.GetRequiredService<ScheduleRepository>());
+        services.AddSingleton(sp => new ScheduleService(
+            sp.GetRequiredService<IMessageStore>(),
+            sp.GetRequiredService<IScheduleStore>(),
+            sp.GetRequiredService<IBodyCache>(),
+            sp.GetRequiredService<ISettingsStore>(),
+            sp.GetRequiredService<IToastSender>(),
+            "acc-1",
+            sp.GetRequiredService<ILogger<ScheduleService>>()));
+
         // —— 设置 / 规则管理 / 语言 / 搜索 ——
         services.AddSingleton<SettingsService>();
         services.AddSingleton<UpdateService>();
@@ -162,6 +174,7 @@ public static class AvaloniaBootstrapper
 
         // —— 共享 ViewModel（MailHelper.ViewModels，MS2）——
         services.AddSingleton<RulesViewModel>();
+        services.AddSingleton<ScheduleViewModel>(); // S18/CHG-015 日程页
         services.AddSingleton(sp => new SettingsViewModel(
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IAccountStore>(),

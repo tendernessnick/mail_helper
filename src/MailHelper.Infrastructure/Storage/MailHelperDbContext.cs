@@ -17,6 +17,7 @@ public sealed class MailHelperDbContext : DbContext
     internal DbSet<NotificationLogEntity> NotificationLogs => Set<NotificationLogEntity>();
     internal DbSet<SettingEntity> Settings => Set<SettingEntity>();
     internal DbSet<CategoryEntity> Categories => Set<CategoryEntity>(); // S14-C/CHG-012 自定义类别
+    internal DbSet<ScheduleItemEntity> ScheduleItems => Set<ScheduleItemEntity>(); // S18/CHG-015 日程条目
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,6 +68,7 @@ public sealed class MailHelperDbContext : DbContext
         message.Property(x => x.ClassifiedAtUtc).HasColumnName("classified_at_utc").HasColumnType("INTEGER");
         message.Property(x => x.RemoteChangeKey).HasColumnName("remote_change_key").HasColumnType("TEXT");
         message.Property(x => x.IsDeletedRemote).HasColumnName("is_deleted_remote").HasColumnType("INTEGER").IsRequired().HasDefaultValue(false);
+        message.Property(x => x.DdlScannedAtUtc).HasColumnName("ddl_scanned_at_utc").HasColumnType("INTEGER"); // S18/CHG-015
 
         message.HasIndex(x => new { x.AccountId, x.ReceivedAtUtc })
             .HasDatabaseName("idx_messages_account_received")
@@ -132,5 +134,29 @@ public sealed class MailHelperDbContext : DbContext
         category.Property(x => x.Icon).HasColumnName("icon").HasColumnType("TEXT").IsRequired();
         category.Property(x => x.ColorHex).HasColumnName("color_hex").HasColumnType("TEXT").IsRequired();
         category.Property(x => x.Sort).HasColumnName("sort").HasColumnType("INTEGER");
+
+        // S18/CHG-015：日程条目（Canvas DDL 识别产物；(account_id, dedupe_key) 唯一防重）
+        var schedule = modelBuilder.Entity<ScheduleItemEntity>();
+        schedule.ToTable("schedule_items");
+        schedule.HasKey(x => x.Id);
+        schedule.Property(x => x.Id).HasColumnName("id").HasColumnType("TEXT");
+        schedule.Property(x => x.AccountId).HasColumnName("account_id").HasColumnType("TEXT").IsRequired();
+        schedule.Property(x => x.MessageId).HasColumnName("message_id").HasColumnType("TEXT");
+        schedule.Property(x => x.Source).HasColumnName("source").HasColumnType("TEXT").IsRequired();
+        schedule.Property(x => x.Title).HasColumnName("title").HasColumnType("TEXT").IsRequired();
+        schedule.Property(x => x.Course).HasColumnName("course").HasColumnType("TEXT");
+        schedule.Property(x => x.CourseCode).HasColumnName("course_code").HasColumnType("TEXT");
+        schedule.Property(x => x.Link).HasColumnName("link").HasColumnType("TEXT");
+        schedule.Property(x => x.DedupeKey).HasColumnName("dedupe_key").HasColumnType("TEXT").IsRequired();
+        schedule.HasIndex(x => new { x.AccountId, x.DedupeKey })
+            .HasDatabaseName("idx_schedule_account_dedupe")
+            .IsUnique();
+        schedule.Property(x => x.DueAtUtc).HasColumnName("due_at_utc").HasColumnType("INTEGER").IsRequired();
+        schedule.Property(x => x.Status).HasColumnName("status").HasColumnType("INTEGER").IsRequired();
+        schedule.Property(x => x.RemindedDueAt).HasColumnName("reminded_due_at").HasColumnType("INTEGER");
+        schedule.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc").HasColumnType("INTEGER").IsRequired();
+        schedule.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc").HasColumnType("INTEGER").IsRequired();
+        schedule.HasIndex(x => new { x.AccountId, x.Status, x.DueAtUtc })
+            .HasDatabaseName("idx_schedule_account_status_due");
     }
 }

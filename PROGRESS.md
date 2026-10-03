@@ -558,3 +558,23 @@ PROGRESS.md
 **对 Windows 版的影响评估**：**无**。回归证据=全量 216/216（基线 210 零删除零削弱）+ UiSmoke 真机冒烟全绿 + 两次截图比对（MS1 vs v0.6.0 基线、MS2 vs MS1）布局/色卡/字体零变化 + CI windows job 绿（run 36989550301）
 
 **下一步计划**：MS3 Avalonia 骨架（App 工程/Shell 导航/Fluent 主题映射 05 色卡/双语资源复用；Windows 上运行截图比对）
+
+## S18 Canvas DDL 识别 × 日程记录模块（CHG-015 / ADR-006）—— 2026-10-04 收口
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| S18-A Core | US-18-1 | 完成 | `Core/Domain/ScheduleItem.cs`、`Core/Schedule/CanvasDdlExtractor.cs`（纯函数）、IStores 追加 IScheduleStore/GetDdlCandidates/MarkDdlScanned；Core.Tests 25 用例绿 | 年份滚转 45 天窗口；正则 100ms 超时同 CLASS-001 |
+| S18-B Infrastructure | US-18-1 | 完成 | 迁移 `20261003162002_AddScheduleModule`（schedule_items + messages.ddl_scanned_at_utc）；`ScheduleRepository.cs`；Integration 7 用例绿 | (account_id, dedupe_key) 唯一；message_id 软引用不设 FK |
+| S18-C Services | US-18-2/3 | 完成 | `Core.Services/Schedule/ScheduleService.cs`（提取/提醒/清理，TimeProvider 注入）；SettingsService 三键；Services.Tests 11 用例绿 | 提醒「同一 due 恰一次」经 due 变更自动重武装 |
+| S18-D 接线 | US-18-1 | 完成 | 双 App `SyncRoundCompleted` → 提取+提醒；双 Bootstrapper DI 注册 | 首轮即回填历史（实测 38 封→14 条 DDL→13 条入库） |
+| S18-E UI | US-18-2 | 完成 | 共享 `ScheduleViewModel`；Avalonia `SchedulePage` + WPF `SchedulePage`；导航第 4 项「日程」；双设置页「日程与提醒」区块 | 分组：已逾期/今天/未来 7 天/更远/已完成·已忽略 |
+| S18-F 测试 | 门禁 | 完成 | 全量 **306/306**（基线 262 零删除）；`dotnet build -c Release` 0 错误（3 个既有 AVLN3001 非本项引入）；Core 覆盖 95.15%；FlaUI UI 冒烟绿 | 真机端到端：日志 `schedule.extracted scanned=38 found=14 inserted=13 failed=0` |
+| S18-G 登记 | 纪律 | 完成 | CHANGELOG Unreleased；docs/03 ADR-006；docs/04 §10（签名/DDL/配置键/错误码）；prompts/S18 执行指令 | Conventional Commit 待提交 |
+
+**S18 关键决策与偏差**：
+- D-70 去重键以 Canvas 资源链接复合 id 为主（`canvas-a:{cid}:{aid}`），无链接退化内容哈希
+- D-71 标题/课程拆分按「最后逗号 + 课程代码校验」，防标题内逗号误切
+- **D-72（真机缺陷修复）**：Canvas 邮件 URL 仅存在于 `<a href>` 属性——提取前先把锚点 href 展开为文本；否则链接全丢、去重退化为哈希，due 变更会误建新条（回归用例 `Extract_AnchorHrefHtml_CapturesCanvasLink`）
+- 时间语义：due 为 Canvas 账户时区墙上时间，按本机时区解释（ADR-006 已知限制）
+
+**对既有功能的影响评估**：messages 表仅加可空列；分类/同步/通知路径零改动；全量回归零删除零削弱。

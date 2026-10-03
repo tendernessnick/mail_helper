@@ -217,9 +217,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private int unreadTotal;
 
-    // —— 视图导航（05 §2 Shell：收件箱/规则/设置）——
+    // —— 视图导航（05 §2 Shell：收件箱/日程/规则/设置；S18 新增日程页）——
     [ObservableProperty]
     private bool isInboxView = true;
+
+    [ObservableProperty]
+    private bool isScheduleView;
 
     [ObservableProperty]
     private bool isRulesView;
@@ -231,16 +234,20 @@ public partial class MainViewModel : ObservableObject
     private void ShowInbox() => SwitchView(0);
 
     [RelayCommand]
-    private void ShowRules() => SwitchView(1);
+    private void ShowSchedule() => SwitchView(1);
 
     [RelayCommand]
-    private void ShowSettings() => SwitchView(2);
+    private void ShowRules() => SwitchView(2);
+
+    [RelayCommand]
+    private void ShowSettings() => SwitchView(3);
 
     private void SwitchView(int view)
     {
         IsInboxView = view == 0;
-        IsRulesView = view == 1;
-        IsSettingsView = view == 2;
+        IsScheduleView = view == 1;
+        IsRulesView = view == 2;
+        IsSettingsView = view == 3;
     }
 
     public event EventHandler<MailItemViewModel?>? SelectedMailHtmlNeeded;

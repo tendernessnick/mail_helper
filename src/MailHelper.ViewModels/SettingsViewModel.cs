@@ -79,6 +79,16 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string quietHours = string.Empty;
 
+    // —— 日程与提醒（S18/CHG-015）——
+    [ObservableProperty]
+    private bool scheduleEnabled = true;
+
+    [ObservableProperty]
+    private bool scheduleReminderEnabled = true;
+
+    [ObservableProperty]
+    private int scheduleReminderHours = 24;
+
     // —— 外观 ——
     [ObservableProperty]
     private string language = "auto"; // auto | zh-CN | en（NFR-12）
@@ -125,6 +135,9 @@ public partial class SettingsViewModel : ObservableObject
         Theme = await _settings.GetThemeAsync(ct);
         Diagnostics = await _settings.IsDiagnosticsAsync(ct);
         BodyLimitMb = await _settings.GetBodyLimitMbAsync(ct);
+        ScheduleEnabled = await _settings.GetScheduleEnabledAsync(ct); // S18/CHG-015
+        ScheduleReminderEnabled = await _settings.GetScheduleReminderEnabledAsync(ct);
+        ScheduleReminderHours = await _settings.GetScheduleReminderHoursAsync(ct);
 
         var account = (await _accounts.FindAllAsync(ct)).FirstOrDefault();
         HasAccount = account is not null;
@@ -178,6 +191,20 @@ public partial class SettingsViewModel : ObservableObject
         if (value > 0)
         {
             _ = _settings.SetBodyLimitMbAsync(value, CancellationToken.None);
+        }
+    }
+
+    partial void OnScheduleEnabledChanged(bool value) =>
+        _ = _settings.SetScheduleEnabledAsync(value, CancellationToken.None); // S18/CHG-015
+
+    partial void OnScheduleReminderEnabledChanged(bool value) =>
+        _ = _settings.SetScheduleReminderEnabledAsync(value, CancellationToken.None);
+
+    partial void OnScheduleReminderHoursChanged(int value)
+    {
+        if (value is >= 1 and <= 168)
+        {
+            _ = _settings.SetScheduleReminderHoursAsync(value, CancellationToken.None);
         }
     }
 

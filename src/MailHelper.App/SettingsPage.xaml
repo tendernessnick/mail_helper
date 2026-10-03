@@ -53,6 +53,22 @@
                 </StackPanel>
             </Border>
 
+            <!-- 日程与提醒（S18/CHG-015：Canvas DDL 识别；与 Avalonia 版一致） -->
+            <TextBlock Text="日程与提醒" FontSize="16" FontWeight="SemiBold" Margin="0,18,0,8" />
+            <Border Background="White" CornerRadius="6" Padding="14,10" BorderBrush="#E1DFDD" BorderThickness="1">
+                <StackPanel>
+                    <CheckBox Content="自动识别 Canvas 作业 DDL 并记入日程"
+                              IsChecked="{Binding ScheduleEnabled, Mode=TwoWay}" Margin="0,2" />
+                    <CheckBox Content="作业临近截止时弹窗提醒"
+                              IsChecked="{Binding ScheduleReminderEnabled, Mode=TwoWay}" Margin="0,8,0,2" />
+                    <DockPanel Margin="0,8,0,2">
+                        <TextBlock Text="提前提醒（小时，1–168）" Width="280" VerticalAlignment="Center" />
+                        <TextBox Text="{Binding ScheduleReminderHours, UpdateSourceTrigger=LostFocus}" Width="140"
+                                 HorizontalAlignment="Left" />
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
             <!-- 外观（NFR-12） -->
             <TextBlock Text="外观" FontSize="16" FontWeight="SemiBold" Margin="0,18,0,8" />
             <Border Background="White" CornerRadius="6" Padding="14,10" BorderBrush="#E1DFDD" BorderThickness="1">

@@ -36,6 +36,19 @@
 
         <Border Background="{DynamicResource BrushDivider}" Height="1" />
 
+        <!-- 日程与提醒（S18/CHG-015：Canvas DDL 识别；行为与 WPF 一致） -->
+        <TextBlock Text="日程与提醒" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
+        <CheckBox Content="自动识别 Canvas 作业 DDL 并记入日程" IsChecked="{Binding ScheduleEnabled, Mode=TwoWay}" />
+        <CheckBox Content="作业临近截止时弹窗提醒" IsChecked="{Binding ScheduleReminderEnabled, Mode=TwoWay}" />
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="提前提醒（小时，1–168）" FontSize="13" VerticalAlignment="Center"
+                     Foreground="{DynamicResource BrushTextSecondary}" />
+          <NumericUpDown Minimum="1" Maximum="168" Increment="1" Width="120"
+                         Value="{Binding ScheduleReminderHours, Mode=TwoWay}" />
+        </StackPanel>
+
+        <Border Background="{DynamicResource BrushDivider}" Height="1" />
+
         <!-- 外观 -->
         <TextBlock Text="外观" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
         <StackPanel Orientation="Horizontal" Spacing="8">

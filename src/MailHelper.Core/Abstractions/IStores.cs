@@ -62,6 +62,13 @@ public interface IMessageStore
 
     /// <summary>标记已读（仅本地，UC-04 后置条件）。</summary>
     Task MarkReadAsync(string messageId, CancellationToken ct);
+
+    /// <summary>S18 DDL 提取候选（CHG-015）：Canvas 发件域（instructure.com / canvas.*）且
+    /// ddl_scanned_at_utc IS NULL 的邮件，按接收时间升序——天然支持首启用回填历史（ADR-006）。</summary>
+    Task<IReadOnlyList<MailMessage>> GetDdlCandidatesAsync(string accountId, int batchSize, CancellationToken ct);
+
+    /// <summary>S18：批量置 ddl_scanned_at_utc——扫过即置位（无论是否解析出条目），保证不重扫（AC5）。</summary>
+    Task MarkDdlScannedAsync(IReadOnlyList<string> messageIds, DateTime scannedAtUtc, CancellationToken ct);
 }
 
 /// <summary>账户与同步断点仓储。</summary>
@@ -129,4 +136,27 @@ public interface ICategoryStore
 
     /// <summary>删除自定义类别：该类邮件归「其他」、相关规则一并删除（事务）。返回迁移的邮件数。</summary>
     Task<int> DeleteAsync(string id, CancellationToken ct);
+}
+
+/// <summary>日程条目仓储（S18/CHG-015：schedule_items 表；(account_id, dedupe_key) 唯一）。</summary>
+public interface IScheduleStore
+{
+    /// <summary>按去重键幂等 upsert：新键插入；已有键且 due 变化 → 更新 due/来源/时间戳并清提醒标记；
+    /// due 未变仅刷新来源指向。返回 (条目, 是否新增, due 是否更新)。</summary>
+    Task<(ScheduleItem Item, bool Inserted, bool DueUpdated)> UpsertByDedupeKeyAsync(
+        ScheduleItem item, CancellationToken ct);
+
+    /// <summary>全部条目（open 按截止升序在前，Done/Ignored 按截止降序垫底——日程页直接渲染）。</summary>
+    Task<IReadOnlyList<ScheduleItem>> GetAllAsync(string accountId, CancellationToken ct);
+
+    /// <summary>未完成条目数（导航徽章/汇总文案）。</summary>
+    Task<int> CountOpenAsync(string accountId, CancellationToken ct);
+
+    Task SetStatusAsync(string itemId, ScheduleItemStatus status, CancellationToken ct);
+
+    /// <summary>登记已提醒（记录提醒时的 due 值：due 变更后自动恢复提醒资格）。</summary>
+    Task MarkRemindedAsync(string itemId, long remindedDueAtUtc, CancellationToken ct);
+
+    /// <summary>清理终态（Done/Ignored）且 updated 早于 cutoff 的条目。返回删除数。</summary>
+    Task<int> DeleteFinishedBeforeAsync(DateTime cutoffUtc, CancellationToken ct);
 }

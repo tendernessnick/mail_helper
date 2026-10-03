@@ -87,6 +87,7 @@ public partial class App : Application
     {
         var host = ((App)Current).Host;
         var notifications = host.Services.GetRequiredService<NotificationService>();
+        var schedule = host.Services.GetRequiredService<ScheduleService>(); // S18/CHG-015
         var coordinator = host.Services.GetRequiredService<SyncCoordinator>();
         coordinator.SyncRoundCompleted += async (_, e) =>
         {
@@ -97,6 +98,16 @@ public partial class App : Application
             catch (Exception ex)
             {
                 WriteCrashLog("Notify", ex); // 通知失败不影响同步
+            }
+
+            try
+            {
+                await schedule.ExtractPendingAsync(); // Canvas DDL 识别（首启用回填历史）
+                await schedule.CheckRemindersAsync(); // 临期提醒（同一 due 恰一次）
+            }
+            catch (Exception ex)
+            {
+                WriteCrashLog("Schedule", ex); // 日程失败不影响同步
             }
         };
     }

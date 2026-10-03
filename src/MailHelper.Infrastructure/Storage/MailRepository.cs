@@ -312,6 +312,37 @@ public sealed class MailRepository : IMessageStore
             }
         }, ct);
 
+    /// <summary>S18 DDL 候选（CHG-015）：Canvas 发件域 + 未扫描置位，接收时间升序（回填历史）。</summary>
+    public async Task<IReadOnlyList<MailMessage>> GetDdlCandidatesAsync(string accountId, int batchSize, CancellationToken ct) =>
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            var rows = await db.Messages.AsNoTracking()
+                .Where(m => m.AccountId == accountId
+                    && !m.IsDeletedRemote
+                    && m.DdlScannedAtUtc == null
+                    && (m.FromAddress != null && (m.FromAddress.Contains("instructure.com") || m.FromAddress.Contains("canvas."))))
+                .OrderBy(m => m.ReceivedAtUtc)
+                .Take(batchSize)
+                .ToListAsync(ct);
+            return (IReadOnlyList<MailMessage>)rows.Select(ToDomain).ToList();
+        }, ct);
+
+    public async Task MarkDdlScannedAsync(IReadOnlyList<string> messageIds, DateTime scannedAtUtc, CancellationToken ct)
+    {
+        if (messageIds.Count == 0)
+        {
+            return;
+        }
+
+        await MailDatabase.WithDbAsync(_dbPath, async db =>
+        {
+            var seconds = ToUnixSeconds(scannedAtUtc);
+            await db.Messages
+                .Where(m => messageIds.Contains(m.Id))
+                .ExecuteUpdateAsync(s => s.SetProperty(m => m.DdlScannedAtUtc, seconds), ct);
+        }, ct);
+    }
+
     private async Task<IReadOnlyList<MailMessage>> SearchByMatchAsync(string accountId, string query, int limit, CancellationToken ct) =>
         await MailDatabase.WithDbAsync(_dbPath, async db =>
         {

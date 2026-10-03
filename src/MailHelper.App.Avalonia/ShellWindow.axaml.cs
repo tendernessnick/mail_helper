@@ -18,6 +18,7 @@ public partial class ShellWindow : Window
 {
     private readonly RulesViewModel _rules;
     private readonly SettingsViewModel _settings;
+    private readonly ScheduleViewModel _schedule;
     private readonly IBodyCache _bodyCache;
     private readonly ICategoryStore _categories;
     private readonly IAutoStarter _autostart;
@@ -26,12 +27,14 @@ public partial class ShellWindow : Window
     /// <summary>阅读窗格正文块（净化白名单；SelectedMail 变化时重建）。</summary>
     public IReadOnlyList<SanitizedBlock> ReaderBlocks { get; private set; } = Array.Empty<SanitizedBlock>();
 
-    public ShellWindow(MainViewModel inbox, RulesViewModel rules, SettingsViewModel settings, IBodyCache bodyCache,
+    public ShellWindow(MainViewModel inbox, RulesViewModel rules, SettingsViewModel settings,
+        ScheduleViewModel schedule, IBodyCache bodyCache,
         ICategoryStore categories, IAutoStarter autostart)
     {
         InitializeComponent();
         _rules = rules;
         _settings = settings;
+        _schedule = schedule;
         _bodyCache = bodyCache;
         _categories = categories;
         _autostart = autostart;
@@ -147,6 +150,7 @@ public partial class ShellWindow : Window
     // —— 视图导航（05 §2；规则/设置完整功能 MS7）——
 
     private Control _rulesView = new Control();
+    private Control? _scheduleView;
     private Control? _settingsView;
 
     private void AttachRulesContent()
@@ -155,6 +159,13 @@ public partial class ShellWindow : Window
     }
 
     private void OnNavInbox(object? sender, RoutedEventArgs e) => SwitchNav(NavInbox, _inboxView!);
+
+    private void OnNavSchedule(object? sender, RoutedEventArgs e)
+    {
+        _scheduleView ??= new SchedulePage { DataContext = _schedule };
+        _ = ((SchedulePage)_scheduleView).RefreshOnEnterAsync(); // 进入即刷新（同步轮外的人工兜底）
+        SwitchNav(NavSchedule, _scheduleView);
+    }
 
     private void OnNavRules(object? sender, RoutedEventArgs e) => SwitchNav(NavRules, _rulesView);
 
@@ -167,6 +178,7 @@ public partial class ShellWindow : Window
     private void SwitchNav(Button active, Control page)
     {
         NavInbox.Classes.Remove("checked");
+        NavSchedule.Classes.Remove("checked");
         NavRules.Classes.Remove("checked");
         NavSettings.Classes.Remove("checked");
         active.Classes.Add("checked");

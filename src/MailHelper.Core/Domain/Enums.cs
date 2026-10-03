@@ -29,3 +29,11 @@ public enum ChangeKind
     Updated,
     Removed,
 }
+
+/// <summary>日程条目状态（S18/CHG-015：Open 待完成；Done 用户标记完成；Ignored 用户忽略，不再提醒）。</summary>
+public enum ScheduleItemStatus
+{
+    Open = 0,
+    Done = 1,
+    Ignored = 2,
+}

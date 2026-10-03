@@ -166,6 +166,9 @@
                         <RadioButton Content="收件箱" GroupName="Nav" IsChecked="True" Margin="0,0,2,0"
                                      Padding="14,6" Style="{StaticResource NavTab}"
                                      Command="{Binding ShowInboxCommand}" />
+                        <RadioButton Content="日程" GroupName="Nav" Margin="0,0,2,0"
+                                     Padding="14,6" Style="{StaticResource NavTab}"
+                                     Command="{Binding ShowScheduleCommand}" />
                         <RadioButton Content="规则" GroupName="Nav" Margin="0,0,2,0"
                                      Padding="14,6" Style="{StaticResource NavTab}"
                                      Command="{Binding ShowRulesCommand}" />
@@ -333,7 +336,9 @@
                 </Grid>
             </Grid>
 
-            <!-- 规则管理（FR-10 / 05 §3.3）与设置（FR-03 / 05 §3.4）：DI 页面经代码后置挂载 -->
+            <!-- 规则管理（FR-10 / 05 §3.3）、设置（FR-03 / 05 §3.4）与日程（S18/CHG-015）：DI 页面经代码后置挂载 -->
+            <ContentControl Grid.Row="1" x:Name="ScheduleHost"
+                            Visibility="{Binding IsScheduleView, Converter={StaticResource BoolToVis}}" />
             <ContentControl Grid.Row="1" x:Name="RulesHost"
                             Visibility="{Binding IsRulesView, Converter={StaticResource BoolToVis}}" />
             <ContentControl Grid.Row="1" x:Name="SettingsHost"

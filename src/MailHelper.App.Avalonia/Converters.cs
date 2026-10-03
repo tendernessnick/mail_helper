@@ -87,3 +87,17 @@ public sealed class NotNullToBoolConverter : IValueConverter
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
+
+/// <summary>逾期 bool → 强调红/中性文字画刷（S18 日程页 RelativeText；true=BrushDanger）。</summary>
+public sealed class OverdueBrushConverter : IValueConverter
+{
+    public static readonly OverdueBrushConverter Instance = new();
+
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is true
+            ? new SolidColorBrush(Color.Parse("#D13438"))
+            : new SolidColorBrush(Color.Parse("#8A8886"));
+
+    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}

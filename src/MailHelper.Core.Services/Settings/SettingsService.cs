@@ -16,6 +16,9 @@ public sealed class SettingsService
     public const string KeyAutostart = "app.autostart";
     public const string KeyBodyLimitMb = "cache.body_limit_mb";
     public const string KeyDiagnostics = "diagnostics.enabled";
+    public const string KeyScheduleEnabled = "schedule.enabled"; // S18/CHG-015
+    public const string KeyScheduleReminderEnabled = "schedule.reminder_enabled"; // S18/CHG-015
+    public const string KeyScheduleReminderHours = "schedule.reminder_hours"; // S18/CHG-015
 
     private readonly ISettingsStore _store;
 
@@ -83,4 +86,28 @@ public sealed class SettingsService
 
     public Task SetThemeAsync(string theme, CancellationToken ct) =>
         _store.SetAsync(KeyTheme, theme, ct);
+
+    /// <summary>S18/CHG-015：日程模块总开关（Canvas DDL 识别 + 提醒；默认开）。</summary>
+    public async Task<bool> GetScheduleEnabledAsync(CancellationToken ct) =>
+        await _store.GetAsync(KeyScheduleEnabled, ct) is not "false";
+
+    public Task SetScheduleEnabledAsync(bool enabled, CancellationToken ct) =>
+        _store.SetAsync(KeyScheduleEnabled, enabled ? "true" : "false", ct);
+
+    /// <summary>S18/CHG-015：临期提醒开关（默认开）。</summary>
+    public async Task<bool> GetScheduleReminderEnabledAsync(CancellationToken ct) =>
+        await _store.GetAsync(KeyScheduleReminderEnabled, ct) is not "false";
+
+    public Task SetScheduleReminderEnabledAsync(bool enabled, CancellationToken ct) =>
+        _store.SetAsync(KeyScheduleReminderEnabled, enabled ? "true" : "false", ct);
+
+    /// <summary>S18/CHG-015：提前提醒小时数（默认 24，钳 1–168，AC7）。</summary>
+    public async Task<int> GetScheduleReminderHoursAsync(CancellationToken ct)
+    {
+        var raw = await _store.GetAsync(KeyScheduleReminderHours, ct);
+        return int.TryParse(raw, out var hours) ? Math.Clamp(hours, 1, 168) : 24;
+    }
+
+    public Task SetScheduleReminderHoursAsync(int hours, CancellationToken ct) =>
+        _store.SetAsync(KeyScheduleReminderHours, Math.Clamp(hours, 1, 168).ToString(), ct);
 }

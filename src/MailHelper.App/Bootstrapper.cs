@@ -101,6 +101,18 @@ internal static class Bootstrapper
         services.AddSingleton<IRulesStore>(sp => sp.GetRequiredService<RuleRepository>());
         services.AddSingleton<FeedbackService>();
 
+        // —— 日程（S18/CHG-015：Canvas DDL 识别 + 提醒；与 Avalonia 版逐项一致）——
+        services.AddSingleton(_ => new ScheduleRepository(paths.DbPath));
+        services.AddSingleton<IScheduleStore>(sp => sp.GetRequiredService<ScheduleRepository>());
+        services.AddSingleton(sp => new ScheduleService(
+            sp.GetRequiredService<IMessageStore>(),
+            sp.GetRequiredService<IScheduleStore>(),
+            sp.GetRequiredService<IBodyCache>(),
+            sp.GetRequiredService<ISettingsStore>(),
+            sp.GetRequiredService<IToastSender>(),
+            "acc-1",
+            sp.GetRequiredService<ILogger<ScheduleService>>()));
+
         // —— 设置 / 规则管理 / 语言 / 更新（S9：FR-03/04/10、NFR-12；S15：08 §4.3）——
         services.AddSingleton<SettingsService>();
         services.AddSingleton<UpdateService>();
@@ -116,6 +128,7 @@ internal static class Bootstrapper
 
         // —— 页面视图模型（05 §2 Shell 导航）——
         services.AddSingleton<RulesViewModel>();
+        services.AddSingleton<ScheduleViewModel>(); // S18/CHG-015 日程页
         services.AddSingleton(sp => new SettingsViewModel(
             sp.GetRequiredService<SettingsService>(),
             sp.GetRequiredService<IAccountStore>(),
@@ -155,6 +168,7 @@ internal static class Bootstrapper
         services.AddSingleton<MainWindow>();
         services.AddSingleton<RulesPage>();
         services.AddSingleton<SettingsPage>();
+        services.AddSingleton<SchedulePage>(); // S18/CHG-015 日程页
     }
 
     /// <summary>FR-04 周期同步热更新：设置页改间隔后重启循环（App 持 CTS）。</summary>
