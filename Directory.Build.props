@@ -3,7 +3,7 @@
   <PropertyGroup>
     <!-- 版本唯一事实源：本地构建取此值；CI 中 stable 以 tag v*.*.* 覆盖注入（-p:Version）、
          beta 注入 {此值}-beta.构建号。发版时先改这里再打 tag（见 docs/发布操作指南.md） -->
-    <Version>0.6.0</Version>
+    <Version>0.7.0</Version>
     <Authors>MailHelper</Authors>
     <Product>MailHelper</Product>
     <Company>MailHelper</Company>
