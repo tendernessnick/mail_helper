@@ -59,6 +59,15 @@ public static class DevSeed
                 "好的，谢谢！", CategoryIds.Other, Importance.P3),
             R("d20", "活动预告：心理健康周", "University Comms", "comms@hku.hk",
                 "活动安排已发布。", CategoryIds.Announce, Importance.P3),
+            // S18（D-73 防复发）：Canvas 摘要种子——UI 冒烟据此断言日程页渲染（正文走 BodyPreview 回退路径）
+            R("d21", "Recent Canvas Notifications", "Canvas", "no-reply@canvas.cityu.edu.hk",
+                "Assignment Created - Week 8 assignment, IS6400 Business Data Analytics\n"
+                + "due: Dec 18 at 11:59pm\n"
+                + "Click to view <https://canvas.cityu.edu.hk/courses/71457/assignments/900001>\n"
+                + "Assignment Created - Week 8 Quiz, IS6335 Data Visualization\n"
+                + "due: Dec 20 at 5pm\n"
+                + "Click to view <https://canvas.cityu.edu.hk/courses/72000/assignments/900002>",
+                CategoryIds.Course, Importance.P2),
         };
         provider.Pages.Add(page1);
         provider.Pages.Add(page2);

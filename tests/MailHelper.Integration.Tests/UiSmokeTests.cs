@@ -104,7 +104,7 @@ public class UiSmokeTests
                 var count = list?.Items.Length;
                 return count is >= 15 ? count : null;
             }, TimeSpan.FromSeconds(30), "邮件列表加载");
-            itemCount.Should().BeGreaterThanOrEqualTo(15, "DEV 种子 20 封（两个批次页）");
+            itemCount.Should().BeGreaterThanOrEqualTo(15, "DEV 种子 21 封（两个批次页）");
 
             // 布局几何留档：与 05 §3.2 线框比对（窄左栏 ~220px / 中栏弹性 / 右栏阅读）
             var layoutLine = Retry(() =>
@@ -171,9 +171,40 @@ public class UiSmokeTests
                 }
 
                 var digits = new string(name.Where(char.IsDigit).ToArray());
-                return digits.Length > 0 && int.TryParse(digits, out var count) && count < 20 ? count : null;
+                return digits.Length > 0 && int.TryParse(digits, out var count) && count < 21 ? count : null;
             }, TimeSpan.FromSeconds(10), "未读徽章减少");
-            unreadAfter.Should().BeLessThan(20, "点击一封已读后，全部收件箱未读数应从 20 减少");
+            unreadAfter.Should().BeLessThan(21, "点击一封已读后，全部收件箱未读数应从 21 减少");
+
+            // S18（D-73 防复发）：切「日程」页 → 徽章应渲染「2 项待完成」（种子 1 封 Canvas 摘要含 2 条 DDL）。
+            // DataContext 断链（0.8.0 回归）时页面继承 MainViewModel、徽章文本为空——此断言可精确区分绑定成败。
+            Retry<object?>(() =>
+            {
+                var navTab = Find(mainWindows, automation, w => w.FindFirstDescendant(cf => cf.ByName("日程")));
+                navTab?.Patterns.SelectionItem.Pattern.Select(); // 顶部导航是 RadioButton（NavTab 样式）
+                return new object();
+            }, TimeSpan.FromSeconds(10), "切日程页");
+            var scheduleBadge = Retry(() =>
+            {
+                var badge = Find(mainWindows, automation, w => w.FindFirstDescendant(cf => cf.ByText("2 项待完成")));
+                var name = SafeName(badge);
+                return string.IsNullOrWhiteSpace(name) ? null : name;
+            }, TimeSpan.FromSeconds(15), "日程徽章计数");
+            scheduleBadge.Should().Be("2 项待完成", "日程页应显示种子 Canvas DDL 的 2 条待完成（DataContext 接线验证）");
+
+            var scheduleShot = Path.Combine(screensDir, "s18-schedule.png");
+            Retry<object?>(() =>
+            {
+                var window = FindWindow(automation, process);
+                if (window is null)
+                {
+                    return null;
+                }
+
+                using var capture = Capture.Element(window);
+                capture.ToFile(scheduleShot);
+                return new object();
+            }, TimeSpan.FromSeconds(10), "日程页截图");
+            File.Exists(scheduleShot).Should().BeTrue();
 
             // TC-019 关窗常驻（FR-14 AC3）：关窗 → 进程驻留 → 命名管道唤起 → 窗口重现
             Retry<object?>(() =>

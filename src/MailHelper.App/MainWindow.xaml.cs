@@ -22,23 +22,26 @@ public partial class MainWindow : Window
         ISettingsStore settings,
         RulesPage rulesPage,
         SettingsPage settingsPage,
-        SchedulePage schedulePage)
+        SchedulePage schedulePage,
+        ScheduleViewModel scheduleViewModel)
     {
         InitializeComponent();
         _viewModel = viewModel;
         _settings = settings;
         DataContext = viewModel;
         ScheduleHost.Content = schedulePage; // S18/CHG-015：日程页（DI 页面挂载，UserControl 带 ctor 注入）
+        // S18 修复（用户晨验缺陷 D-73）：页面不设 DataContext 会继承窗体的 MainViewModel，
+        // 分组/徽章绑定全部落空 → 日程页永远空态；显式指向 ScheduleViewModel（与 Avalonia 版同语义）
+        schedulePage.DataContext = scheduleViewModel;
         RulesHost.Content = rulesPage; // DI 页面挂载（UserControl 带 ctor 注入，不能在 XAML 实例化）
         SettingsHost.Content = settingsPage;
 
         // S18：切到日程页时进入即刷新（同步轮外的人工兜底路径）
         viewModel.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(MainViewModel.IsScheduleView)
-                && schedulePage.DataContext is ScheduleViewModel scheduleVm)
+            if (args.PropertyName == nameof(MainViewModel.IsScheduleView))
             {
-                _ = scheduleVm.RefreshAsync(CancellationToken.None);
+                _ = scheduleViewModel.RefreshAsync(CancellationToken.None);
             }
         };
 

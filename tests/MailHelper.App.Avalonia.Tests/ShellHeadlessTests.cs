@@ -33,7 +33,7 @@ public class ShellHeadlessTests
             Pump();
 
             vm.IsOnboarding.Should().BeFalse();
-            vm.Mails.Should().HaveCount(20, "DEV 种子 20 封");
+            vm.Mails.Should().HaveCount(21, "DEV 种子 21 封（S18 增补 1 封 Canvas 摘要，含 2 条 DDL）");
         }
         finally
         {

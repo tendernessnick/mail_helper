@@ -584,3 +584,9 @@ PROGRESS.md
 `artifacts/installer/MailHelper-stable-Setup.exe`（74MB，ProductVersion 0.8.0.0）+ 便携包
 `artifacts/stage/MailHelper-stable-Portable.zip`（97MB）+ SHA256 清单 `SHA256SUMS.local.txt`。
 规则包 JSON 随包核验在位。注意：正式发版仍须走 tag → CI stable 渠道（§一），本地包仅验收用。
+
+**D-73（2026-10-04 晨，v0.8.1）**：用户验收发现 WPF 日程页永远空态——根因 `MainWindow` 只挂页面控件、未把
+`ScheduleViewModel` 注入为页面 DataContext（继承 MainViewModel → 绑定全落空，连刷新守卫也判 false）。
+数据层无恙（13 条日程一直在库）。修复 + 防复发（UiSmoke 增日程徽章 FlaUI 断言 + DevSeed 补 Canvas 摘要 + 
+Avalonia 冒烟种子计数 21）。教训：**UI 交付必须页面级视觉验收，数据层验证不能替代绑定链验证**；
+本地打包发布物构建后未重启应用做最终冒烟也是漏网原因。
