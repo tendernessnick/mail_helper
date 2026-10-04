@@ -590,3 +590,6 @@ PROGRESS.md
 数据层无恙（13 条日程一直在库）。修复 + 防复发（UiSmoke 增日程徽章 FlaUI 断言 + DevSeed 补 Canvas 摘要 + 
 Avalonia 冒烟种子计数 21）。教训：**UI 交付必须页面级视觉验收，数据层验证不能替代绑定链验证**；
 本地打包发布物构建后未重启应用做最终冒烟也是漏网原因。
+**D-75（v0.8.1 CI 冒烟加固）**：UiSmoke 切日程页用 UIA `SelectionItemPattern.Select()` 在 CI 不触发
+WPF RadioButton 命令（本地首次通过有偶然性）——改为 **AutomationId 定位 + 物理坐标点击**（与用户行为一致），
+并加三重取证（失败截图/全树元素名/应用日志 schedule 行倾倒）。CI 屏 1044×768、en-US 环境实测通过为准。

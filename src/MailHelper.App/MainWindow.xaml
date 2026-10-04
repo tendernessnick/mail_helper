@@ -165,15 +165,19 @@
                         </TextBlock>
                         <RadioButton Content="收件箱" GroupName="Nav" IsChecked="True" Margin="0,0,2,0"
                                      Padding="14,6" Style="{StaticResource NavTab}"
+                                     AutomationProperties.AutomationId="nav-inbox"
                                      Command="{Binding ShowInboxCommand}" />
                         <RadioButton Content="日程" GroupName="Nav" Margin="0,0,2,0"
                                      Padding="14,6" Style="{StaticResource NavTab}"
+                                     AutomationProperties.AutomationId="nav-schedule"
                                      Command="{Binding ShowScheduleCommand}" />
                         <RadioButton Content="规则" GroupName="Nav" Margin="0,0,2,0"
                                      Padding="14,6" Style="{StaticResource NavTab}"
+                                     AutomationProperties.AutomationId="nav-rules"
                                      Command="{Binding ShowRulesCommand}" />
                         <RadioButton Content="设置" GroupName="Nav"
                                      Padding="14,6" Style="{StaticResource NavTab}"
+                                     AutomationProperties.AutomationId="nav-settings"
                                      Command="{Binding ShowSettingsCommand}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal"

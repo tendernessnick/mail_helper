@@ -4,8 +4,10 @@ using System.Runtime.InteropServices;
 using FluentAssertions;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Capturing;
+using FlaUI.Core.Input;
 using FlaUI.UIA3;
 using Microsoft.Data.Sqlite;
+using System.Drawing;
 using Xunit;
 using Application = FlaUI.Core.Application;
 
@@ -175,20 +177,99 @@ public class UiSmokeTests
             }, TimeSpan.FromSeconds(10), "未读徽章减少");
             unreadAfter.Should().BeLessThan(21, "点击一封已读后，全部收件箱未读数应从 21 减少");
 
-            // S18（D-73 防复发）：切「日程」页 → 徽章应渲染「2 项待完成」（种子 1 封 Canvas 摘要含 2 条 DDL）。
+            // S18（D-73/D-74 防复发）：切「日程」页 → 徽章应渲染「2 项待完成」（种子 1 封 Canvas 摘要含 2 条 DDL）。
             // DataContext 断链（0.8.0 回归）时页面继承 MainViewModel、徽章文本为空——此断言可精确区分绑定成败。
+            // CI 加固（D-75）：AutomationId 定位 + 物理坐标点击（UIA SelectionItem.Select 实测不触发
+            // WPF RadioButton 命令，真实鼠标点击与用户行为一致）+ 失败倾倒树/截图/应用日志。
             Retry<object?>(() =>
             {
-                var navTab = Find(mainWindows, automation, w => w.FindFirstDescendant(cf => cf.ByName("日程")));
-                navTab?.Patterns.SelectionItem.Pattern.Select(); // 顶部导航是 RadioButton（NavTab 样式）
+                var navTab = Find(mainWindows, automation, w =>
+                    w.FindFirstDescendant(cf => cf.ByAutomationId("nav-schedule")));
+                if (navTab is null)
+                {
+                    Console.WriteLine("[sched] nav-schedule 未找到（重试中）");
+                    return null;
+                }
+
+                var bounds = navTab.Properties.BoundingRectangle.Value;
+                Mouse.MoveTo(new Point(
+                    (int)(bounds.X + bounds.Width / 2),
+                    (int)(bounds.Y + bounds.Height / 2)));
+                Mouse.LeftClick();
                 return new object();
             }, TimeSpan.FromSeconds(10), "切日程页");
-            var scheduleBadge = Retry(() =>
+
+            // 切页兜底：点页面头「⟳ 刷新」强制 RefreshCommand（防 PropertyChanged 链路在 CI 差异）
+            Retry<object?>(() =>
             {
-                var badge = Find(mainWindows, automation, w => w.FindFirstDescendant(cf => cf.ByText("2 项待完成")));
-                var name = SafeName(badge);
-                return string.IsNullOrWhiteSpace(name) ? null : name;
-            }, TimeSpan.FromSeconds(15), "日程徽章计数");
+                var refresh = Find(mainWindows, automation, w =>
+                    w.FindFirstDescendant(cf => cf.ByName("⟳ 刷新")));
+                refresh?.Patterns.Invoke.Pattern.Invoke();
+                return new object();
+            }, TimeSpan.FromSeconds(5), "日程页刷新按钮");
+
+            string? scheduleBadge = null;
+            try
+            {
+                scheduleBadge = Retry(() =>
+                {
+                    var window = FindWindow(automation, process);
+                    if (window is null)
+                    {
+                        return null;
+                    }
+
+                    var names = window.FindAllDescendants()
+                        .Select(e => SafeName(e))
+                        .Where(n => !string.IsNullOrEmpty(n))
+                        .ToList();
+                    var badge = names.FirstOrDefault(n => n!.Contains("项待完成"));
+                    if (badge is null && names.Any(n => n!.Contains("暂无日程")))
+                    {
+                        // 页面已切换但无数据：打印全部元素名辅助定位（0 项待完成也算未接线）
+                        Console.WriteLine($"[sched] 空态可见，元素={string.Join("|", names.Take(30))}");
+                    }
+
+                    return badge;
+                }, TimeSpan.FromSeconds(15), "日程徽章计数");
+            }
+            catch (TimeoutException)
+            {
+                // 失败取证：窗口截图 + 全树元素名 + 应用日志（判断是没切页还是没渲染）
+                try
+                {
+                    var window = FindWindow(automation, process);
+                    if (window is not null)
+                    {
+                        using var capture = Capture.Element(window);
+                        capture.ToFile(Path.Combine(screensDir, "s18-fail.png"));
+                        var names = window.FindAllDescendants()
+                            .Select(e => SafeName(e))
+                            .Where(n => !string.IsNullOrEmpty(n))
+                            .Take(60);
+                        Console.WriteLine("[sched-fail] tree=" + string.Join("|", names));
+                    }
+
+                    var logDir = Path.Combine(dataDir, "logs");
+                    foreach (var log in Directory.EnumerateFiles(logDir, "*.log", SearchOption.AllDirectories))
+                    {
+                        foreach (var line in File.ReadLines(log)
+                            .Where(l => l.Contains("schedule.") || l.Contains("sync.completed")))
+                        {
+                            Console.WriteLine("[app-log] " + line);
+                        }
+                    }
+                }
+                catch (IOException)
+                {
+                }
+                catch (COMException)
+                {
+                }
+
+                throw;
+            }
+
             scheduleBadge.Should().Be("2 项待完成", "日程页应显示种子 Canvas DDL 的 2 条待完成（DataContext 接线验证）");
 
             var scheduleShot = Path.Combine(screensDir, "s18-schedule.png");
