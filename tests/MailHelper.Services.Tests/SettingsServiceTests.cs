@@ -72,4 +72,19 @@ public class SettingsServiceTests : IDisposable
         (await _service.GetNotifyEnabledAsync("P0", CancellationToken.None)).Should().BeFalse();
         (await _service.GetNotifyEnabledAsync("P1", CancellationToken.None)).Should().BeTrue(); // 独立开关
     }
+
+    [Fact]
+    public async Task InboxSort_DefaultsToImportance_AndRoundtrips() // S19/CHG-016
+    {
+        (await _service.GetInboxSortAsync(CancellationToken.None)).Should().Be("importance"); // 默认重要度优先
+
+        await _service.SetInboxSortAsync("date", CancellationToken.None);
+        (await _service.GetInboxSortAsync(CancellationToken.None)).Should().Be("date");
+
+        await _service.SetInboxSortAsync("importance", CancellationToken.None);
+        (await _service.GetInboxSortAsync(CancellationToken.None)).Should().Be("importance");
+
+        await _service.SetInboxSortAsync("weird", CancellationToken.None); // 非法值归一默认
+        (await _service.GetInboxSortAsync(CancellationToken.None)).Should().Be("importance");
+    }
 }

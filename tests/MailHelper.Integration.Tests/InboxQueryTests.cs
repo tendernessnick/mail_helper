@@ -45,6 +45,23 @@ public class InboxQueryTests : TempDirTestBase
     }
 
     [Fact]
+    public async Task GetInbox_DateMode_OrdersByReceivedThenImportance() // S19/CHG-016
+    {
+        var (_, repo) = await PrepareAsync(
+            Msg("old-p1", CategoryIds.Course, Importance.P1, new DateTime(2026, 9, 20, 8, 0, 0, DateTimeKind.Utc)),
+            Msg("new-p2", CategoryIds.Finance, Importance.P2, new DateTime(2026, 9, 26, 8, 0, 0, DateTimeKind.Utc)),
+            Msg("mid-p1", CategoryIds.Course, Importance.P1, new DateTime(2026, 9, 25, 8, 0, 0, DateTimeKind.Utc)),
+            Msg("new-p1", CategoryIds.Course, Importance.P1, new DateTime(2026, 9, 26, 8, 0, 0, DateTimeKind.Utc))); // 与 new-p2 同刻：同日内重要度优先
+
+        var dateMode = await repo.GetInboxAsync("acc-1", new InboxQuery(Sort: InboxSortMode.Date), CancellationToken.None);
+
+        dateMode.Select(m => m.Id).Should().Equal("new-p1", "new-p2", "mid-p1", "old-p1"); // 时间降序 → 同日内重要度降序
+
+        var importanceMode = await repo.GetInboxAsync("acc-1", new InboxQuery(Sort: InboxSortMode.Importance), CancellationToken.None);
+        importanceMode.Select(m => m.Id).Should().Equal("new-p1", "mid-p1", "old-p1", "new-p2"); // 默认行为不变（P1 组内时间降序）
+    }
+
+    [Fact]
     public async Task GetInbox_FiltersByCategory_AndUnread_AndMinImportance()
     {
         var (_, repo) = await PrepareAsync(

@@ -19,6 +19,7 @@ public sealed class SettingsService
     public const string KeyScheduleEnabled = "schedule.enabled"; // S18/CHG-015
     public const string KeyScheduleReminderEnabled = "schedule.reminder_enabled"; // S18/CHG-015
     public const string KeyScheduleReminderHours = "schedule.reminder_hours"; // S18/CHG-015
+    public const string KeyInboxSort = "ui.inbox_sort"; // S19/CHG-016：importance | date
 
     private readonly ISettingsStore _store;
 
@@ -110,4 +111,11 @@ public sealed class SettingsService
 
     public Task SetScheduleReminderHoursAsync(int hours, CancellationToken ct) =>
         _store.SetAsync(KeyScheduleReminderHours, Math.Clamp(hours, 1, 168).ToString(), ct);
+
+    /// <summary>S19/CHG-016：收件箱排序模式（importance 重要度优先=默认 | date 时间优先）。</summary>
+    public async Task<string> GetInboxSortAsync(CancellationToken ct) =>
+        await _store.GetAsync(KeyInboxSort, ct) is "date" ? "date" : "importance";
+
+    public Task SetInboxSortAsync(string sort, CancellationToken ct) =>
+        _store.SetAsync(KeyInboxSort, sort is "date" ? "date" : "importance", ct);
 }

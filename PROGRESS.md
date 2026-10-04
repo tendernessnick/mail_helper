@@ -593,3 +593,16 @@ Avalonia 冒烟种子计数 21）。教训：**UI 交付必须页面级视觉验
 **D-75（v0.8.1 CI 冒烟加固）**：UiSmoke 切日程页用 UIA `SelectionItemPattern.Select()` 在 CI 不触发
 WPF RadioButton 命令（本地首次通过有偶然性）——改为 **AutomationId 定位 + 物理坐标点击**（与用户行为一致），
 并加三重取证（失败截图/全树元素名/应用日志 schedule 行倾倒）。CI 屏 1044×768、en-US 环境实测通过为准。
+
+## S19 收件箱排序切换 × 未读高亮（CHG-016）—— 2026-10-04 收口
+
+| 编号 | 对应 | 状态 | 证据 | 备注 |
+| --- | --- | --- | --- | --- |
+| S19-A 查询层 | 用户需求① | 完成 | `InboxQuery.Sort`（InboxSortMode 枚举）+ MailRepository ORDER BY 分支；InboxQueryTests 双模式用例 | Date=时间降序→同日重要度降序；Importance=历史默认不变 |
+| S19-B 偏好持久化 | 用户需求① | 完成 | SettingsService `ui.inbox_sort`（importance/date，非法值归一）+ MainViewModel.SortByDate（切换即刷新）；SettingsServiceTests | Initialize 先读偏好再加载 |
+| S19-C 未读高亮 | 用户需求② | 完成 | WPF MailListItem DataTrigger（未读淡蓝底，选中态优先）+ Avalonia Classes.unreadRow/unreadSubject（明暗双主题 BrushUnreadBg）| 冒烟截图 artifacts/screens/s6-inbox.png 视觉验收 |
+| S19-D 双 UI 开关 | 用户需求① | 完成 | WPF/Avalonia 顶栏「按时间排序」复选框 | Tooltip 说明两种模式 |
+| S19-E 门禁 | 纪律 | 完成 | 全量 307/307；0 错误；docs/04 §2/§7 回写 | 发版 v0.9.0 |
+
+**S19 决策**：排序在查询层实现（SQL ORDER BY 分支）而非 UI 层重排——虚拟化列表与 200 条 Limit 语义保持一致；
+「待确认」等全部收件箱视图同享排序偏好。

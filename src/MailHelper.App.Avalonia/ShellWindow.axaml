@@ -19,6 +19,17 @@
     <app:CategoryColorConverter x:Key="CategoryColorFallback" />
   </Window.Resources>
 
+  <!-- S19：未读行高亮（底色 + 主题加粗，Classes 随 IsRead 切换） -->
+  <Window.Styles>
+    <Style Selector="Grid.unreadRow">
+      <Setter Property="Background" Value="{DynamicResource BrushUnreadBg}" />
+    </Style>
+    <Style Selector="TextBlock.unreadSubject">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    </Style>
+  </Window.Styles>
+
   <Panel>
     <!-- ============ 三栏主界面（05 §3.2）============ -->
     <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsOnboarding, Converter={StaticResource InverseBool}}">
@@ -40,6 +51,8 @@
             <TextBox Width="300" Text="{Binding SearchText, Mode=TwoWay}"
                      Watermark="搜索主题/发件人/正文…" />
             <Button Classes="primaryAction" Content="搜索" Command="{Binding SearchCommand}" />
+            <CheckBox Content="按时间排序" IsChecked="{Binding SortByDate, Mode=TwoWay}"
+                      ToolTip.Tip="开：按日期排列（同日内重要度优先）；关：按重要度排列（S19）" />
             <CheckBox Content="仅未读" IsChecked="{Binding UnreadOnly, Mode=TwoWay}"
                       Command="{Binding ToggleUnreadOnlyCommand}" />
             <TextBlock Classes="statusText" Text="Ctrl+F 搜索 · Ctrl+R 立即同步" VerticalAlignment="Center" />
@@ -85,7 +98,8 @@
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
               <ListBox.ItemTemplate>
                 <DataTemplate DataType="{x:Type vm:MailItemViewModel}">
-                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,8" VerticalAlignment="Center">
+                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,8" VerticalAlignment="Center"
+                        Classes.unreadRow="{Binding IsRead, Converter={StaticResource InverseBool}}">
                     <!-- 左缘重要度色条 + 类别色头像（05 §5.1/§5.2） -->
                     <Border Grid.Column="0" Width="4" Height="44" CornerRadius="2"
                             Background="{Binding ImportanceColor, Converter={StaticResource ColorHexToBrush}}"
@@ -111,7 +125,8 @@
                         <TextBlock Grid.Column="1" Text="{Binding ReceivedText}" FontSize="11"
                                    Foreground="{DynamicResource BrushTextTertiary}" />
                       </Grid>
-                      <TextBlock Text="{Binding Subject}" FontSize="13" FontWeight="SemiBold"
+                      <TextBlock Text="{Binding Subject}" FontSize="13" FontWeight="Normal"
+                                 Classes.unreadSubject="{Binding IsRead, Converter={StaticResource InverseBool}}"
                                  Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis" />
                       <TextBlock Text="{Binding Preview}" FontSize="12" MaxLines="1" TextTrimming="CharacterEllipsis"
                                  Foreground="{DynamicResource BrushTextTertiary}" />

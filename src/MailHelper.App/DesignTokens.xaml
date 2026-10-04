@@ -26,6 +26,7 @@
     <SolidColorBrush x:Key="BrushTextTertiary" Color="#8C93A0" />
     <SolidColorBrush x:Key="BrushRowHover" Color="#F0F5FB" />
     <SolidColorBrush x:Key="BrushRowSelected" Color="#E1EEFA" />
+    <SolidColorBrush x:Key="BrushUnreadBg" Color="#EAF2FB" />
     <SolidColorBrush x:Key="BrushUnreadDot" Color="#0F6CBD" />
     <SolidColorBrush x:Key="BrushBadgeBg" Color="#E9EDF3" />
     <SolidColorBrush x:Key="BrushDanger" Color="#D13438" />
@@ -252,6 +253,10 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushRowHover}" />
                         </Trigger>
+                        <!-- S19：未读行淡蓝底色（置于选中触发器之前，选中态仍优先） -->
+                        <DataTrigger Binding="{Binding IsRead}" Value="False">
+                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushUnreadBg}" />
+                        </DataTrigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushRowSelected}" />
                         </Trigger>

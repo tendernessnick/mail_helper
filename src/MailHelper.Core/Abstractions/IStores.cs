@@ -4,14 +4,22 @@ using MailHelper.Core.Rules;
 
 namespace MailHelper.Core.Abstractions;
 
-/// <summary>收件箱查询（FR-12：类别/重要度/未读过滤 + 待确认队列入口）。</summary>
+/// <summary>收件箱排序模式（S19/CHG-016：Importance 重要度优先=历史默认；Date 时间优先、同日内按重要度）。</summary>
+public enum InboxSortMode
+{
+    Importance = 0,
+    Date = 1,
+}
+
+/// <summary>收件箱查询（FR-12：类别/重要度/未读过滤 + 待确认队列入口；S19 增加排序模式，默认不变）。</summary>
 public sealed record InboxQuery(
     string? Category = null,
     bool NeedsReviewOnly = false,
     Importance? MinimumImportance = null,
     bool UnreadOnly = false,
     double ReviewThreshold = 0.55,
-    int Limit = 200);
+    int Limit = 200,
+    InboxSortMode Sort = InboxSortMode.Importance);
 
 /// <summary>组合搜索查询（S10 FR-13：语法解析产物）。</summary>
 public sealed record SearchQuery(

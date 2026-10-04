@@ -22,6 +22,7 @@
       <SolidColorBrush x:Key="BrushTextTertiary" Color="#8C93A0" />
       <SolidColorBrush x:Key="BrushRowHover" Color="#F0F5FB" />
       <SolidColorBrush x:Key="BrushRowSelected" Color="#E1EEFA" />
+      <SolidColorBrush x:Key="BrushUnreadBg" Color="#EAF2FB" />
       <SolidColorBrush x:Key="BrushUnreadDot" Color="#0F6CBD" />
       <SolidColorBrush x:Key="BrushBadgeBg" Color="#E9EDF3" />
       <SolidColorBrush x:Key="BrushDanger" Color="#D13438" />
@@ -41,6 +42,7 @@
       <SolidColorBrush x:Key="BrushTextTertiary" Color="#8A8F98" />
       <SolidColorBrush x:Key="BrushRowHover" Color="#2F3A46" />
       <SolidColorBrush x:Key="BrushRowSelected" Color="#1E3A55" />
+      <SolidColorBrush x:Key="BrushUnreadBg" Color="#23405E" />
       <SolidColorBrush x:Key="BrushUnreadDot" Color="#4DA3E8" />
       <SolidColorBrush x:Key="BrushBadgeBg" Color="#33383F" />
       <SolidColorBrush x:Key="BrushDanger" Color="#FF5C5C" />

@@ -210,6 +210,10 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool unreadOnly;
 
+    /// <summary>S19/CHG-016：收件箱按时间排序（false=重要度优先，历史默认）。</summary>
+    [ObservableProperty]
+    private bool sortByDate;
+
     [ObservableProperty]
     private bool isSearchMode;
 
@@ -265,6 +269,8 @@ public partial class MainViewModel : ObservableObject
 
     public async Task InitializeAsync(CancellationToken ct)
     {
+        // S19：先读排序偏好再加载列表（属性变更钩子在 _accountId 就绪前不触发重复加载）
+        SortByDate = await _settings.GetAsync(SettingsService.KeyInboxSort, ct) == "date";
         var account = (await _accounts.FindAllAsync(ct)).FirstOrDefault();
         if (account is null)
         {
@@ -358,6 +364,16 @@ public partial class MainViewModel : ObservableObject
         _ = LoadInboxAsync(CancellationToken.None); // 左栏点击即过滤（05 §3.2）
     }
 
+    /// <summary>S19/CHG-016：排序偏好切换 → 持久化 + 即时刷新（Initialize 读偏好时不触发：_accountId 未就绪）。</summary>
+    partial void OnSortByDateChanged(bool value)
+    {
+        _ = _settings.SetAsync(SettingsService.KeyInboxSort, value ? "date" : "importance", CancellationToken.None);
+        if (_accountId is not null)
+        {
+            _ = LoadInboxAsync(CancellationToken.None);
+        }
+    }
+
     [RelayCommand]
     private async Task SearchAsync(CancellationToken ct)
     {
@@ -422,7 +438,8 @@ public partial class MainViewModel : ObservableObject
         var query = new InboxQuery(
             Category: SelectedCategory?.CategoryId,
             NeedsReviewOnly: SelectedCategory?.IsNeedsReviewEntry == true,
-            UnreadOnly: UnreadOnly);
+            UnreadOnly: UnreadOnly,
+            Sort: SortByDate ? InboxSortMode.Date : InboxSortMode.Importance); // S19/CHG-016
         var messages = await _store.GetInboxAsync(_accountId, query, ct);
         var nowUtc = DateTime.UtcNow;
         var unread = await _store.GetUnreadCountsAsync(_accountId, ct);

@@ -263,10 +263,11 @@ public sealed class MailRepository : IMessageStore
                 rows = rows.Where(m => m.ClassifiedAtUtc != null && m.Confidence < query.ReviewThreshold);
             }
 
-            rows = rows
-                .OrderByDescending(m => m.Importance)
-                .ThenByDescending(m => m.ReceivedAtUtc)
-                .Take(query.Limit);
+            // S19/CHG-016：排序模式二选一——重要度优先（默认，历史行为）/ 时间优先（同日内重要度递减）
+            rows = query.Sort == InboxSortMode.Date
+                ? rows.OrderByDescending(m => m.ReceivedAtUtc).ThenByDescending(m => m.Importance)
+                : rows.OrderByDescending(m => m.Importance).ThenByDescending(m => m.ReceivedAtUtc);
+            rows = rows.Take(query.Limit);
 
             var list = await rows.ToListAsync(ct);
             return (IReadOnlyList<MailMessage>)list.Select(ToDomain).ToList();

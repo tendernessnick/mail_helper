@@ -196,6 +196,10 @@
                                 Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}}" />
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                        <CheckBox Content="按时间排序" IsChecked="{Binding SortByDate, Mode=TwoWay}"
+                                  Style="{StaticResource ModernCheck}" VerticalAlignment="Center"
+                                  Margin="0,0,14,0"
+                                  ToolTip="开：按日期排列（同日内重要度优先）；关：按重要度排列（S19）" />
                         <CheckBox Content="仅未读" IsChecked="{Binding UnreadOnly}" Style="{StaticResource ModernCheck}"
                                   Command="{Binding ToggleUnreadOnlyCommand}" VerticalAlignment="Center"
                                   Margin="0,0,14,0" />
