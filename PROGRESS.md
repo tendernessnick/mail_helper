@@ -578,3 +578,9 @@ PROGRESS.md
 - 时间语义：due 为 Canvas 账户时区墙上时间，按本机时区解释（ADR-006 已知限制）
 
 **对既有功能的影响评估**：messages 表仅加可空列；分类/同步/通知路径零改动；全量回归零删除零削弱。
+
+**S18 打包补充（2026-10-04 晨）**：版本基线 0.7.0 → **0.8.0**（功能新增进位次版本）；本地发布物重建——
+`dotnet publish -c Release -r win-x64 -p:Version=0.8.0 -p:SelfContained=true`（0 警 0 错）→ ISCC 6.7.3 编译
+`artifacts/installer/MailHelper-stable-Setup.exe`（74MB，ProductVersion 0.8.0.0）+ 便携包
+`artifacts/stage/MailHelper-stable-Portable.zip`（97MB）+ SHA256 清单 `SHA256SUMS.local.txt`。
+规则包 JSON 随包核验在位。注意：正式发版仍须走 tag → CI stable 渠道（§一），本地包仅验收用。
