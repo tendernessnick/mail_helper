@@ -156,7 +156,16 @@ public class ShellScreenshotTests
             await vm.ConnectCommand.ExecuteAsync(null);
             Dispatcher.UIThread.RunJobs();
             vm.SelectedMail = vm.Mails.FirstOrDefault();
+            var readerDeadline = DateTime.UtcNow.AddSeconds(5);
+            while (shell.ReaderBlocks.Count == 0 && DateTime.UtcNow < readerDeadline)
+            {
+                Dispatcher.UIThread.RunJobs();
+                await Task.Delay(10);
+            }
+
+            shell.ReaderBlocks.Should().NotBeEmpty("截图应等待正文实际渲染，不能把加载帧当作完成态");
             Dispatcher.UIThread.RunJobs();
+            shell.UpdateLayout();
             shell.CaptureRenderedFrame()?.Save(Path.Combine(artifacts, "ms5-inbox.png"));
 
             // MS7 帧：规则页 / 设置页（装入 Window 宿主后截帧）

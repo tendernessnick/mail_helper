@@ -62,7 +62,8 @@ public sealed class MailHelperDbContext : DbContext
         message.Property(x => x.HasAttachments).HasColumnName("has_attachments").HasColumnType("INTEGER").IsRequired().HasDefaultValue(false);
         message.Property(x => x.IsRead).HasColumnName("is_read").HasColumnType("INTEGER").IsRequired().HasDefaultValue(false);
         message.Property(x => x.Category).HasColumnName("category").HasColumnType("TEXT").IsRequired().HasDefaultValue("other");
-        message.Property(x => x.Importance).HasColumnName("importance").HasColumnType("INTEGER").IsRequired().HasDefaultValue(2);
+        // P3=0 是有效值；不能让 EF 把 CLR 默认0当作“未设置”并套用数据库默认2(P1)。
+        message.Property(x => x.Importance).HasColumnName("importance").HasColumnType("INTEGER").IsRequired().HasDefaultValue(2).ValueGeneratedNever();
         message.Property(x => x.Confidence).HasColumnName("confidence").HasColumnType("REAL");
         message.Property(x => x.ClassifiedBy).HasColumnName("classified_by").HasColumnType("TEXT").IsRequired().HasDefaultValue("rule");
         message.Property(x => x.ClassifiedAtUtc).HasColumnName("classified_at_utc").HasColumnType("INTEGER");

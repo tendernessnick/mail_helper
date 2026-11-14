@@ -3,6 +3,7 @@ using Avalonia.Headless;
 using Avalonia.Skia;
 using MailHelper.App.Avalonia;
 using MailHelper.Core.Abstractions;
+using MailHelper.Core.Services;
 using MailHelper.Infrastructure.SystemIntegration;
 using MailHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,6 +37,9 @@ public class TestBootstrap : Application
 
         var host = AvaloniaBootstrapper.BuildHost(singleInstanceLock);
         host.Start();
+        // headless 生命周期不执行 App.WireNotifications，仍须接入产品实际分类/日程收尾。
+        host.Services.GetRequiredService<SyncCoordinator>().ProcessRoundAsync =
+            host.Services.GetRequiredService<SyncCompletionService>().ProcessAsync;
         CategoryCatalog.RefreshAsync(host.Services.GetRequiredService<ICategoryStore>()).GetAwaiter().GetResult();
 
         var shell = host.Services.GetRequiredService<ShellWindow>();

@@ -192,30 +192,9 @@ public partial class App : Application
 
     private void WireNotifications()
     {
-        var notifications = _host!.Services.GetRequiredService<NotificationService>();
-        var schedule = _host!.Services.GetRequiredService<ScheduleService>(); // S18/CHG-015
-        var coordinator = _host.Services.GetRequiredService<SyncCoordinator>();
-        coordinator.SyncRoundCompleted += async (_, e) =>
-        {
-            try
-            {
-                await notifications.HandleNewMailsAsync(e.NewMails, e.IsInitialRound, CancellationToken.None);
-            }
-            catch (Exception)
-            {
-                // 通知失败不影响同步（与 WPF App 同语义）
-            }
-
-            try
-            {
-                await schedule.ExtractPendingAsync(ct: CancellationToken.None); // Canvas DDL 识别（首启用回填历史）
-                await schedule.CheckRemindersAsync(CancellationToken.None); // 临期提醒（同一 due 恰一次）
-            }
-            catch (Exception)
-            {
-                // 日程失败不影响同步（SCHED-001/002 由服务内部记录计数）
-            }
-        };
+        var host = _host!;
+        var completion = host.Services.GetRequiredService<SyncCompletionService>();
+        host.Services.GetRequiredService<SyncCoordinator>().ProcessRoundAsync = completion.ProcessAsync;
     }
 
     // —— 周期同步（FR-04；与 WPF App.StartPeriodicSync 同构）——

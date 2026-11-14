@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel;
     private readonly ISettingsStore _settings;
     private string? _pendingHtml; // CoreWebView2 完成初始化前排队的正文
+    private long _readerRequest;
     private bool _forceClose; // 托盘「退出」置位；普通关窗 = 驻留托盘（FR-14 AC3 / TC-019）
 
     public MainWindow(
@@ -78,13 +79,20 @@ public partial class MainWindow : Window
         _viewModel.SelectedMailHtmlNeeded += async (_, mail) => await RenderMailAsync(mail);
 
         // 键盘（05 §7）：↑/↓ 列表导航与 Enter 由 ListBox 原生支持；Ctrl+F 聚焦搜索；Ctrl+R 见 InputBindings
-        PreviewKeyDown += (_, e) =>
+        PreviewKeyDown += async (_, e) =>
         {
             if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
             {
+                viewModel.ShowInboxCommand.Execute(null);
                 SearchBox.Focus();
                 SearchBox.SelectAll();
                 e.Handled = true;
+            }
+            else if (e.Key == Key.Escape && Keyboard.Modifiers == ModifierKeys.None
+                     && (viewModel.IsSearchMode || !string.IsNullOrEmpty(viewModel.SearchText)))
+            {
+                e.Handled = true;
+                await viewModel.ClearSearchCommand.ExecuteAsync(null);
             }
         };
 
@@ -198,15 +206,13 @@ public partial class MainWindow : Window
 
     private async Task RenderMailAsync(MailItemViewModel? mail)
     {
-        if (mail is null)
-        {
-            return;
-        }
-
+        var request = Interlocked.Increment(ref _readerRequest);
         try
         {
-            var html = await _viewModel.BuildReaderHtmlAsync(mail, CancellationToken.None);
-            if (!IsLoaded)
+            var html = mail is null
+                ? "<html><body style=\"font:14px 'Segoe UI',sans-serif;color:#667085;padding:24px\">选择一封邮件查看正文</body></html>"
+                : await _viewModel.BuildReaderHtmlAsync(mail, CancellationToken.None);
+            if (!IsLoaded || request != Interlocked.Read(ref _readerRequest))
             {
                 return;
             }

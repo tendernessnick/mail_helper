@@ -133,4 +133,31 @@ public class InboxQueryTests : TempDirTestBase
         var inbox = await repo.GetInboxAsync("acc-1", new InboxQuery(UnreadOnly: true), CancellationToken.None);
         inbox.Should().BeEmpty(); // 已读（仅本地，不回写远端）
     }
+
+    [Fact]
+    public async Task Inbox_StablePagination_AndCustomCategoryUnreadCounts()
+    {
+        var received = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var (_, repo) = await PrepareAsync(Enumerable.Range(0, 405)
+            .Select(i => Msg($"page-{i:D4}", "custom-project", Importance.P1, received)).ToArray());
+        var first = await repo.GetInboxAsync("acc-1", new InboxQuery(Limit: 200), CancellationToken.None);
+        var second = await repo.GetInboxAsync("acc-1", new InboxQuery(Limit: 200, Offset: 200), CancellationToken.None);
+        var third = await repo.GetInboxAsync("acc-1", new InboxQuery(Limit: 200, Offset: 400), CancellationToken.None);
+        first.Concat(second).Concat(third).Select(m => m.Id).Should().Equal(
+            Enumerable.Range(0, 405).Select(i => $"page-{i:D4}"), "相同时间和重要度仍以ID稳定排序，跨页不重不漏");
+        var counts = await repo.GetUnreadCountsAsync("acc-1", CancellationToken.None);
+        counts["custom-project"].Should().Be(405);
+        counts.Values.Sum().Should().Be(405);
+    }
+
+    [Theory]
+    [InlineData(Importance.P0)]
+    [InlineData(Importance.P1)]
+    [InlineData(Importance.P2)]
+    [InlineData(Importance.P3)]
+    public async Task Importance_ExplicitZeroP3_IsNotReplacedByDatabaseDefault(Importance importance)
+    {
+        var (_, repo) = await PrepareAsync(Msg("roundtrip", CategoryIds.Course, importance, DateTime.UtcNow));
+        (await repo.GetByIdAsync("roundtrip", CancellationToken.None))!.Importance.Should().Be(importance);
+    }
 }

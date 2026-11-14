@@ -2,6 +2,7 @@ using FluentAssertions;
 using MailHelper.Core;
 using MailHelper.Core.Abstractions;
 using MailHelper.Core.Domain;
+using MailHelper.Core.Services;
 using MailHelper.Infrastructure.Storage;
 using MailHelper.Infrastructure.Sync;
 using Microsoft.Data.Sqlite;
@@ -78,7 +79,7 @@ public class OutlookDesktopProviderTests : IDisposable
         var mails = await CollectAsync(provider.FetchDeltaAsync(
             OutlookDesktopMailProvider.EncodeBreakpoint(At(9, 2)), 10, CancellationToken.None));
 
-        mails.Select(m => m.ProviderMessageId).Should().BeEquivalentTo(["outlook:b", "outlook:c"]); // b 在 24h 晚到窗口内被重拉（upsert 幂等吸收）
+        mails.Select(m => m.ProviderMessageId).Should().BeEquivalentTo(["outlook:a", "outlook:b", "outlook:c"]); // 24h 边界也重拉，upsert 幂等吸收
         var expectedWindow = At(9, 2).Subtract(TimeSpan.FromHours(24)).UtcDateTime;
         _source.LastSince.Should().Be(expectedWindow);
     }
@@ -134,6 +135,117 @@ public class OutlookDesktopProviderTests : IDisposable
 
         mails.Should().HaveCount(5);
         _source.BatchSizes.Should().OnlyContain(n => n == 2);
+    }
+
+    [Fact]
+    public async Task FirstSync_Over100HistoricalMessages_AllPagesArePreserved()
+    {
+        for (var i = 0; i < 237; i++)
+        {
+            _source.Add($"history-{i}", received: At(9, 1).AddMinutes(i));
+        }
+
+        var mails = await CollectAsync(NewProvider().FetchDeltaAsync(null, 100, CancellationToken.None));
+
+        mails.Should().HaveCount(237);
+        mails.Select(m => m.ProviderMessageId).Should().OnlyHaveUniqueItems();
+        mails.First().ProviderMessageId.Should().Be("outlook:history-0");
+        mails.Last().ProviderMessageId.Should().Be("outlook:history-236");
+    }
+
+    [Fact]
+    public async Task Paging_MultiplePagesWithIdenticalTimestamp_DoesNotLoseBoundaryMessages()
+    {
+        for (var i = 0; i < 205; i++)
+        {
+            _source.Add($"same-second-{i}", received: At(9, 1));
+        }
+
+        _source.Add("later", received: At(9, 1).AddSeconds(1));
+        var mails = await CollectAsync(NewProvider().FetchDeltaAsync(null, 100, CancellationToken.None));
+
+        mails.Should().HaveCount(206);
+        mails.Select(m => m.ProviderMessageId).Should().OnlyHaveUniqueItems();
+        mails.Last().ProviderMessageId.Should().Be("outlook:later");
+    }
+
+    [Fact]
+    public async Task Incremental_ManyOverlapMessages_ContinuesThroughOverlapAndNewMail()
+    {
+        var checkpoint = At(9, 2);
+        for (var i = 0; i < 150; i++)
+        {
+            _source.Add($"overlap-{i}", received: checkpoint.AddHours(-20).AddMinutes(i));
+        }
+
+        _source.Add("new", received: checkpoint.AddMinutes(1));
+        var provider = NewProvider();
+        var mails = await CollectAsync(provider.FetchDeltaAsync(
+            OutlookDesktopMailProvider.EncodeBreakpoint(checkpoint), 100, CancellationToken.None));
+
+        mails.Should().HaveCount(151);
+        mails.Last().ProviderMessageId.Should().Be("outlook:new");
+        (await provider.CompleteAsync()).Should().Be(
+            OutlookDesktopMailProvider.EncodeBreakpoint(checkpoint.AddMinutes(1)));
+    }
+
+    [Fact]
+    public async Task NewRound_ResetsInMemoryWatermark_InsteadOfReusingPreviousAccountHistory()
+    {
+        _source.Add("old", received: At(9, 2));
+        var provider = NewProvider();
+        await CollectAsync(provider.FetchDeltaAsync(null, 10, CancellationToken.None));
+        _source.Clear();
+
+        await CollectAsync(provider.FetchDeltaAsync(null, 10, CancellationToken.None));
+
+        (await provider.CompleteAsync()).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task UpgradeFromV1Checkpoint_FullyBackfillsHistorySilently_ThenResumesV2()
+    {
+        for (var i = 0; i < 237; i++)
+        {
+            _source.Add($"upgrade-{i}", received: At(9, 1).AddMinutes(i));
+        }
+
+        var dbPath = Path.Combine(_dir, "upgrade.db");
+        MailDatabase.EnsureReady(dbPath);
+        var accounts = new AccountRepository(dbPath);
+        await accounts.UpsertAccountAsync(new Account("acc-1", "test@example.test", null, null,
+            ChannelKind.OutlookDesktop, null, AccountStatus.Active, DateTime.UtcNow), CancellationToken.None);
+        const string legacyCheckpoint = "outlook://inbox?received=20260901T115600Z";
+        await accounts.SaveCheckpointAsync(new SyncCheckpoint("acc-1", legacyCheckpoint, null, DateTime.UtcNow, "ok"), CancellationToken.None);
+        var messages = new MailRepository(dbPath);
+        var sender = new RecordingToastSender();
+        var notifications = new NotificationService(new NotificationRepository(dbPath), sender, new SettingsRepository(dbPath));
+        var flags = new List<bool>();
+        var provider = NewProvider();
+        var coordinator = new SyncCoordinator(provider, messages, accounts, "acc-1")
+        {
+            ProcessRoundAsync = async (round, ct) =>
+            {
+                flags.Add(round.IsInitialRound);
+                await notifications.HandleNewMailsAsync(
+                    round.NewMails.Select(m => m with { Importance = Importance.P1 }).ToArray(), round.IsInitialRound, ct);
+            },
+        };
+
+        provider.CanResumeFromCheckpoint(legacyCheckpoint).Should().BeFalse();
+        await coordinator.SyncNowAsync();
+
+        coordinator.State.Should().Be(SyncState.Idle);
+        (await messages.GetInboxAsync("acc-1", new InboxQuery(Limit: 300), CancellationToken.None)).Should().HaveCount(237);
+        flags.Should().Equal(true);
+        sender.Sent.Should().BeEmpty("升级重扫的历史邮件不应弹通知");
+        var checkpoint = await accounts.GetCheckpointAsync("acc-1", CancellationToken.None);
+        provider.CanResumeFromCheckpoint(checkpoint!.DeltaLink).Should().BeTrue();
+        checkpoint.DeltaLink.Should().StartWith(OutlookDesktopMailProvider.BreakpointPrefix);
+
+        await coordinator.SyncNowAsync();
+        flags.Should().Equal(true, false);
+        sender.Sent.Should().BeEmpty("已静默登记的历史邮件在下一轮仍应去重");
     }
 
     [Fact]
@@ -203,7 +315,8 @@ public class OutlookDesktopProviderTests : IDisposable
             return "ruijiehu7-c@my.cityu.edu.hk";
         }
 
-        public IReadOnlyList<OutlookMessageSummary> FetchInboxSince(DateTime? sinceUtc, int take)
+        public IReadOnlyList<OutlookMessageSummary> FetchInboxSince(
+            DateTime? sinceUtc, int take, IReadOnlySet<string>? excludeAtBoundary = null)
         {
             if (ConnectException is not null)
             {
@@ -213,12 +326,25 @@ public class OutlookDesktopProviderTests : IDisposable
             BatchSizes.Add(take);
             LastSince = sinceUtc;
             return _messages
-                .Where(m => sinceUtc is null || m.ReceivedAtUtc > sinceUtc)
+                .Where(m => sinceUtc is null || m.ReceivedAtUtc > sinceUtc
+                    || m.ReceivedAtUtc == sinceUtc && excludeAtBoundary?.Contains(m.EntryId) != true)
                 .OrderBy(m => m.ReceivedAtUtc)
                 .Take(take)
                 .ToList();
         }
 
         public void Dispose() { }
+
+        public void Clear() => _messages.Clear();
+    }
+
+    private sealed class RecordingToastSender : IToastSender
+    {
+        public List<ToastNotification> Sent { get; } = [];
+        public Task SendAsync(ToastNotification notification, CancellationToken ct)
+        {
+            Sent.Add(notification);
+            return Task.CompletedTask;
+        }
     }
 }

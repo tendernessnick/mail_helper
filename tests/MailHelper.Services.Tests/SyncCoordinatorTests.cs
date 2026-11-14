@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MailHelper.Core;
+using MailHelper.Core.Abstractions;
 using MailHelper.Core.Domain;
 using MailHelper.Core.Services;
 using MailHelper.Infrastructure.Logging;
@@ -241,5 +242,151 @@ public class SyncCoordinatorTests : IDisposable
 
         coordinator.State.Should().Be(SyncState.Offline);
         fired.Should().Be(0); // 失败轮不触发通知（避免半轮数据弹通知后又续传重复）
+    }
+
+    [Fact]
+    public async Task CheckpointReadFailure_ReleasesSyncState_AndNextAttemptCanSucceed()
+    {
+        var accounts = new FailingAccountStore(_accounts) { FailRead = true };
+        var provider = new FakeMailProvider { CompletedLink = "dl-new" };
+        var coordinator = new SyncCoordinator(provider, new MailRepository(_dbPath), accounts, "acc-1");
+
+        await coordinator.SyncNowAsync();
+        coordinator.State.Should().Be(SyncState.Error);
+        accounts.FailRead = false;
+        await coordinator.SyncNowAsync();
+
+        coordinator.State.Should().Be(SyncState.Idle);
+        provider.FetchCalls.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task UnexpectedProviderFailure_DoesNotPermanentlyBlockFutureSyncs()
+    {
+        var provider = new FakeMailProvider { ThrowAfterPages = new IOException("synthetic source failure") };
+        var coordinator = NewCoordinator(provider);
+        await coordinator.SyncNowAsync();
+        coordinator.State.Should().Be(SyncState.Error);
+        provider.ThrowAfterPages = null;
+        await coordinator.SyncNowAsync();
+
+        provider.FetchCalls.Should().Be(2);
+        coordinator.State.Should().Be(SyncState.Idle);
+    }
+
+    [Fact]
+    public async Task PreCancelledCheckpointRead_ResetsState_AndAllowsRetry()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var coordinator = NewCoordinator(new FakeMailProvider());
+
+        await coordinator.SyncNowAsync(ct: cts.Token);
+
+        coordinator.State.Should().Be(SyncState.Idle);
+        await coordinator.SyncNowAsync();
+        coordinator.State.Should().Be(SyncState.Idle);
+    }
+
+    [Fact]
+    public async Task CompletionPipeline_IsAwaited_BeforeCheckpointAndUiEvent()
+    {
+        await SaveCheckpointAsync("dl-old");
+        var provider = new FakeMailProvider { CompletedLink = "dl-new" };
+        var coordinator = NewCoordinator(provider);
+        var pipelineEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var pipelineReleased = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var uiEvents = 0;
+        coordinator.SyncRoundCompleted += (_, _) => uiEvents++;
+        coordinator.ProcessRoundAsync = async (_, _) =>
+        {
+            pipelineEntered.SetResult();
+            await pipelineReleased.Task;
+        };
+
+        var sync = coordinator.SyncNowAsync();
+        await pipelineEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        coordinator.State.Should().Be(SyncState.Syncing);
+        (await _accounts.GetCheckpointAsync("acc-1", CancellationToken.None))!.DeltaLink.Should().Be("dl-old");
+        uiEvents.Should().Be(0);
+        await coordinator.SyncNowAsync(); // 同步处理管线运行期间也应拒绝重叠轮
+        provider.FetchCalls.Should().Be(1);
+        pipelineReleased.SetResult();
+        await sync;
+
+        uiEvents.Should().Be(1);
+        (await _accounts.GetCheckpointAsync("acc-1", CancellationToken.None))!.DeltaLink.Should().Be("dl-new");
+        coordinator.State.Should().Be(SyncState.Idle);
+    }
+
+    [Fact]
+    public async Task CompletionPipelineFailure_KeepsOldCheckpoint_AndCanRetry()
+    {
+        await SaveCheckpointAsync("dl-old");
+        var provider = new FakeMailProvider { CompletedLink = "dl-new" };
+        var coordinator = NewCoordinator(provider);
+        var uiEvents = 0;
+        coordinator.SyncRoundCompleted += (_, _) => uiEvents++;
+        coordinator.ProcessRoundAsync = (_, _) => throw new IOException("classification failed");
+
+        await coordinator.SyncNowAsync();
+
+        coordinator.State.Should().Be(SyncState.Error);
+        uiEvents.Should().Be(0);
+        (await _accounts.GetCheckpointAsync("acc-1", CancellationToken.None))!.DeltaLink.Should().Be("dl-old");
+        coordinator.ProcessRoundAsync = (_, _) => Task.CompletedTask;
+        await coordinator.SyncNowAsync();
+        coordinator.State.Should().Be(SyncState.Idle);
+        uiEvents.Should().Be(1);
+        provider.ReceivedDeltaLink.Should().Be("dl-old");
+    }
+
+    [Fact]
+    public async Task FailureStatusWriteFailure_StillMapsProviderFailureAndReleasesSyncGate()
+    {
+        var accounts = new FailingAccountStore(_accounts) { FailWrite = true };
+        var provider = new FakeMailProvider { ThrowAfterPages = new MailProviderException("SYNC-001", "offline") };
+        var coordinator = new SyncCoordinator(provider, new MailRepository(_dbPath), accounts, "acc-1");
+        await coordinator.SyncNowAsync();
+        coordinator.State.Should().Be(SyncState.Offline);
+        accounts.FailWrite = false;
+        provider.ThrowAfterPages = null;
+        await coordinator.SyncNowAsync();
+        coordinator.State.Should().Be(SyncState.Idle);
+        provider.FetchCalls.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task FirstRoundFailureStatus_DoesNotTurnHistoricalRetryIntoNewMailNotifications()
+    {
+        var provider = new FakeMailProvider { ThrowAfterPages = new MailProviderException("SYNC-001", "offline") };
+        var coordinator = NewCoordinator(provider);
+        await coordinator.SyncNowAsync(); // 写入了失败状态，但从未提交成功断点
+        (await _accounts.GetCheckpointAsync("acc-1", CancellationToken.None)).Should().NotBeNull();
+        provider.ThrowAfterPages = null;
+        provider.CompletedLink = "dl-first-success";
+        var rounds = new List<SyncRoundCompletedEventArgs>();
+        coordinator.ProcessRoundAsync = (round, _) =>
+        {
+            rounds.Add(round);
+            return Task.CompletedTask;
+        };
+
+        await coordinator.SyncNowAsync();
+
+        rounds.Single().IsInitialRound.Should().BeTrue("失败状态行不是成功断点，首次回填仍应静默");
+    }
+
+    private sealed class FailingAccountStore(IAccountStore inner) : IAccountStore
+    {
+        public bool FailRead { get; set; }
+        public bool FailWrite { get; set; }
+        public Task UpsertAccountAsync(Account account, CancellationToken ct) => inner.UpsertAccountAsync(account, ct);
+        public Task<Account?> FindAccountAsync(string accountId, CancellationToken ct) => inner.FindAccountAsync(accountId, ct);
+        public Task<IReadOnlyList<Account>> FindAllAsync(CancellationToken ct) => inner.FindAllAsync(ct);
+        public Task<SyncCheckpoint?> GetCheckpointAsync(string accountId, CancellationToken ct) =>
+            FailRead ? throw new IOException("checkpoint unavailable") : inner.GetCheckpointAsync(accountId, ct);
+        public Task SaveCheckpointAsync(SyncCheckpoint checkpoint, CancellationToken ct) =>
+            FailWrite ? throw new IOException("checkpoint unavailable") : inner.SaveCheckpointAsync(checkpoint, ct);
     }
 }

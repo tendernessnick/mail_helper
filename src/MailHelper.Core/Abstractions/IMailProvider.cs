@@ -12,6 +12,10 @@ public interface IMailProvider : IAsyncDisposable
     /// <summary>返回新 deltaLink（Graph）；IMAP 返回 UID 水位标记。</summary>
     Task<string?> CompleteAsync();
 
+    /// <summary>该通道能否续用现有断点。返回 false 时本轮为历史回填，通知保持静默。
+    /// 实现可在断点格式升级时拒绝旧值，以安全重扫而不把历史邮件当作新邮件。</summary>
+    bool CanResumeFromCheckpoint(string? checkpoint) => !string.IsNullOrEmpty(checkpoint);
+
     /// <summary>授权健康检查。</summary>
     Task<ConnectionTestResult> TestAsync();
 

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
 using MailHelper.Core;
@@ -22,6 +23,8 @@ public partial class ShellWindow : Window
     private readonly IBodyCache _bodyCache;
     private readonly ICategoryStore _categories;
     private readonly IAutoStarter _autostart;
+    private readonly MainViewModel _inbox;
+    private long _readerRequest;
     private Control? _inboxView;
 
     /// <summary>阅读窗格正文块（净化白名单；SelectedMail 变化时重建）。</summary>
@@ -38,10 +41,20 @@ public partial class ShellWindow : Window
         _bodyCache = bodyCache;
         _categories = categories;
         _autostart = autostart;
+        _inbox = inbox;
         _inboxView = (Control)PageHost.Content!;
         AttachRulesContent();
 
         inbox.SelectedMailHtmlNeeded += async (_, mail) => await RenderReaderAsync(mail);
+        inbox.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName is nameof(MainViewModel.IsInboxView) or nameof(MainViewModel.IsScheduleView)
+                or nameof(MainViewModel.IsRulesView) or nameof(MainViewModel.IsSettingsView))
+            {
+                UpdateNavigation();
+            }
+        };
+        AddHandler(KeyDownEvent, OnShellKeyDown, RoutingStrategies.Tunnel);
         Loaded += async (_, _) => await inbox.InitializeAsync(CancellationToken.None);
     }
 
@@ -56,6 +69,11 @@ public partial class ShellWindow : Window
 
     private async Task RenderReaderAsync(MailItemViewModel? mail)
     {
+        var request = Interlocked.Increment(ref _readerRequest);
+        ReaderBlocks = Array.Empty<SanitizedBlock>();
+        ReaderBlocksHost.ItemsSource = ReaderBlocks;
+        ReaderPlaceholderText.Text = mail is null ? "选择一封邮件查看" : "正在读取正文…";
+        ReaderEmptyState.IsVisible = true;
         var blocks = new List<SanitizedBlock>();
         if (mail is not null)
         {
@@ -70,6 +88,10 @@ public partial class ShellWindow : Window
                 {
                     html = null; // 缓存读失败回落预览（正文可再点开重试）
                 }
+                catch (UnauthorizedAccessException)
+                {
+                    html = null;
+                }
             }
 
             blocks.AddRange(html is not null
@@ -79,13 +101,58 @@ public partial class ShellWindow : Window
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
+            if (request != Interlocked.Read(ref _readerRequest))
+            {
+                return; // 迟到的缓存读取不能盖过后选中的邮件。
+            }
+
             ReaderBlocks = blocks;
+            ReaderEmptyState.IsVisible = mail is null;
             var host = this.FindControl<ItemsControl>("ReaderBlocksHost");
             if (host is not null)
             {
                 host.ItemsSource = blocks;
             }
         });
+    }
+
+    private async void OnShellKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_inbox.IsOnboarding)
+        {
+            return;
+        }
+
+        var shortcutModifier = OperatingSystem.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
+        if (e.KeyModifiers == shortcutModifier && e.Key == Key.F)
+        {
+            _inbox.ShowInboxCommand.Execute(null);
+            SearchBox.Focus();
+            SearchBox.SelectAll();
+            e.Handled = true;
+        }
+        else if (e.KeyModifiers == shortcutModifier && e.Key == Key.R)
+        {
+            e.Handled = true;
+            if (_inbox.SyncNowCommand.CanExecute(null))
+            {
+                await _inbox.SyncNowCommand.ExecuteAsync(null);
+            }
+        }
+        else if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.None && SearchBox.IsFocused)
+        {
+            e.Handled = true;
+            if (_inbox.SearchCommand.CanExecute(null))
+            {
+                await _inbox.SearchCommand.ExecuteAsync(null);
+            }
+        }
+        else if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None
+                 && (_inbox.IsSearchMode || !string.IsNullOrEmpty(_inbox.SearchText)))
+        {
+            e.Handled = true;
+            await _inbox.ClearSearchCommand.ExecuteAsync(null);
+        }
     }
 
     // —— 改判（UC-06：7 类别 + 自定义，CategoryCatalog 动态；纠正成本 2 次点击）——
@@ -158,21 +225,45 @@ public partial class ShellWindow : Window
         _rulesView = new RulesPage { DataContext = _rules };
     }
 
-    private void OnNavInbox(object? sender, RoutedEventArgs e) => SwitchNav(NavInbox, _inboxView!);
+    private void OnNavInbox(object? sender, RoutedEventArgs e) => _inbox.ShowInboxCommand.Execute(null);
 
     private void OnNavSchedule(object? sender, RoutedEventArgs e)
     {
-        _scheduleView ??= new SchedulePage { DataContext = _schedule };
-        _ = ((SchedulePage)_scheduleView).RefreshOnEnterAsync(); // 进入即刷新（同步轮外的人工兜底）
-        SwitchNav(NavSchedule, _scheduleView);
+        _inbox.ShowScheduleCommand.Execute(null);
     }
 
-    private void OnNavRules(object? sender, RoutedEventArgs e) => SwitchNav(NavRules, _rulesView);
+    private void OnNavRules(object? sender, RoutedEventArgs e) => _inbox.ShowRulesCommand.Execute(null);
 
     private void OnNavSettings(object? sender, RoutedEventArgs e)
     {
-        _settingsView ??= new SettingsPage(_categories, _autostart) { DataContext = _settings };
-        SwitchNav(NavSettings, _settingsView);
+        _inbox.ShowSettingsCommand.Execute(null);
+    }
+
+    private void UpdateNavigation()
+    {
+        if (_inbox.IsInboxView)
+        {
+            SwitchNav(NavInbox, _inboxView!);
+        }
+        else if (_inbox.IsScheduleView)
+        {
+            _scheduleView ??= new SchedulePage { DataContext = _schedule };
+            if (PageHost.Content != _scheduleView)
+            {
+                _ = ((SchedulePage)_scheduleView).RefreshOnEnterAsync();
+            }
+
+            SwitchNav(NavSchedule, _scheduleView);
+        }
+        else if (_inbox.IsRulesView)
+        {
+            SwitchNav(NavRules, _rulesView);
+        }
+        else if (_inbox.IsSettingsView)
+        {
+            _settingsView ??= new SettingsPage(_categories, _autostart) { DataContext = _settings };
+            SwitchNav(NavSettings, _settingsView);
+        }
     }
 
     private void SwitchNav(Button active, Control page)

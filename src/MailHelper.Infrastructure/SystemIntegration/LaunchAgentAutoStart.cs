@@ -16,6 +16,7 @@ public sealed class LaunchAgentAutoStart : IAutoStarter
     private readonly string _plistPath;
     private readonly string _executablePath;
     private readonly Func<string[], int> _launchctl;
+    private readonly Func<string> _resolveUid;
 
     public LaunchAgentAutoStart(string executablePath, Func<string[], int>? launchctl = null)
         : this(
@@ -26,12 +27,14 @@ public sealed class LaunchAgentAutoStart : IAutoStarter
     {
     }
 
-    public LaunchAgentAutoStart(string agentsDir, string executablePath, Func<string[], int>? launchctl = null)
+    public LaunchAgentAutoStart(string agentsDir, string executablePath, Func<string[], int>? launchctl = null,
+        Func<string>? resolveUid = null)
     {
         _agentsDir = agentsDir;
         _executablePath = executablePath;
         _plistPath = Path.Combine(agentsDir, Label + ".plist");
         _launchctl = launchctl ?? RunLaunchctlReal;
+        _resolveUid = resolveUid ?? ResolveUid;
     }
 
     public string PlistPath => _plistPath;
@@ -42,12 +45,12 @@ public sealed class LaunchAgentAutoStart : IAutoStarter
     {
         Directory.CreateDirectory(_agentsDir);
         File.WriteAllText(_plistPath, BuildPlist(_executablePath));
-        RunLaunchctl("bootstrap", $"gui/{ResolveUid()}", _plistPath);
+        RunLaunchctl("bootstrap", $"gui/{_resolveUid()}", _plistPath);
     }
 
     public void Disable()
     {
-        RunLaunchctl("bootout", $"gui/{ResolveUid()}", _plistPath);
+        RunLaunchctl("bootout", $"gui/{_resolveUid()}", _plistPath);
         if (File.Exists(_plistPath))
         {
             File.Delete(_plistPath);

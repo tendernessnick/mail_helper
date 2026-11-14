@@ -93,6 +93,7 @@ internal static class Bootstrapper
         services.AddSingleton<INotificationStore>(sp => sp.GetRequiredService<NotificationRepository>());
         services.AddSingleton<IToastSender>(_ => new ToastSender());
         services.AddSingleton<NotificationService>();
+        services.AddSingleton<SyncCompletionService>();
 
         // —— 反馈闭环（FR-11）——
         services.AddSingleton(_ => new FeedbackRepository(paths.DbPath));

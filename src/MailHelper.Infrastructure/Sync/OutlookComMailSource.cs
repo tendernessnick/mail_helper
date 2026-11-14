@@ -109,25 +109,26 @@ public sealed class OutlookComMailSource : IOutlookMailSource
         return "unknown";
     });
 
-    public IReadOnlyList<OutlookMessageSummary> FetchInboxSince(DateTime? sinceUtc, int take) =>
+    public IReadOnlyList<OutlookMessageSummary> FetchInboxSince(
+        DateTime? sinceUtc, int take, IReadOnlySet<string>? excludeAtBoundary = null) =>
         _dispatcher!.Invoke(() =>
         {
             EnsureConnected();
             dynamic items = _inbox!.Items;
-            items.Sort("[ReceivedTime]", true); // 倒序：最新在前，便于窗口截取
             if (sinceUtc is { } since)
             {
                 // Jet 语法过滤：本地时区比较（ReceivedTime 为本地时间）
                 string filter = string.Format(
                     System.Globalization.CultureInfo.InvariantCulture,
-                    "[ReceivedTime] > '{0:MM'/'dd'/'yyyy HH:mm}'",
+                    "[ReceivedTime] >= '{0:MM'/'dd'/'yyyy HH:mm}'",
                     since.ToLocalTime());
                 items = items.Restrict(filter);
             }
 
+            items.Sort("[ReceivedTime]", false); // 对最终过滤集合排序，最旧在前，与向前推进的分页游标一致
             var summaries = new List<OutlookMessageSummary>();
             var count = items.Count;
-            // 倒序集合：从最新往旧取 take 条，再升序输出
+            // Jet 过滤只有分钟精度；精确秒界限及同秒 EntryID 在托管层过滤。
             var buffer = new List<(DateTimeOffset Received, OutlookMessageSummary Summary)>();
             for (var i = 1; i <= count && buffer.Count < take; i++)
             {
@@ -139,9 +140,16 @@ public sealed class OutlookComMailSource : IOutlookMailSource
 
                 var receivedLocal = (DateTime)item.ReceivedTime;
                 var received = new DateTimeOffset(receivedLocal, TimeZoneInfo.Local.GetUtcOffset(receivedLocal));
-                if (sinceUtc is { } lowerBound && received <= lowerBound)
+                if (sinceUtc is { } lowerBound && received < lowerBound)
                 {
-                    break; // 倒序：已越过窗口下界
+                    continue;
+                }
+
+                var entryId = (string)item.EntryID;
+                if (sinceUtc is { } boundary && received == boundary
+                    && excludeAtBoundary?.Contains(entryId) == true)
+                {
+                    continue;
                 }
 
                 var bodyText = string.Empty;
@@ -172,7 +180,7 @@ public sealed class OutlookComMailSource : IOutlookMailSource
                 }
 
                 buffer.Add((received, new OutlookMessageSummary(
-                    EntryId: (string)item.EntryID,
+                    EntryId: entryId,
                     InternetMessageId: TryGet(() => (string)item.PropertyAccessor.GetProperty(
                         "http://schemas.microsoft.com/mapi/proptag/0x1035001F")),
                     Subject: (string)(item.Subject ?? string.Empty),

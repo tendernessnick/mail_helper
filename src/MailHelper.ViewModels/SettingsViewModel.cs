@@ -269,10 +269,30 @@ public partial class SettingsViewModel : ObservableObject
     {
         if (_pendingInstallerPath is not { } path || !File.Exists(path))
         {
+            UpdateReady = false;
+            _pendingInstallerPath = null;
+            UpdateStatus = "更新包已丢失，请重新检查更新并下载。";
             return;
         }
 
-        _updates.InstallSilently(path);
-        ShutdownCallback?.Invoke();
+        try
+        {
+            _updates.InstallSilently(path);
+            UpdateReady = false;
+            UpdateStatus = "正在启动更新安装程序…";
+            ShutdownCallback?.Invoke(); // 仅在安装器成功启动后退出
+        }
+        catch (Exception ex)
+        {
+            UpdateReady = false;
+            _pendingInstallerPath = null;
+            UpdateStatus = ex switch
+            {
+                FileNotFoundException => "更新包已丢失，请重新检查更新并下载。",
+                InvalidDataException => "更新包校验失败，请重新检查更新并下载。",
+                _ => "无法启动更新安装程序，请重新检查更新后重试。",
+            };
+            WriteCrashLog?.Invoke("ApplyUpdate", ex);
+        }
     }
 }

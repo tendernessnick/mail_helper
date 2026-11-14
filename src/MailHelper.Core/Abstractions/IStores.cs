@@ -19,14 +19,16 @@ public sealed record InboxQuery(
     bool UnreadOnly = false,
     double ReviewThreshold = 0.55,
     int Limit = 200,
-    InboxSortMode Sort = InboxSortMode.Importance);
+    InboxSortMode Sort = InboxSortMode.Importance,
+    int Offset = 0);
 
 /// <summary>组合搜索查询（S10 FR-13：语法解析产物）。</summary>
 public sealed record SearchQuery(
     string FreeText,
     string? FromFilter = null,
     string? Category = null,
-    Importance? Importance = null)
+    Importance? Importance = null,
+    InboxQuery? Scope = null)
 {
     public bool IsEmpty =>
         FreeText.Length == 0 && FromFilter is null && Category is null && Importance is null;

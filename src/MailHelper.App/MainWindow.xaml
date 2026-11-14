@@ -147,13 +147,16 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- 顶栏（S14-B：Grid 三段布局——品牌导航 | 搜索居中 | 未读筛选，最大化不散架） -->
+            <!-- 导航与检索分两行：最小窗口下仍能完整操作。 -->
             <Border Grid.Row="0" Background="{StaticResource BrushTopBar}"
                     BorderBrush="{StaticResource BrushDivider}" BorderThickness="0,0,0,1"
                     Padding="14,8">
                 <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -163,48 +166,53 @@
                             <Run Text="MailHelper" FontSize="15" FontWeight="Bold"
                                  FontFamily="{StaticResource FontAppDisplay}" Foreground="{StaticResource BrushTextPrimary}" />
                         </TextBlock>
-                        <RadioButton Content="收件箱" GroupName="Nav" IsChecked="True" Margin="0,0,2,0"
+                        <RadioButton Content="收件箱" GroupName="Nav" IsChecked="{Binding IsInboxView, Mode=OneWay}" Margin="0,0,2,0"
                                      Padding="14,6" Style="{StaticResource NavTab}"
                                      AutomationProperties.AutomationId="nav-inbox"
                                      Command="{Binding ShowInboxCommand}" />
-                        <RadioButton Content="日程" GroupName="Nav" Margin="0,0,2,0"
+                        <RadioButton Content="日程" GroupName="Nav" IsChecked="{Binding IsScheduleView, Mode=OneWay}" Margin="0,0,2,0"
                                      Padding="14,6" Style="{StaticResource NavTab}"
                                      AutomationProperties.AutomationId="nav-schedule"
                                      Command="{Binding ShowScheduleCommand}" />
-                        <RadioButton Content="规则" GroupName="Nav" Margin="0,0,2,0"
+                        <RadioButton Content="规则" GroupName="Nav" IsChecked="{Binding IsRulesView, Mode=OneWay}" Margin="0,0,2,0"
                                      Padding="14,6" Style="{StaticResource NavTab}"
                                      AutomationProperties.AutomationId="nav-rules"
                                      Command="{Binding ShowRulesCommand}" />
-                        <RadioButton Content="设置" GroupName="Nav"
+                        <RadioButton Content="设置" GroupName="Nav" IsChecked="{Binding IsSettingsView, Mode=OneWay}"
                                      Padding="14,6" Style="{StaticResource NavTab}"
                                      AutomationProperties.AutomationId="nav-settings"
                                      Command="{Binding ShowSettingsCommand}" />
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal"
-                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock Grid.Column="1" Text="Ctrl+F 搜索 · Ctrl+R 同步 · Esc 清除搜索" FontSize="11"
+                               VerticalAlignment="Center" Foreground="{StaticResource BrushTextTertiary}" />
+                    <Grid Grid.Row="1" Margin="0,9,16,0" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
                         <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 Width="380" VerticalAlignment="Center" Style="{StaticResource RoundedTextBox}"
-                                 AutomationProperties.Name="搜索框">
+                                 MinWidth="180" VerticalAlignment="Center" Style="{StaticResource RoundedTextBox}"
+                                 ToolTip="搜索主题、发件人、正文；支持 from:、cat:、p: 筛选"
+                                 AutomationProperties.Name="搜索框" AutomationProperties.AutomationId="search-box">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
                             </TextBox.InputBindings>
                         </TextBox>
-                        <Button Content="搜索" Style="{StaticResource GhostButton}"
+                        <Button Grid.Column="1" Content="搜索" Style="{StaticResource GhostButton}"
                                 Command="{Binding SearchCommand}" Margin="6,0,0,0" />
-                        <Button Content="清除" Style="{StaticResource GhostButton}"
+                        <Button Grid.Column="2" Content="清除" Style="{StaticResource GhostButton}"
                                 Command="{Binding ClearSearchCommand}" Margin="6,0,0,0"
                                 Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    </Grid>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,9,0,0">
                         <CheckBox Content="按时间排序" IsChecked="{Binding SortByDate, Mode=TwoWay}"
                                   Style="{StaticResource ModernCheck}" VerticalAlignment="Center"
                                   Margin="0,0,14,0"
-                                  ToolTip="开：按日期排列（同日内重要度优先）；关：按重要度排列（S19）" />
+                                  ToolTip="开启按日期排列，同日内重要度优先；关闭按重要度排列" />
                         <CheckBox Content="仅未读" IsChecked="{Binding UnreadOnly}" Style="{StaticResource ModernCheck}"
                                   Command="{Binding ToggleUnreadOnlyCommand}" VerticalAlignment="Center"
-                                  Margin="0,0,14,0" />
-                        <TextBlock Text="Ctrl+F 搜索 · Ctrl+R 同步" FontSize="11" VerticalAlignment="Center"
-                                   Foreground="{StaticResource BrushTextTertiary}" />
+                                  Margin="0,0,0,0" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -267,9 +275,14 @@
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <ProgressBar Grid.Row="0" Height="2.5" IsIndeterminate="True" BorderThickness="0"
+                    <StackPanel Grid.Row="0">
+                    <TextBlock Text="{Binding ListSummaryText}" Margin="12,8,12,6" FontSize="11"
+                               Foreground="{StaticResource BrushTextSecondary}" TextTrimming="CharacterEllipsis"
+                               AutomationProperties.AutomationId="list-summary" />
+                    <ProgressBar Height="2.5" IsIndeterminate="True" BorderThickness="0"
                                  Foreground="{StaticResource BrushPrimary}"
-                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+                                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
                     <ListBox Grid.Row="1" ItemsSource="{Binding Mails}" SelectedItem="{Binding SelectedMail, Mode=TwoWay}"
                              ItemTemplate="{StaticResource MailItemTemplate}"
                              ItemContainerStyle="{StaticResource MailListItem}"
@@ -285,9 +298,14 @@
                                 HorizontalAlignment="Center">
                             <TextBlock Text="🗂" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
-                        <TextBlock Text="该分类暂无邮件" Foreground="{StaticResource BrushTextSecondary}"
-                                   HorizontalAlignment="Center" Margin="0,12,0,0" FontSize="13" />
+                        <TextBlock Text="{Binding EmptyStateText}" Foreground="{StaticResource BrushTextSecondary}"
+                                   HorizontalAlignment="Center" Margin="18,12,18,0" FontSize="13"
+                                   TextWrapping="Wrap" TextAlignment="Center" MaxWidth="300" />
                     </StackPanel>
+                    <Button Grid.Row="2" Content="继续加载" Command="{Binding LoadMoreCommand}"
+                            Style="{StaticResource GhostButton}" Margin="12,6" Padding="12,7"
+                            AutomationProperties.AutomationId="load-more"
+                            Visibility="{Binding HasMore, Converter={StaticResource BoolToVis}}" />
                 </Grid>
 
                 <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="Transparent" />

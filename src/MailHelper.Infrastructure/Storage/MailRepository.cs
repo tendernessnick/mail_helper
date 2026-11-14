@@ -160,52 +160,66 @@ public sealed class MailRepository : IMessageStore
             return await FilteredAsync(accountId, query with { FreeText = string.Empty }, limit, ct);
         }
 
-        // 文本 + 过滤组合：先 FTS 命中再 LINQ 过滤（万级下 FTS 索引先收敛，PERF-03 P95<500ms）
+        // 所有过滤条件先进入 SQL，再排序/分页。不能先截取 FTS 候选再过滤：
+        // 稀疏类别会漏掉排在候选窗口之外的结果，也不能把 limit*4 当成实际返回上限。
         if (sanitized.Length >= 3)
         {
             try
             {
-                var matched = await SearchByMatchAsync(accountId, sanitized, limit * 4, ct); // 放大候选再过滤
-                var filtered = ApplyFilters(matched, query).ToList();
-                if (filtered.Count > 0 || !HasFilters(query))
-                {
-                    return filtered;
-                }
-                // 全被过滤掉：可能是 rank 截断（limit*4），落到 LIKE 兜底再试
+                return await SearchTextAsync(accountId, sanitized, query, limit, useMatch: true, ct);
             }
             catch (SqliteException)
             {
             }
         }
 
-        var likeHits = await SearchByLikeAsync(accountId, sanitized, limit * 4, ct);
-        return ApplyFilters(likeHits, query).ToList();
+        return await SearchTextAsync(accountId, sanitized, query, limit, useMatch: false, ct);
     }
 
-    private static bool HasFilters(SearchQuery query) =>
-        query.FromFilter is not null || query.Category is not null || query.Importance is not null;
-
-    private static IEnumerable<MailMessage> ApplyFilters(IEnumerable<MailMessage> mails, SearchQuery query)
+    private static IQueryable<MessageEntity> ApplyFilters(IQueryable<MessageEntity> rows, SearchQuery query)
     {
-        foreach (var mail in mails)
+        if (query.FromFilter is { } from)
         {
-            if (query.FromFilter is { } from && (mail.FromAddress is null || !mail.FromAddress.Contains(from, StringComparison.OrdinalIgnoreCase)))
-            {
-                continue;
-            }
-
-            if (query.Category is { } category && mail.Category != category)
-            {
-                continue;
-            }
-
-            if (query.Importance is { } importance && mail.Importance != importance)
-            {
-                continue;
-            }
-
-            yield return mail;
+            var pattern = "%" + EscapeLike(from) + "%";
+            rows = rows.Where(m => m.FromAddress != null && EF.Functions.Like(m.FromAddress, pattern, "\\"));
         }
+
+        if (query.Category is { } category)
+        {
+            rows = rows.Where(m => m.Category == category);
+        }
+
+        if (query.Importance is { } importance)
+        {
+            rows = rows.Where(m => m.Importance == (int)importance);
+        }
+
+        return ApplyInboxFilters(rows, query.Scope ?? new InboxQuery());
+    }
+
+    private static IQueryable<MessageEntity> ApplyInboxFilters(IQueryable<MessageEntity> rows, InboxQuery query)
+    {
+        if (query.Category is { } category)
+        {
+            rows = rows.Where(m => m.Category == category);
+        }
+
+        if (query.UnreadOnly)
+        {
+            rows = rows.Where(m => !m.IsRead);
+        }
+
+        if (query.MinimumImportance is { } importance)
+        {
+            rows = rows.Where(m => m.Importance >= (int)importance);
+        }
+
+        if (query.NeedsReviewOnly)
+        {
+            rows = rows.Where(m => m.ClassifiedAtUtc != null && m.Confidence < query.ReviewThreshold);
+        }
+
+        return rows;
     }
 
     private async Task<IReadOnlyList<MailMessage>> FilteredAsync(string accountId, SearchQuery query, int limit, CancellationToken ct) =>
@@ -213,24 +227,12 @@ public sealed class MailRepository : IMessageStore
         {
             var rows = db.Messages.AsNoTracking()
                 .Where(m => m.AccountId == accountId && !m.IsDeletedRemote);
-            if (query.FromFilter is { } from)
-            {
-                rows = rows.Where(m => m.FromAddress!.Contains(from));
-            }
-
-            if (query.Category is { } category)
-            {
-                rows = rows.Where(m => m.Category == CategoryToString(category));
-            }
-
-            if (query.Importance is { } importance)
-            {
-                rows = rows.Where(m => m.Importance == (int)importance);
-            }
-
-            var list = await rows
-                .OrderByDescending(m => m.Importance)
-                .OrderByDescending(m => m.ReceivedAtUtc)
+            rows = ApplyFilters(rows, query);
+            var ordered = query.Scope?.Sort == InboxSortMode.Date
+                ? rows.OrderByDescending(m => m.ReceivedAtUtc).ThenByDescending(m => m.Importance)
+                : rows.OrderByDescending(m => m.Importance).ThenByDescending(m => m.ReceivedAtUtc);
+            var list = await ordered.ThenBy(m => m.Id)
+                .Skip(Math.Max(0, query.Scope?.Offset ?? 0))
                 .Take(limit)
                 .ToListAsync(ct);
             return (IReadOnlyList<MailMessage>)list.Select(ToDomain).ToList();
@@ -242,32 +244,14 @@ public sealed class MailRepository : IMessageStore
             var rows = db.Messages.AsNoTracking()
                 .Where(m => m.AccountId == accountId && !m.IsDeletedRemote);
 
-            if (query.Category is { } category)
-            {
-                var categoryText = CategoryToString(category);
-                rows = rows.Where(m => m.Category == categoryText);
-            }
-
-            if (query.UnreadOnly)
-            {
-                rows = rows.Where(m => !m.IsRead);
-            }
-
-            if (query.MinimumImportance is { } importance)
-            {
-                rows = rows.Where(m => m.Importance >= (int)importance);
-            }
-
-            if (query.NeedsReviewOnly)
-            {
-                rows = rows.Where(m => m.ClassifiedAtUtc != null && m.Confidence < query.ReviewThreshold);
-            }
+            rows = ApplyInboxFilters(rows, query);
 
             // S19/CHG-016：排序模式二选一——重要度优先（默认，历史行为）/ 时间优先（同日内重要度递减）
-            rows = query.Sort == InboxSortMode.Date
+            var ordered = query.Sort == InboxSortMode.Date
                 ? rows.OrderByDescending(m => m.ReceivedAtUtc).ThenByDescending(m => m.Importance)
                 : rows.OrderByDescending(m => m.Importance).ThenByDescending(m => m.ReceivedAtUtc);
-            rows = rows.Take(query.Limit);
+            rows = ordered.ThenBy(m => m.Id)
+                .Skip(Math.Max(0, query.Offset)).Take(Math.Max(0, query.Limit));
 
             var list = await rows.ToListAsync(ct);
             return (IReadOnlyList<MailMessage>)list.Select(ToDomain).ToList();
@@ -285,10 +269,7 @@ public sealed class MailRepository : IMessageStore
             var result = CategoryIds.All.ToDictionary(c => c, _ => 0);
             foreach (var group in groups)
             {
-                if (result.ContainsKey(group.Category))
-                {
-                    result[group.Category] = group.Count;
-                }
+                result[group.Category] = group.Count; // 自定义分类同样计入侧栏和全局未读。
             }
 
             return (IReadOnlyDictionary<string, int>)result;
@@ -344,39 +325,63 @@ public sealed class MailRepository : IMessageStore
         }, ct);
     }
 
-    private async Task<IReadOnlyList<MailMessage>> SearchByMatchAsync(string accountId, string query, int limit, CancellationToken ct) =>
-        await MailDatabase.WithDbAsync(_dbPath, async db =>
-        {
-            var phrase = "\"" + query + "\"";
-            var rows = await db.Messages.FromSql($"""
-                    SELECT m.*
-                    FROM messages AS m
-                    JOIN (SELECT rowid, rank FROM messages_fts WHERE messages_fts MATCH {phrase}) AS f
-                        ON f.rowid = m.rowid
-                    WHERE m.account_id = {accountId}
-                    ORDER BY f.rank
-                    LIMIT {limit}
-                    """)
-                .AsNoTracking()
-                .ToListAsync(ct);
-            return (IReadOnlyList<MailMessage>)rows.Select(ToDomain).ToList();
-        }, ct);
+    private Task<IReadOnlyList<MailMessage>> SearchByMatchAsync(string accountId, string query, int limit, CancellationToken ct) =>
+        SearchTextAsync(accountId, query, new SearchQuery(query), limit, useMatch: true, ct);
 
-    private async Task<IReadOnlyList<MailMessage>> SearchByLikeAsync(string accountId, string query, int limit, CancellationToken ct) =>
+    private Task<IReadOnlyList<MailMessage>> SearchByLikeAsync(string accountId, string query, int limit, CancellationToken ct) =>
+        SearchTextAsync(accountId, query, new SearchQuery(query), limit, useMatch: false, ct);
+
+    private async Task<IReadOnlyList<MailMessage>> SearchTextAsync(
+        string accountId, string text, SearchQuery query, int limit, bool useMatch, CancellationToken ct) =>
         await MailDatabase.WithDbAsync(_dbPath, async db =>
         {
-            var pattern = "%" + EscapeLike(query) + "%";
-            var rows = await db.Messages.FromSql($"""
+            var scope = query.Scope;
+            // SQL 片段只在两个常量分支间选择，用户输入全部走 SQLite 参数。
+            var join = useMatch
+                ? "JOIN (SELECT rowid, rank FROM messages_fts WHERE messages_fts MATCH $text) AS f ON f.rowid = m.rowid"
+                : "JOIN messages_fts AS f ON f.rowid = m.rowid";
+            var textFilter = useMatch ? string.Empty : """
+                  AND (m.subject LIKE $text ESCAPE '\'
+                       OR m.from_name LIKE $text ESCAPE '\'
+                       OR m.body_preview LIKE $text ESCAPE '\')
+                """;
+            var order = scope is null
+                ? useMatch ? "f.rank, m.id ASC" : "m.received_at_utc DESC, m.id ASC"
+                : scope.Sort == InboxSortMode.Date
+                    ? "m.received_at_utc DESC, m.importance DESC, m.id ASC"
+                    : "m.importance DESC, m.received_at_utc DESC, m.id ASC";
+            var sql = $"""
                     SELECT m.*
                     FROM messages AS m
-                    JOIN messages_fts AS f ON f.rowid = m.rowid
-                    WHERE m.account_id = {accountId}
-                      AND (m.subject LIKE {pattern} ESCAPE '\'
-                           OR m.from_name LIKE {pattern} ESCAPE '\'
-                           OR m.body_preview LIKE {pattern} ESCAPE '\')
-                    ORDER BY m.received_at_utc DESC
-                    LIMIT {limit}
-                    """)
+                    {join}
+                    WHERE m.account_id = $account AND m.is_deleted_remote = 0
+                      AND ($from = '' OR m.from_address LIKE $from ESCAPE '\')
+                      AND ($category = '' OR m.category = $category)
+                      AND ($scopeCategory = '' OR m.category = $scopeCategory)
+                      AND ($importance < 0 OR m.importance = $importance)
+                      AND ($minimumImportance < 0 OR m.importance >= $minimumImportance)
+                      AND ($unread = 0 OR m.is_read = 0)
+                      AND ($review = 0 OR (m.classified_at_utc IS NOT NULL AND m.confidence < $threshold))
+                      {textFilter}
+                    ORDER BY {order}
+                    LIMIT $limit OFFSET $offset
+                    """;
+            object[] parameters =
+            [
+                new SqliteParameter("$account", accountId),
+                new SqliteParameter("$text", useMatch ? "\"" + text + "\"" : "%" + EscapeLike(text) + "%"),
+                new SqliteParameter("$from", query.FromFilter is { } from ? "%" + EscapeLike(from) + "%" : string.Empty),
+                new SqliteParameter("$category", query.Category ?? string.Empty),
+                new SqliteParameter("$scopeCategory", scope?.Category ?? string.Empty),
+                new SqliteParameter("$importance", query.Importance is { } importance ? (int)importance : -1),
+                new SqliteParameter("$minimumImportance", scope?.MinimumImportance is { } min ? (int)min : -1),
+                new SqliteParameter("$unread", scope?.UnreadOnly == true ? 1 : 0),
+                new SqliteParameter("$review", scope?.NeedsReviewOnly == true ? 1 : 0),
+                new SqliteParameter("$threshold", scope?.ReviewThreshold ?? 0.55),
+                new SqliteParameter("$limit", limit),
+                new SqliteParameter("$offset", Math.Max(0, scope?.Offset ?? 0)),
+            ];
+            var rows = await db.Messages.FromSqlRaw(sql, parameters)
                 .AsNoTracking()
                 .ToListAsync(ct);
             return (IReadOnlyList<MailMessage>)rows.Select(ToDomain).ToList();

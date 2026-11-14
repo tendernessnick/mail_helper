@@ -45,6 +45,9 @@ public sealed class SyncCoordinator
     /// <summary>整轮成功后触发一次（CHG-010：04 §8.1 newMails 载体；失败/取消轮不触发）。</summary>
     public event EventHandler<SyncRoundCompletedEventArgs>? SyncRoundCompleted;
 
+    /// <summary>提交断点前等待分类、通知与日程管线完成；失败保留旧断点供下轮幂等重试。</summary>
+    public Func<SyncRoundCompletedEventArgs, CancellationToken, Task>? ProcessRoundAsync { get; set; }
+
     public async Task SyncNowAsync(bool fullIfNoLink = true, CancellationToken ct = default)
     {
         lock (_gate)
@@ -57,20 +60,11 @@ public sealed class SyncCoordinator
             State = SyncState.Syncing;
         }
 
-        StateChanged?.Invoke(this, new SyncStateChangedEventArgs(SyncState.Syncing));
-
-        var checkpoint = await _accountStore.GetCheckpointAsync(_accountId, ct);
-        if (checkpoint?.DeltaLink is null && !fullIfNoLink)
-        {
-            RaiseStateChanged(SyncState.Idle);
-            return;
-        }
-
+        SyncCheckpoint? checkpoint = null;
         var sw = Stopwatch.StartNew();
         var pageIndex = 0;
         var added = 0;
         var removed = 0;
-        var wasInitialRound = checkpoint is null; // 首轮判定（D-50）：同步前无断点
         var roundMails = new List<MailMessage>(_batchSize);
         var buffer = new List<MailMessage>(_batchSize);
 
@@ -88,9 +82,18 @@ public sealed class SyncCoordinator
 
         try
         {
+            StateChanged?.Invoke(this, new SyncStateChangedEventArgs(SyncState.Syncing));
+            checkpoint = await _accountStore.GetCheckpointAsync(_accountId, ct);
+            var canResume = _provider.CanResumeFromCheckpoint(checkpoint?.DeltaLink);
+            if (!canResume && !fullIfNoLink)
+            {
+                RaiseStateChanged(SyncState.Idle);
+                return;
+            }
+
             _logger.LogInformation(
                 "sync.started incremental={Incremental} batch_size={BatchSize}",
-                checkpoint?.DeltaLink is not null, _batchSize);
+                canResume, _batchSize);
 
             await foreach (var remote in _provider.FetchDeltaAsync(checkpoint?.DeltaLink, _batchSize, ct))
             {
@@ -107,6 +110,13 @@ public sealed class SyncCoordinator
             }
 
             var newLink = await _provider.CompleteAsync();
+            var round = new SyncRoundCompletedEventArgs(
+                roundMails, !canResume, sw.ElapsedMilliseconds);
+            if (ProcessRoundAsync is { } processRound)
+            {
+                await processRound(round, ct);
+            }
+
             await _accountStore.SaveCheckpointAsync(
                 new SyncCheckpoint(_accountId, newLink ?? checkpoint?.DeltaLink, checkpoint?.ImapUidWatermark,
                     DateTime.UtcNow, "ok"),
@@ -115,8 +125,7 @@ public sealed class SyncCoordinator
             _logger.LogInformation(
                 "sync.completed pages={Pages} latency_ms={LatencyMs} added={Added} updated={Updated} removed={Removed}",
                 pageIndex, sw.ElapsedMilliseconds, added, added, removed);
-            SyncRoundCompleted?.Invoke(this,
-                new SyncRoundCompletedEventArgs(roundMails, wasInitialRound, sw.ElapsedMilliseconds));
+            SyncRoundCompleted?.Invoke(this, round);
             RaiseStateChanged(SyncState.Idle);
         }
         catch (MailProviderException ex)
@@ -134,7 +143,20 @@ public sealed class SyncCoordinator
                 }
             }
 
-            await SaveFailureStatusAsync(checkpoint, ex, ct);
+            try
+            {
+                await SaveFailureStatusAsync(checkpoint, ex, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                RaiseStateChanged(SyncState.Idle);
+                return;
+            }
+            catch (Exception statusError)
+            {
+                _logger.LogWarning(statusError, "sync.failure_status_failed");
+            }
+
             switch (ex.ErrorCode)
             {
                 case "SYNC-001":
@@ -154,6 +176,22 @@ public sealed class SyncCoordinator
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             RaiseStateChanged(SyncState.Idle); // FR-05 取消：断点不推进，下轮续传
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("sync.unexpected_failure error_type={ErrorType}", ex.GetType().Name);
+            RaiseStateChanged(SyncState.Error, "SYNC-002", "同步未完成，请重试。");
+        }
+        finally
+        {
+            // 包括 checkpoint 读取、仓储故障、事件处理器异常在内，均不得永久占用同步门。
+            lock (_gate)
+            {
+                if (State == SyncState.Syncing)
+                {
+                    State = ct.IsCancellationRequested ? SyncState.Idle : SyncState.Error;
+                }
+            }
         }
     }
 

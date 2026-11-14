@@ -159,7 +159,8 @@ public class MacPlatformContractTests
         var autostart = new LaunchAgentAutoStart(
             agentsDir: dir,
             executablePath: "/Applications/MailHelper.app/Contents/MacOS/MailHelper.App.Avalonia",
-            launchctl: args => { launcherCalls.Add(string.Join(' ', args)); return 0; });
+            launchctl: args => { launcherCalls.Add(string.Join(' ', args)); return 0; },
+            resolveUid: () => "501");
 
         autostart.Enable();
         File.Exists(Path.Combine(dir, LaunchAgentAutoStart.Label + ".plist")).Should().BeTrue();
@@ -170,6 +171,7 @@ public class MacPlatformContractTests
         File.Exists(Path.Combine(dir, LaunchAgentAutoStart.Label + ".plist")).Should().BeFalse();
         autostart.IsEnabled.Should().BeFalse();
         launcherCalls.Should().Contain(args => args.Contains("bootout"));
+        launcherCalls.Should().OnlyContain(args => args.Contains("gui/501"));
     }
 
     [Fact]

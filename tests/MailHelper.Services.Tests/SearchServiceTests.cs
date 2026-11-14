@@ -108,4 +108,60 @@ public class SearchServiceTests : IDisposable
     {
         (await _service.SearchAsync("   ", 50, CancellationToken.None)).Should().BeEmpty();
     }
+
+    [Theory]
+    [InlineData("deadline")]
+    [InlineData("学费")]
+    public async Task SparseCategory_FilterRunsBeforeLimit_AndLimitIsRespected(string keyword)
+    {
+        var received = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var messages = Enumerable.Range(0, 60).Select(i => new MailMessage(
+            $"sparse-{i:D3}", "acc-1", null, keyword, "Sender", "sender@cityu.edu.hk", keyword, null,
+            received.AddMinutes(i), false, false,
+            i < 4 ? CategoryIds.Finance : CategoryIds.Course, Importance.P1, 0.9, "rule", received, null, false)).ToList();
+        await _store.UpsertRangeAsync("acc-1", messages, CancellationToken.None);
+
+        var hits = await _service.SearchAsync($"cat:finance {keyword}", 2, CancellationToken.None);
+        hits.Should().HaveCount(2, "过滤必须在候选窗口截断前执行，并严格遵守limit");
+        hits.Should().OnlyContain(m => m.Category == CategoryIds.Finance);
+        (await _service.SearchAsync(keyword, 2, CancellationToken.None)).Should().HaveCount(2);
+    }
+
+    [Theory]
+    [InlineData("deadline")]
+    [InlineData("学费")]
+    public async Task Search_ExcludesDeleted_InMatchAndLikePaths(string keyword)
+    {
+        await _store.UpsertRangeAsync("acc-1", [new MailMessage(
+            "deleted", "acc-1", null, keyword, "Sender", "s@hku.hk", keyword, null,
+            DateTime.UtcNow, false, false, CategoryIds.Finance, Importance.P0, 0.9, "rule", DateTime.UtcNow, null, true)], CancellationToken.None);
+        (await _service.SearchAsync(keyword, 50, CancellationToken.None)).Should().NotContain(m => m.Id == "deleted");
+        (await _store.SearchFtsAsync("acc-1", keyword, 50, CancellationToken.None)).Should().NotContain(m => m.Id == "deleted");
+    }
+
+    [Fact]
+    public async Task PureFilter_DefaultSort_UsesImportanceBeforeTime_AndCaseInsensitiveSender()
+    {
+        var latest = new MailMessage("latest", "acc-1", null, "low priority", "Sender", "Finance@HKU.HK", null, null,
+            new DateTime(2026, 10, 20, 0, 0, 0, DateTimeKind.Utc), false, false,
+            CategoryIds.Finance, Importance.P3, 0.9, "rule", DateTime.UtcNow, null, false);
+        await _store.UpsertRangeAsync("acc-1", [latest], CancellationToken.None);
+        var hits = await _service.SearchAsync("cat:finance from:hku.hk", 50, CancellationToken.None);
+        hits.Select(m => m.Id).Should().Equal("m1", "m2", "latest");
+    }
+
+    [Fact]
+    public async Task Search_PreservesInboxScope_SortAndOffset()
+    {
+        var received = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        var messages = Enumerable.Range(0, 6).Select(i => new MailMessage(
+            $"scope-{i}", "acc-1", null, "exam deadline", "Sender", "sender@hku.hk", "exam", null,
+            received.AddMinutes(i), false, i == 5,
+            i == 4 ? CategoryIds.Career : CategoryIds.Course, Importance.P1, i == 3 ? 0.9 : 0.2, "rule", received, null, false)).ToList();
+        await _store.UpsertRangeAsync("acc-1", messages, CancellationToken.None);
+        var scope = new InboxQuery(Category: CategoryIds.Course, NeedsReviewOnly: true, UnreadOnly: true, Sort: InboxSortMode.Date, Offset: 1);
+        var hits = await _service.SearchAsync("exam", scope, 2, CancellationToken.None);
+        hits.Select(m => m.Id).Should().Equal("scope-1", "scope-0");
+        (await _service.SearchAsync("cat:career exam", scope, 2, CancellationToken.None)).Should().BeEmpty("查询条件与侧栏条件取交集");
+    }
 }

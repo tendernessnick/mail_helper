@@ -8,7 +8,8 @@
       "src\\MailHelper.ViewModels\\MailHelper.ViewModels.csproj",
       "src\\MailHelper.App.Avalonia\\MailHelper.App.Avalonia.csproj",
       "tests\\MailHelper.Core.Tests\\MailHelper.Core.Tests.csproj",
-      "tests\\MailHelper.Services.Tests\\MailHelper.Services.Tests.csproj"
+      "tests\\MailHelper.Services.Tests\\MailHelper.Services.Tests.csproj",
+      "tests\\MailHelper.ViewModels.Tests\\MailHelper.ViewModels.Tests.csproj"
     ]
   }
 }

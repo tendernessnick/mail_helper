@@ -12,8 +12,10 @@ public interface IOutlookMailSource : IDisposable
     /// <summary>默认账户 SMTP 地址（Outlook 登录态）。</summary>
     string GetAccountAddress();
 
-    /// <summary>收件箱中 ReceivedTime &gt; sinceUtc 的邮件（升序、至多 take 条）；sinceUtc=null 时取全部起点。</summary>
-    IReadOnlyList<OutlookMessageSummary> FetchInboxSince(DateTime? sinceUtc, int take);
+    /// <summary>收件箱中 ReceivedTime ≥ sinceUtc 的邮件（升序、至多 take 条）；sinceUtc=null 时取全部起点。
+    /// excludeAtBoundary 是已读取的同时间戳 EntryID，保证一秒内超过一页邮件时仍可完整续取。</summary>
+    IReadOnlyList<OutlookMessageSummary> FetchInboxSince(
+        DateTime? sinceUtc, int take, IReadOnlySet<string>? excludeAtBoundary = null);
 }
 
 /// <summary>Outlook 邮件摘要 + 正文（04 §4.1 $select 的桌面等价物）。</summary>
@@ -38,7 +40,8 @@ public sealed class OutlookDesktopMailProvider(
     string? cacheAccountKey = null,
     ILogger<OutlookDesktopMailProvider>? logger = null) : IMailProvider
 {
-    public const string BreakpointPrefix = "outlook://inbox?received=";
+    // v1 的降序截页可能已跳过历史；拒绝旧断点，在升级后完整且静默地回填一次。
+    public const string BreakpointPrefix = "outlook://inbox-v2?received=";
     private static readonly TimeSpan LateArrivalWindow = TimeSpan.FromHours(24);
 
     private readonly IOutlookMailSource _source = source ?? throw new ArgumentNullException(nameof(source));
@@ -47,6 +50,12 @@ public sealed class OutlookDesktopMailProvider(
     private readonly ILogger<OutlookDesktopMailProvider> _logger = logger ?? NullLogger<OutlookDesktopMailProvider>.Instance;
 
     public ChannelKind Kind => ChannelKind.OutlookDesktop;
+
+    public bool CanResumeFromCheckpoint(string? checkpoint)
+    {
+        _ = ParseBreakpoint(checkpoint, out var valid);
+        return valid;
+    }
 
     /// <summary>Outlook 登录态账户地址（连接时落库与展示）；COM 不可达时抛出，由调用方呈现。</summary>
     public Task<string?> GetAccountAddressAsync(CancellationToken ct)
@@ -60,16 +69,20 @@ public sealed class OutlookDesktopMailProvider(
     public async IAsyncEnumerable<RemoteMessage> FetchDeltaAsync(
         string? deltaLink, int pageSize, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(pageSize);
         var since = ParseBreakpoint(deltaLink, out var breakpointValid);
+        _watermark = since; // 每轮重新初始化，失败轮/旧账户的内存水位不得跳过下一轮历史数据
         if (breakpointValid)
         {
             since -= LateArrivalWindow; // 晚到旧邮件窗口：水位回退 24h，upsert 幂等吸收重叠
         }
 
         var htmlSaved = 0;
+        var boundaryIds = new HashSet<string>(StringComparer.Ordinal);
         while (true)
         {
-            var batch = await Task.Run(() => _source.FetchInboxSince(since?.UtcDateTime, pageSize), ct);
+            var batch = await Task.Run(
+                () => _source.FetchInboxSince(since?.UtcDateTime, pageSize, boundaryIds), ct);
             if (batch.Count == 0)
             {
                 break;
@@ -107,7 +120,26 @@ public sealed class OutlookDesktopMailProvider(
                 break;
             }
 
-            since = _watermark; // 满页续取：以上一轮最大收件时间为新起点
+            // 分页游标独立于持久水位（增量首批可能完全位于 24h 回看窗口内）。
+            // 同时间戳通过 EntryID 排除已读项，不能用严格 > 时间戳，否则满页边界会丢邮件。
+            var nextSince = batch.Max(m => m.ReceivedAtUtc);
+            if (since != nextSince)
+            {
+                boundaryIds.Clear();
+            }
+
+            var previousCount = boundaryIds.Count;
+            foreach (var item in batch.Where(m => m.ReceivedAtUtc == nextSince))
+            {
+                boundaryIds.Add(item.EntryId);
+            }
+
+            if (since == nextSince && boundaryIds.Count == previousCount)
+            {
+                throw new MailProviderException("SYNC-002", "Outlook 分页未前进，请重试同步。");
+            }
+
+            since = nextSince;
         }
 
         _logger.LogInformation("sync.outlook_batch count_watermark={Watermark:o} html_cached={HtmlCached}",
@@ -152,9 +184,9 @@ public sealed class OutlookDesktopMailProvider(
         }
     }
 
-    /// <summary>断点编码：outlook://inbox?received={yyyyMMddTHHmmssZ}（复用 delta_link 字段，D-59 同思路）。</summary>
+    /// <summary>v2 断点编码（复用 delta_link 字段）；v1 自动重扫一次以修复历史漏页。</summary>
     public static string EncodeBreakpoint(DateTimeOffset receivedUtc) =>
-        "outlook://inbox?received=" + receivedUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
+        BreakpointPrefix + receivedUtc.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", System.Globalization.CultureInfo.InvariantCulture);
 
     /// <summary>断点解析：非法/缺失一律视为无断点（全量，安全侧，D-59 同语义）。</summary>
     internal static DateTimeOffset? ParseBreakpoint(string? deltaLink, out bool valid)

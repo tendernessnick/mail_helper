@@ -139,6 +139,7 @@ public static class AvaloniaBootstrapper
             ? new OsascriptToastSender(new OsascriptScriptRunner())
             : new NoopToastSender());
         services.AddSingleton<NotificationService>();
+        services.AddSingleton<SyncCompletionService>();
 
         // —— 反馈闭环 ——
         services.AddSingleton(_ => new FeedbackRepository(paths.DbPath));

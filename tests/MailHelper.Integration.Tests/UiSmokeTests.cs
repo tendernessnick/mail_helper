@@ -142,6 +142,52 @@ public class UiSmokeTests
 
             var screensDir = Path.Combine(repoRoot, "artifacts", "screens");
             Directory.CreateDirectory(screensDir);
+            // 正文必须由 WebView2 的 UIA Document 暴露，不能仅凭列表已读/文件已写就宣布阅读成功。
+            var expectedBody = Retry(() =>
+            {
+                using var connection = new SqliteConnection($"Data Source={Path.Combine(dataDir, "mailhelper.db")};Mode=ReadOnly");
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT body_preview FROM messages WHERE is_read = 1 LIMIT 1";
+                return command.ExecuteScalar() as string;
+            }, TimeSpan.FromSeconds(10), "所选种子邮件正文");
+            expectedBody.Should().NotBeNullOrWhiteSpace();
+            try
+            {
+                var renderedBody = Retry(() =>
+                {
+                    var window = FindWindow(automation, process);
+                    var documents = window?.FindAllDescendants(cf =>
+                        cf.ByControlType(FlaUI.Core.Definitions.ControlType.Document));
+                    foreach (var document in documents ?? Array.Empty<AutomationElement>())
+                    {
+                        var text = document.Patterns.Text.IsSupported
+                            ? document.Patterns.Text.Pattern.DocumentRange.GetText(-1)
+                            : string.Join(" ", document.FindAllDescendants().Select(SafeName));
+                        if (text.Contains(expectedBody!, StringComparison.Ordinal))
+                        {
+                            return text;
+                        }
+                    }
+
+                    return null;
+                }, TimeSpan.FromSeconds(20), "WebView2 实际正文");
+                renderedBody.Should().Contain(expectedBody!);
+            }
+            catch (TimeoutException)
+            {
+                var window = FindWindow(automation, process);
+                if (window is not null)
+                {
+                    using var capture = Capture.Element(window);
+                    capture.ToFile(Path.Combine(screensDir, "reader-fail.png"));
+                    Console.WriteLine("[reader-fail] tree=" + string.Join("|", window.FindAllDescendants()
+                        .Select(element => $"{element.ControlType}:{SafeName(element)}").Take(100)));
+                }
+
+                throw;
+            }
+
             Retry<object?>(() =>
             {
                 process.Refresh();

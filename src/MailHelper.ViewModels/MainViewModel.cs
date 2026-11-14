@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Collections.Concurrent;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -114,7 +115,6 @@ public partial class CategoryItemViewModel : ObservableObject
 public partial class MainViewModel : ObservableObject
 {
     private readonly SyncCoordinator _sync;
-    private readonly ClassificationService _classifier;
     private readonly FeedbackService _feedback;
     private readonly SearchService _search;
     private readonly IMessageStore _store;
@@ -124,9 +124,20 @@ public partial class MainViewModel : ObservableObject
     private readonly IMailProvider _provider;
     private readonly ILogger<MainViewModel> _logger;
     private readonly IMainThreadDispatcher _dispatcher;
-    private readonly bool _devMode;
 
     private string? _accountId;
+    private const int PageSize = 200;
+    private int _visibleLimit = PageSize;
+    private long _requestVersion;
+    private CancellationTokenSource? _listRequest;
+    private string _activeSearchText = string.Empty;
+    private bool _updatingMails;
+    private bool _manualSyncInProgress;
+    private string? _notificationMailId;
+    private readonly SemaphoreSlim _sortPreferenceGate = new(1, 1);
+    private readonly ConcurrentDictionary<string, byte> _pendingReads = new();
+    private readonly ConcurrentDictionary<string, byte> _locallyRead = new();
+    private long _readVersion;
 
     public MainViewModel(
         SyncCoordinator sync,
@@ -143,7 +154,6 @@ public partial class MainViewModel : ObservableObject
         IMainThreadDispatcher dispatcher)
     {
         _sync = sync;
-        _classifier = classifier;
         _feedback = feedback;
         _search = search;
         _store = store;
@@ -153,11 +163,17 @@ public partial class MainViewModel : ObservableObject
         _provider = provider;
         _logger = logger;
         _dispatcher = dispatcher;
-        _devMode = devMode;
 
         RebuildCategories();
 
         _sync.StateChanged += (_, e) => OnSyncStateChanged(e);
+        _sync.SyncRoundCompleted += (_, _) =>
+        {
+            if (!_manualSyncInProgress)
+            {
+                _dispatcher.Post(() => _ = LoadInboxAsync(CancellationToken.None));
+            }
+        };
     }
 
     public ObservableCollection<CategoryItemViewModel> Categories { get; } = new();
@@ -199,6 +215,7 @@ public partial class MainViewModel : ObservableObject
     private bool privacyAccepted;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConnectCommand))]
     private bool isBusy;
 
     [ObservableProperty]
@@ -216,6 +233,20 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private bool isSearchMode;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(LoadMoreCommand))]
+    private bool isLoading;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(LoadMoreCommand))]
+    private bool hasMore;
+
+    [ObservableProperty]
+    private string listSummaryText = "尚未加载邮件";
+
+    [ObservableProperty]
+    private string emptyStateText = "该分类暂无邮件";
 
     /// <summary>全部未读数（托盘角标数据源，FR-14 角标计数）。</summary>
     [ObservableProperty]
@@ -258,9 +289,17 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnSelectedMailChanged(MailItemViewModel? value)
     {
+        if (_updatingMails)
+        {
+            return;
+        }
+
         if (value is not null && !value.IsRead)
         {
             value.IsRead = true;
+            _locallyRead[value.Id] = 0;
+            Interlocked.Increment(ref _readVersion);
+            AdjustUnreadCounts(value.Category, -1);
             _ = MarkReadAsync(value.Id, value.Category);
         }
 
@@ -344,88 +383,183 @@ public partial class MainViewModel : ObservableObject
         }
 
         IsBusy = true;
+        _manualSyncInProgress = true;
         try
         {
             await _sync.SyncNowAsync(ct: ct);
-            var summary = await _classifier.ClassifyPendingAsync(200, ct); // 同步完成后走分类管线（03 §5.2）
             await LoadInboxAsync(ct);
-            _logger.LogInformation(
-                "ui.sync_cycle_done classified={Classified} pending_review={PendingReview}", summary.Processed, summary.PendingReview);
         }
         finally
         {
+            _manualSyncInProgress = false;
             IsBusy = false;
         }
     }
 
     partial void OnSelectedCategoryChanged(CategoryItemViewModel? value)
     {
-        IsSearchMode = false;
+        _notificationMailId = null;
+        _visibleLimit = PageSize;
         _ = LoadInboxAsync(CancellationToken.None); // 左栏点击即过滤（05 §3.2）
     }
 
     /// <summary>S19/CHG-016：排序偏好切换 → 持久化 + 即时刷新（Initialize 读偏好时不触发：_accountId 未就绪）。</summary>
     partial void OnSortByDateChanged(bool value)
     {
-        _ = _settings.SetAsync(SettingsService.KeyInboxSort, value ? "date" : "importance", CancellationToken.None);
+        _notificationMailId = null;
+        _ = SaveSortPreferenceAsync(value);
         if (_accountId is not null)
         {
+            _visibleLimit = PageSize;
             _ = LoadInboxAsync(CancellationToken.None);
+        }
+    }
+
+    private async Task SaveSortPreferenceAsync(bool value)
+    {
+        await _sortPreferenceGate.WaitAsync();
+        try
+        {
+            await _settings.SetAsync(SettingsService.KeyInboxSort, value ? "date" : "importance", CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ui.sort_preference_save_failed");
+            await _dispatcher.InvokeOnMainThreadAsync(() => SyncStatusText = "排序已切换，但偏好保存失败；重启后可能恢复默认。");
+        }
+        finally
+        {
+            _sortPreferenceGate.Release();
         }
     }
 
     [RelayCommand]
     private async Task SearchAsync(CancellationToken ct)
     {
-        if (_accountId is null || string.IsNullOrWhiteSpace(SearchText))
+        if (_accountId is null)
         {
             return;
         }
 
-        var results = await _search.SearchAsync(SearchText.Trim(), 200, ct); // FR-13 语法搜索（S10）
-        await _dispatcher.InvokeOnMainThreadAsync(() =>
-        {
-            ReplaceMails(results);
-            IsSearchMode = true;
-            SyncStatusText = $"搜索「{SearchText.Trim()}」：{results.Count} 条";
-        });
+        SwitchView(0);
+        _notificationMailId = null;
+        _activeSearchText = SearchText.Trim();
+        IsSearchMode = _activeSearchText.Length > 0;
+        _visibleLimit = PageSize;
+        await LoadInboxAsync(ct);
     }
 
     [RelayCommand]
     private async Task ClearSearchAsync(CancellationToken ct)
     {
         SearchText = string.Empty;
+        _notificationMailId = null;
+        _activeSearchText = string.Empty;
         IsSearchMode = false;
+        _visibleLimit = PageSize;
         await LoadInboxAsync(ct);
     }
 
     [RelayCommand]
-    private async Task ToggleUnreadOnlyAsync(CancellationToken ct) => await LoadInboxAsync(ct);
+    private async Task ToggleUnreadOnlyAsync(CancellationToken ct)
+    {
+        _notificationMailId = null;
+        _visibleLimit = PageSize;
+        await LoadInboxAsync(ct);
+    }
+
+    private bool CanLoadMore() => HasMore && !IsLoading;
+
+    [RelayCommand(CanExecute = nameof(CanLoadMore))]
+    private async Task LoadMoreAsync(CancellationToken ct)
+    {
+        _visibleLimit += PageSize;
+        await LoadInboxAsync(ct);
+    }
 
     public async Task RunInitialSyncAsync(CancellationToken ct)
     {
         await SyncNowAsync(ct);
-        if (_devMode)
-        {
-            await LoadInboxAsync(ct);
-        }
     }
 
     private async Task MarkReadAsync(string messageId, string category)
     {
-        await _store.MarkReadAsync(messageId, CancellationToken.None);
-        await _dispatcher.InvokeOnMainThreadAsync(() =>
+        _pendingReads[messageId] = 0;
+        try
         {
-            // 左栏未读数联动（「全部」+ 对应类别；待确认入口计数与此无关）
-            foreach (var item in Categories.Where(c =>
-                         (c.CategoryId is null && !c.IsNeedsReviewEntry) || c.CategoryId == category))
+            await _store.MarkReadAsync(messageId, CancellationToken.None);
+            Interlocked.Increment(ref _readVersion);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ui.mark_read_failed");
+            _locallyRead.TryRemove(messageId, out _);
+            Interlocked.Increment(ref _readVersion);
+            await _dispatcher.InvokeOnMainThreadAsync(() =>
             {
-                if (item.Count > 0)
+                var item = Mails.FirstOrDefault(m => m.Id == messageId);
+                if (item is not null)
                 {
-                    item.Count--;
+                    item.IsRead = false;
                 }
-            }
-        });
+
+                AdjustUnreadCounts(category, 1);
+                SyncStatusText = "标记已读失败，已恢复未读状态；请稍后重试。";
+            });
+        }
+        finally
+        {
+            _pendingReads.TryRemove(messageId, out _);
+        }
+
+        await RefreshUnreadCountsAsync();
+    }
+
+    private async Task RefreshUnreadCountsAsync()
+    {
+        if (_accountId is null)
+        {
+            return;
+        }
+
+        var version = Interlocked.Read(ref _readVersion);
+        try
+        {
+            var unread = await _store.GetUnreadCountsAsync(_accountId, CancellationToken.None);
+            var review = await _store.GetNeedsReviewCountAsync(_accountId, ClassificationService.DefaultReviewThreshold, CancellationToken.None);
+            await _dispatcher.InvokeOnMainThreadAsync(() =>
+            {
+                if (version == Interlocked.Read(ref _readVersion))
+                {
+                    UpdateUnreadCounts(unread, review);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ui.unread_counts_refresh_failed");
+        }
+    }
+
+    private void UpdateUnreadCounts(IReadOnlyDictionary<string, int> unread, int reviewCount)
+    {
+        UnreadTotal = unread.Values.Sum();
+        foreach (var item in Categories)
+        {
+            item.Count = item.IsNeedsReviewEntry ? reviewCount
+                : item.CategoryId is { } category ? unread.GetValueOrDefault(category)
+                : UnreadTotal;
+        }
+    }
+
+    private void AdjustUnreadCounts(string category, int delta)
+    {
+        UnreadTotal = Math.Max(0, UnreadTotal + delta);
+        foreach (var item in Categories.Where(c =>
+                     (c.CategoryId is null && !c.IsNeedsReviewEntry) || c.CategoryId == category))
+        {
+            item.Count = Math.Max(0, item.Count + delta);
+        }
     }
 
     private async Task LoadInboxAsync(CancellationToken ct)
@@ -435,29 +569,96 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
+        var request = Interlocked.Increment(ref _requestVersion);
+        var source = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var previous = _listRequest;
+        _listRequest = source;
+        previous?.Cancel();
+        var token = source.Token;
+        var visibleLimit = _visibleLimit;
+        var searchText = _activeSearchText;
+        var notificationId = _notificationMailId;
+        var readVersion = Interlocked.Read(ref _readVersion);
+        var categoryLabel = SelectedCategory?.Label ?? "收件箱（全部）";
         var query = new InboxQuery(
             Category: SelectedCategory?.CategoryId,
             NeedsReviewOnly: SelectedCategory?.IsNeedsReviewEntry == true,
             UnreadOnly: UnreadOnly,
+            Limit: visibleLimit + 1,
             Sort: SortByDate ? InboxSortMode.Date : InboxSortMode.Importance); // S19/CHG-016
-        var messages = await _store.GetInboxAsync(_accountId, query, ct);
-        var nowUtc = DateTime.UtcNow;
-        var unread = await _store.GetUnreadCountsAsync(_accountId, ct);
-        var reviewCount = await _store.GetNeedsReviewCountAsync(_accountId, ClassificationService.DefaultReviewThreshold, ct);
-
-        await _dispatcher.InvokeOnMainThreadAsync(() =>
+        IsLoading = true;
+        EmptyStateText = "正在加载邮件…";
+        try
         {
-            ReplaceMails(messages);
-            UnreadTotal = unread.Values.Sum(); // 托盘角标（FR-14）
-            foreach (var item in Categories)
+            var messages = searchText.Length > 0
+                ? await _search.SearchAsync(searchText, query, visibleLimit + 1, token)
+                : await _store.GetInboxAsync(_accountId, query, token);
+            var unread = await _store.GetUnreadCountsAsync(_accountId, token);
+            var reviewCount = await _store.GetNeedsReviewCountAsync(_accountId, ClassificationService.DefaultReviewThreshold, token);
+            var notificationMail = notificationId is not null
+                ? await _store.GetByIdAsync(notificationId, token) : null;
+            await _dispatcher.InvokeOnMainThreadAsync(() =>
             {
-                item.Count = item.IsNeedsReviewEntry
-                    ? reviewCount
-                    : item.CategoryId is { } c && unread.TryGetValue(c, out var n) ? n
-                    : item.CategoryId is null ? messages.Count(m => !m.IsRead)
-                    : 0; // S14-C：自定义类别无未读时归零
-            }
-        });
+                if (request != _requestVersion || token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                HasMore = messages.Count > visibleLimit;
+                var visible = messages.Take(visibleLimit).ToList();
+                if (notificationMail is { IsDeletedRemote: false } && notificationMail.AccountId == _accountId &&
+                    !visible.Any(m => m.Id == notificationMail.Id))
+                {
+                    visible.Insert(0, notificationMail);
+                }
+
+                ReplaceMails(visible);
+                if (readVersion == Interlocked.Read(ref _readVersion))
+                {
+                    UpdateUnreadCounts(unread, reviewCount);
+                }
+
+                ListSummaryText = $"{categoryLabel}{(searchText.Length > 0 ? $" · 搜索「{searchText}」" : string.Empty)}" +
+                    $" · 已显示 {Mails.Count} 封{(HasMore ? "，可继续加载" : string.Empty)}";
+                EmptyStateText = searchText.Length > 0 ? "没有符合当前搜索和筛选条件的邮件" : query.UnreadOnly
+                    ? "当前分类没有未读邮件" : query.NeedsReviewOnly ? "没有待确认邮件" : "该分类暂无邮件";
+            });
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            // 新请求会取代旧请求，外部取消不清空已载入列表。
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ui.inbox_load_failed");
+            await _dispatcher.InvokeOnMainThreadAsync(() =>
+            {
+                if (request == _requestVersion)
+                {
+                    SyncStatusText = "邮件加载失败，请重试搜索或切换分类。";
+                    EmptyStateText = "暂时无法加载邮件，请重试";
+                    ListSummaryText = $"{categoryLabel} · 加载失败，保留上次列表";
+                    HasMore = false;
+                }
+            });
+        }
+        finally
+        {
+            await _dispatcher.InvokeOnMainThreadAsync(() =>
+            {
+                if (request == _requestVersion)
+                {
+                    IsLoading = false;
+                    _listRequest = null;
+                    if (token.IsCancellationRequested)
+                    {
+                        EmptyStateText = "加载已取消，请重新搜索或切换分类";
+                        ListSummaryText = "加载已取消，保留上次列表";
+                    }
+                }
+            });
+            source.Dispose();
+        }
     }
 
     /// <summary>Toast 点击直达（FR-14 AC1，launch=mailhelper://message/{id}）：切回全部收件箱并选中该邮件。</summary>
@@ -468,31 +669,105 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        var allCategory = Categories.First(c => c.CategoryId is null && !c.IsNeedsReviewEntry);
-        if (SelectedCategory != allCategory)
+        // 通知目标可能在首200封之外；直接按 ID 查询，不能靠固定等待和当前页碰运气。
+        var message = await _store.GetByIdAsync(messageId, ct);
+        if (message is null || message.AccountId != _accountId || message.IsDeletedRemote)
         {
-            SelectedCategory = allCategory; // 触发 LoadInboxAsync
-            await Task.Delay(50, ct); // 等列表刷新（LoadInboxAsync 内部 invoke 队列）
+            return;
         }
-        else
-        {
-            await LoadInboxAsync(ct);
-        }
+
+        SwitchView(0);
+        SearchText = string.Empty;
+        _activeSearchText = string.Empty;
+        IsSearchMode = false;
+        UnreadOnly = false;
+        SelectedCategory = Categories.First(c => c.CategoryId is null && !c.IsNeedsReviewEntry);
+        _notificationMailId = messageId;
+        await LoadInboxAsync(ct);
 
         await _dispatcher.InvokeOnMainThreadAsync(() =>
         {
-            SelectedMail = Mails.FirstOrDefault(m => m.Id == messageId) ?? SelectedMail;
+            var item = Mails.FirstOrDefault(m => m.Id == messageId);
+            if (item is null)
+            {
+                item = MailItemViewModel.From(message, DateTime.UtcNow);
+                Mails.Insert(0, item);
+            }
+
+            SelectedMail = item;
         });
     }
 
     private void ReplaceMails(IReadOnlyList<MailMessage> messages)
     {
-        Mails.Clear();
-        foreach (var message in messages)
+        var selectedId = SelectedMail?.Id;
+        var previousSelection = SelectedMail;
+        var byId = Mails.ToDictionary(m => m.Id);
+        var desired = messages.Select(message =>
         {
-            Mails.Add(MailItemViewModel.From(message, DateTime.UtcNow));
+            var next = MailItemViewModel.From(message, DateTime.UtcNow);
+            if (message.IsRead)
+            {
+                _locallyRead.TryRemove(message.Id, out _); // 仓储已确认已读，不再保留临时乐观状态。
+            }
+
+            if (_pendingReads.ContainsKey(next.Id) || _locallyRead.ContainsKey(next.Id))
+            {
+                next.IsRead = true;
+            }
+
+            if (byId.TryGetValue(next.Id, out var old) && SameContent(old, next))
+            {
+                old.IsRead = next.IsRead;
+                return old;
+            }
+
+            return next;
+        }).ToList();
+
+        _updatingMails = true;
+        try
+        {
+            for (var i = 0; i < desired.Count; i++)
+            {
+                if (i < Mails.Count && ReferenceEquals(Mails[i], desired[i]))
+                {
+                    continue;
+                }
+
+                var existingIndex = Mails.IndexOf(desired[i]);
+                if (existingIndex >= 0)
+                {
+                    Mails.Move(existingIndex, i);
+                }
+                else
+                {
+                    Mails.Insert(i, desired[i]);
+                }
+            }
+
+            while (Mails.Count > desired.Count)
+            {
+                Mails.RemoveAt(Mails.Count - 1);
+            }
+
+            SelectedMail = desired.FirstOrDefault(m => m.Id == selectedId);
+        }
+        finally
+        {
+            _updatingMails = false;
+        }
+
+        if (!ReferenceEquals(previousSelection, SelectedMail))
+        {
+            SelectedMailHtmlNeeded?.Invoke(this, SelectedMail);
         }
     }
+
+    private static bool SameContent(MailItemViewModel a, MailItemViewModel b) =>
+        a.Subject == b.Subject && a.FromDisplay == b.FromDisplay && a.Preview == b.Preview &&
+        a.ReceivedText == b.ReceivedText && a.Category == b.Category && a.Importance == b.Importance &&
+        a.Confidence == b.Confidence && a.HtmlPath == b.HtmlPath && a.HasAttachments == b.HasAttachments;
 
     private void OnSyncStateChanged(SyncStateChangedEventArgs e)
     {

@@ -24,4 +24,13 @@ public sealed class SearchService
             ? Task.FromResult<IReadOnlyList<MailMessage>>(Array.Empty<MailMessage>())
             : _store.SearchAsync(_accountId, parsed, limit, ct);
     }
+
+    /// <summary>保留当前分类、待确认、未读及排序条件；过滤在仓储中先于分页执行。</summary>
+    public Task<IReadOnlyList<MailMessage>> SearchAsync(string query, InboxQuery scope, int limit, CancellationToken ct)
+    {
+        var parsed = SearchQueryParser.Parse(query);
+        return parsed.IsEmpty
+            ? Task.FromResult<IReadOnlyList<MailMessage>>(Array.Empty<MailMessage>())
+            : _store.SearchAsync(_accountId, parsed with { Scope = scope }, limit, ct);
+    }
 }

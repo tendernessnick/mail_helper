@@ -56,12 +56,12 @@ public partial class App : Application
         _host.Services.GetRequiredService<LanguageService>()
             .ApplyAsync(System.Threading.CancellationToken.None).GetAwaiter().GetResult(); // NFR-12
 
-        StartPeriodicSync(); // FR-04：定时增量同步（间隔来自设置，1–60 分钟）
         RequestClearLocalData = ClearLocalDataAndPromptRestart;
 
         InitializeTray(viewModel);
         ListenForToastActivation(viewModel);
         WireNotifications();
+        StartPeriodicSync(); // 完成管线就绪后再开始定时同步
         _instanceLock.StartListening(() => Dispatcher.Invoke(() => ((MainWindow)MainWindow).ShowFromTray()));
 
         MainWindow.Show();
@@ -86,30 +86,8 @@ public partial class App : Application
     private void WireNotifications()
     {
         var host = ((App)Current).Host;
-        var notifications = host.Services.GetRequiredService<NotificationService>();
-        var schedule = host.Services.GetRequiredService<ScheduleService>(); // S18/CHG-015
-        var coordinator = host.Services.GetRequiredService<SyncCoordinator>();
-        coordinator.SyncRoundCompleted += async (_, e) =>
-        {
-            try
-            {
-                await notifications.HandleNewMailsAsync(e.NewMails, e.IsInitialRound); // 04 §8 决策（P0 逐封/P1 聚合/去重/勿扰）
-            }
-            catch (Exception ex)
-            {
-                WriteCrashLog("Notify", ex); // 通知失败不影响同步
-            }
-
-            try
-            {
-                await schedule.ExtractPendingAsync(); // Canvas DDL 识别（首启用回填历史）
-                await schedule.CheckRemindersAsync(); // 临期提醒（同一 due 恰一次）
-            }
-            catch (Exception ex)
-            {
-                WriteCrashLog("Schedule", ex); // 日程失败不影响同步
-            }
-        };
+        var completion = host.Services.GetRequiredService<SyncCompletionService>();
+        host.Services.GetRequiredService<SyncCoordinator>().ProcessRoundAsync = completion.ProcessAsync;
     }
 
     /// <summary>FR-04：按设置间隔启动周期同步；Bootstrapper.PeriodicSyncChanged 触发热重启。</summary>
