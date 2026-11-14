@@ -72,4 +72,6 @@
 
 本轮提交推送 `main`，现有 Actions 会创建 beta 预发布，不打正式版本标签，不改变旧安装用户的稳定更新源。
 
+首次推送后，远端报告原 `macos-14` 镜像不可用。依据 [GitHub 官方镜像清单](https://github.com/actions/runner-images)，改为 ARM `macos-15` / Intel `macos-15-intel`，分别在原生架构验证和打包；Release 同时等待 Windows 和 Mac 测试通过。首次失败运行保留记录，后续通过新的提交运行验证。
+
 查看旧版：`git show mailhelper-v0.9.0-backup-20261114:README.md`。需要回退时，对本轮提交使用 `git revert <本轮提交>` 再推送，保留共享历史。离线恢复可用 bundle 克隆到新目录，不覆盖当前工作区。
