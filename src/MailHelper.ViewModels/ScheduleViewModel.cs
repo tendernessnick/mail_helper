@@ -126,14 +126,12 @@ public partial class ScheduleViewModel : ObservableObject
     private bool hasItems;
 
     /// <summary>加载/刷新（页面进入与同步轮完成时调用）。</summary>
+    [RelayCommand]
     public async Task RefreshAsync(CancellationToken ct)
     {
         var items = await _schedule.GetUpcomingAsync(ct);
         await _dispatcher.InvokeOnMainThreadAsync(() => RebuildGroups(items));
     }
-
-    [RelayCommand]
-    private async Task RefreshCommandAsync(CancellationToken ct) => await RefreshAsync(ct);
 
     [RelayCommand]
     private async Task CompleteAsync(ScheduleItemRowViewModel? row)

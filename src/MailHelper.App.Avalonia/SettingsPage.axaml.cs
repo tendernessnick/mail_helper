@@ -68,7 +68,7 @@ public partial class SettingsPage : UserControl
         var id = "custom-" + Guid.NewGuid().ToString("N")[..8]; // WPF 同款 slug
         try
         {
-            await _categories.UpsertAsync(new CategoryDefinition(id, label, icon, "#3A7BD5",
+            await _categories.UpsertAsync(new CategoryDefinition(id, label, icon, (NewCategoryColor.SelectedItem as ComboBoxItem)?.Tag as string ?? "#3A7BD5",
                 Sort: CategoryIds.Defaults.Length + CategoryCatalog.All.Count(c => !c.IsBuiltin), IsBuiltin: false),
                 CancellationToken.None);
             NewCategoryName.Text = string.Empty;

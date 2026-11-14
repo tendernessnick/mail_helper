@@ -1,112 +1,67 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:MailHelper.ViewModels;assembly=MailHelper.ViewModels"
-             xmlns:app="clr-namespace:MailHelper.App.Avalonia"
-             x:Class="MailHelper.App.Avalonia.SchedulePage">
-  <UserControl.Resources>
-    <app:InverseBoolConverter x:Key="InverseBool" />
-    <app:OverdueBrushConverter x:Key="OverdueBrush" />
-  </UserControl.Resources>
-  <!-- 日程页（S18/CHG-015）：Canvas 作业 DDL 分组展示 + 完成/忽略/恢复/打开链接（VM 共享，行为与 WPF 一致） -->
-  <Border Background="{DynamicResource BrushSurface}" CornerRadius="{StaticResource RadiusLarge}" Margin="12">
-    <Grid Margin="16" RowDefinitions="Auto,*,Auto">
-      <!-- 头部：标题 + 汇总 + 刷新 -->
-      <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,10">
-        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <TextBlock Text="🗓 日程" FontSize="16" FontWeight="SemiBold"
-                     Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center" />
-          <Border Background="{DynamicResource BrushPrimaryTint}" CornerRadius="{StaticResource RadiusPill}"
-                  Padding="9,2" VerticalAlignment="Center">
-            <TextBlock Text="{Binding OpenCount, StringFormat='{}{0} 项待完成'}" FontSize="11"
-                       Foreground="{DynamicResource BrushPrimary}" FontWeight="SemiBold" />
+             xmlns:app="clr-namespace:MailHelper.App.Avalonia" x:Class="MailHelper.App.Avalonia.SchedulePage">
+  <UserControl.Resources><app:InverseBoolConverter x:Key="InverseBool" /><app:OverdueBrushConverter x:Key="OverdueBrush" /></UserControl.Resources>
+  <Grid Margin="28,24" MaxWidth="1120" RowDefinitions="Auto,*,Auto">
+    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,24">
+      <StackPanel Spacing="7">
+        <TextBlock Text="留一点从容给截止日" FontSize="11" Foreground="{DynamicResource BrushPrimary}" />
+        <StackPanel Orientation="Horizontal" Spacing="14">
+          <TextBlock Text="日程" FontSize="28" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
+          <Border Background="{DynamicResource BrushPrimaryTint}" CornerRadius="6" Padding="10,5" VerticalAlignment="Center">
+            <TextBlock Text="{Binding OpenCount, StringFormat='{}{0} 项待完成'}" FontSize="12" Foreground="{DynamicResource BrushPrimary}" FontWeight="SemiBold" />
           </Border>
         </StackPanel>
-        <Button Grid.Column="2" Classes="navItem" Content="⟳ 刷新" Command="{Binding RefreshCommand}" />
-      </Grid>
-
-      <!-- 分组列表（已逾期/今天/未来 7 天/更远/已完成·已忽略；空组不渲染） -->
-      <ScrollViewer Grid.Row="1">
-        <Panel>
-          <ItemsControl ItemsSource="{Binding Groups}" IsVisible="{Binding HasItems}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="{x:Type vm:ScheduleGroupViewModel}">
-                <StackPanel Margin="0,6,0,12">
-                  <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2">
-                    <TextBlock Text="{Binding Header}" FontSize="13" FontWeight="SemiBold"
-                               Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center" />
-                    <Border Background="{DynamicResource BrushBadgeBg}" CornerRadius="{StaticResource RadiusPill}"
-                            Padding="7,1" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding HeaderBadge}" FontSize="10"
-                                 Foreground="{DynamicResource BrushTextTertiary}" />
-                    </Border>
-                  </StackPanel>
-                  <ItemsControl ItemsSource="{Binding Rows}" Margin="0,4,0,0">
-                    <ItemsControl.ItemTemplate>
-                      <DataTemplate DataType="{x:Type vm:ScheduleItemRowViewModel}">
-                        <Border Background="{DynamicResource BrushSurfaceAlt}" CornerRadius="{StaticResource RadiusMedium}"
-                                Padding="12,9" Margin="0,3">
-                          <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
-                              <StackPanel Orientation="Horizontal" Spacing="7">
-                                <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource BrushTextPrimary}"
-                                           TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                <Border Background="{DynamicResource BrushBadgeBg}"
-                                        CornerRadius="{StaticResource RadiusPill}" Padding="7,1"
-                                        VerticalAlignment="Center">
-                                  <TextBlock Text="{Binding CourseDisplay}" FontSize="10"
-                                             Foreground="{DynamicResource BrushTextSecondary}" />
-                                </Border>
-                              </StackPanel>
-                              <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Text="{Binding DueText}" FontSize="12"
-                                           Foreground="{DynamicResource BrushTextSecondary}"
-                                           VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding RelativeText}" FontSize="12" FontWeight="SemiBold"
-                                           VerticalAlignment="Center"
-                                           Foreground="{Binding IsOverdue, Converter={StaticResource OverdueBrush}}" />
-                                <TextBlock Text="{Binding StatusText}" FontSize="11"
-                                           Foreground="{DynamicResource BrushTextTertiary}" VerticalAlignment="Center"
-                                           IsVisible="{Binding IsOpen, Converter={StaticResource InverseBool}}" />
-                              </StackPanel>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                              <Button Classes="navItem" Content="Canvas ↗" FontSize="11"
-                                      Tag="{Binding Link}" Click="OnOpenLink"
-                                      IsVisible="{Binding HasLink}" />
-                              <Button Classes="navItem" Content="完成" FontSize="11"
-                                      Command="{Binding $parent[UserControl].DataContext.CompleteCommand}"
-                                      CommandParameter="{Binding}"
-                                      IsVisible="{Binding IsOpen}" />
-                              <Button Classes="navItem" Content="忽略" FontSize="11"
-                                      Command="{Binding $parent[UserControl].DataContext.IgnoreCommand}"
-                                      CommandParameter="{Binding}"
-                                      IsVisible="{Binding IsOpen}" />
-                              <Button Classes="navItem" Content="恢复" FontSize="11"
-                                      Command="{Binding $parent[UserControl].DataContext.RestoreCommand}"
-                                      CommandParameter="{Binding}"
-                                      IsVisible="{Binding IsOpen, Converter={StaticResource InverseBool}}" />
-                            </StackPanel>
-                          </Grid>
-                        </Border>
-                      </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                </StackPanel>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-          <!-- 空态（05 §6） -->
-          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6"
-                      IsVisible="{Binding HasItems, Converter={StaticResource InverseBool}}">
-            <TextBlock Text="🗓" FontSize="34" HorizontalAlignment="Center" />
-            <TextBlock Classes="placeholderText" TextWrapping="Wrap" TextAlignment="Center"
-                       Text="暂无日程——Canvas 作业 DDL 会在每轮同步后自动出现在这里" />
-          </StackPanel>
-        </Panel>
-      </ScrollViewer>
-
-      <TextBlock Grid.Row="2" Classes="statusText" Text="{Binding LastSyncText}" Margin="0,8,0,0" />
+        <TextBlock Text="Canvas 作业截止日期自动汇集在这里。完成一项，就少一件挂心的事。" FontSize="13" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap" />
+      </StackPanel>
+      <Button Grid.Column="1" Classes="navItem" Content="⟳ 刷新" Padding="16,9" Margin="20,0,0,0" VerticalAlignment="Center" Command="{Binding RefreshCommand}" />
     </Grid>
-  </Border>
+    <Panel Grid.Row="1">
+      <ScrollViewer IsVisible="{Binding HasItems}" HorizontalScrollBarVisibility="Disabled">
+        <ItemsControl ItemsSource="{Binding Groups}" Margin="0,0,4,0"><ItemsControl.ItemTemplate>
+          <DataTemplate DataType="{x:Type vm:ScheduleGroupViewModel}">
+            <StackPanel Margin="0,0,0,22">
+              <Grid ColumnDefinitions="*,Auto" Margin="2,0,2,10">
+                <TextBlock Text="{Binding Header}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
+                <TextBlock Grid.Column="1" Text="{Binding HeaderBadge}" FontSize="12" Foreground="{DynamicResource BrushTextTertiary}" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding Rows}"><ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type vm:ScheduleItemRowViewModel}">
+                  <Border Background="{DynamicResource BrushSurface}" CornerRadius="12" Padding="20,16" Margin="0,0,0,8" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="1">
+                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,16,10" ToolTip.Tip="{Binding Title}" />
+                      <Border Grid.Column="1" Background="{DynamicResource BrushPrimaryTint}" CornerRadius="6" Padding="9,5" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding RelativeText}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding IsOverdue, Converter={StaticResource OverdueBrush}}" />
+                      </Border>
+                      <StackPanel Grid.Row="1" Spacing="5" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{Binding CourseDisplay}" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap" />
+                        <WrapPanel>
+                          <TextBlock Text="{Binding DueText}" FontSize="12" Foreground="{DynamicResource BrushTextTertiary}" />
+                          <TextBlock Text="{Binding StatusText}" FontSize="12" Foreground="{DynamicResource BrushTextTertiary}" Margin="10,0,0,0" IsVisible="{Binding IsOpen, Converter={StaticResource InverseBool}}" />
+                        </WrapPanel>
+                      </StackPanel>
+                      <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <Button Classes="navItem" Content="Canvas ↗" Padding="10,6" Click="OnOpenLink" Tag="{Binding Link}" IsVisible="{Binding HasLink}" />
+                        <Button Classes="primaryAction" Content="完成" Padding="12,6" Command="{Binding $parent[UserControl].DataContext.CompleteCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsOpen}" />
+                        <Button Classes="navItem" Content="忽略" Padding="10,6" Command="{Binding $parent[UserControl].DataContext.IgnoreCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsOpen}" />
+                        <Button Classes="navItem" Content="恢复" Padding="12,6" Command="{Binding $parent[UserControl].DataContext.RestoreCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsOpen, Converter={StaticResource InverseBool}}" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate></ItemsControl>
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate></ItemsControl>
+      </ScrollViewer>
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400" Margin="32" Spacing="10" IsVisible="{Binding HasItems, Converter={StaticResource InverseBool}}">
+        <Border Width="64" Height="64" Background="{DynamicResource BrushPrimaryTint}" CornerRadius="18" HorizontalAlignment="Center" Margin="0,0,0,10">
+          <Path Data="M 5,8 L 27,8 27,28 5,28 Z M 10,4 L 10,12 M 22,4 L 22,12 M 5,16 L 27,16 M 11,22 L 14,25 21,19" Width="28" Height="28" Stretch="Uniform" Stroke="{DynamicResource BrushPrimary}" StrokeThickness="1.5" VerticalAlignment="Center" HorizontalAlignment="Center" />
+        </Border>
+        <TextBlock Text="暂时没有待安排的事" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" />
+        <TextBlock Text="同步邮箱后，识别到的 Canvas 作业截止日期会自动出现在这里。" FontSize="13" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap" TextAlignment="Center" />
+      </StackPanel>
+    </Panel>
+    <TextBlock Grid.Row="2" Classes="statusText" Text="{Binding LastSyncText}" Margin="2,12,0,0" FontSize="11" />
+  </Grid>
 </UserControl>

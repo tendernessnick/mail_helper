@@ -42,6 +42,14 @@ public partial class RulesPage : UserControl
         ShowEditDialog(draft, isNew: true);
     }
 
+    private void OnEditClick(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is RuleRowViewModel { IsBuiltin: false } row)
+        {
+            ShowEditDialog(row.Rule, isNew: false);
+        }
+    }
+
     private void OnDeleteClick(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is RuleRowViewModel row)

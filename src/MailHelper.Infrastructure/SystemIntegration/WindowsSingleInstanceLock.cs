@@ -20,6 +20,13 @@ public sealed class WindowsSingleInstanceLock(string? mutexName = null, string? 
     public const string MutexName = "Local\\MailHelper-SingleInstance";
     public const string PipeName = "MailHelper-SingleInstance-Pipe";
 
+    public static (string MutexName, string PipeName) GetIsolatedNames(string dataDirectory)
+    {
+        var path = Path.GetFullPath(dataDirectory).TrimEnd(Path.DirectorySeparatorChar).ToUpperInvariant();
+        var suffix = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(path)))[..16];
+        return ($"Local\\MailHelper-Dev-{suffix}", $"MailHelper-Dev-{suffix}-Pipe");
+    }
+
     private readonly string _mutexName = mutexName ?? MutexName;
     private readonly string _pipeName = pipeName ?? PipeName;
 

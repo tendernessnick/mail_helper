@@ -3,32 +3,32 @@
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!--
       S13-C 设计令牌（prompts/S13 §B）：全部控件样式只引用此字典，不留魔法数。
-      色板基线 = Fluent（05 章 §5.1 语义色保留），层级化背景 + 主色 #0F6CBD。
+      色板基线 = Fluent（05 章 §5.1 语义色保留），层级化背景 + 主色 #17786B。
     -->
 
     <!-- ============ 色板 ============ -->
-    <Color x:Key="ColorPrimary">#0F6CBD</Color>
-    <Color x:Key="ColorPrimaryDeep">#0C5AA0</Color>
-    <Color x:Key="ColorPrimaryTint">#EFF6FC</Color>
+    <Color x:Key="ColorPrimary">#17786B</Color>
+    <Color x:Key="ColorPrimaryDeep">#116356</Color>
+    <Color x:Key="ColorPrimaryTint">#E5F0E9</Color>
     <Color x:Key="ColorAccentWarning">#F7630C</Color>
     <Color x:Key="ColorAccentDanger">#D13438</Color>
 
     <SolidColorBrush x:Key="BrushPrimary" Color="{StaticResource ColorPrimary}" />
     <SolidColorBrush x:Key="BrushPrimaryHover" Color="{StaticResource ColorPrimaryDeep}" />
     <SolidColorBrush x:Key="BrushPrimaryTint" Color="{StaticResource ColorPrimaryTint}" />
-    <SolidColorBrush x:Key="BrushWindowBg" Color="#F5F7FA" />
+    <SolidColorBrush x:Key="BrushWindowBg" Color="#F5F4EF" />
     <SolidColorBrush x:Key="BrushSurface" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="BrushSurfaceAlt" Color="#FAFBFC" />
+    <SolidColorBrush x:Key="BrushSurfaceAlt" Color="#F8F9F5" />
     <SolidColorBrush x:Key="BrushTopBar" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="BrushDivider" Color="#E5E9EF" />
-    <SolidColorBrush x:Key="BrushTextPrimary" Color="#1B1F26" />
-    <SolidColorBrush x:Key="BrushTextSecondary" Color="#5A6270" />
-    <SolidColorBrush x:Key="BrushTextTertiary" Color="#8C93A0" />
-    <SolidColorBrush x:Key="BrushRowHover" Color="#F0F5FB" />
-    <SolidColorBrush x:Key="BrushRowSelected" Color="#E1EEFA" />
-    <SolidColorBrush x:Key="BrushUnreadBg" Color="#EAF2FB" />
-    <SolidColorBrush x:Key="BrushUnreadDot" Color="#0F6CBD" />
-    <SolidColorBrush x:Key="BrushBadgeBg" Color="#E9EDF3" />
+    <SolidColorBrush x:Key="BrushDivider" Color="#E2E6DF" />
+    <SolidColorBrush x:Key="BrushTextPrimary" Color="#202B2B" />
+    <SolidColorBrush x:Key="BrushTextSecondary" Color="#66736D" />
+    <SolidColorBrush x:Key="BrushTextTertiary" Color="#748079" />
+    <SolidColorBrush x:Key="BrushRowHover" Color="#EDF2EB" />
+    <SolidColorBrush x:Key="BrushRowSelected" Color="#E5F0E9" />
+    <SolidColorBrush x:Key="BrushUnreadBg" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="BrushUnreadDot" Color="#17786B" />
+    <SolidColorBrush x:Key="BrushBadgeBg" Color="#E2E8DE" />
     <SolidColorBrush x:Key="BrushDanger" Color="#D13438" />
 
     <!-- 类别色（左栏图标底/头像fallback；07 类别语义色） -->
@@ -37,21 +37,22 @@
     <SolidColorBrush x:Key="BrushCatAdmin" Color="#7C5CDB" />
     <SolidColorBrush x:Key="BrushCatFinance" Color="#D97706" />
     <SolidColorBrush x:Key="BrushCatAnnounce" Color="#0E7490" />
-    <SolidColorBrush x:Key="BrushCatSubscription" Color="#8C93A0" />
+    <SolidColorBrush x:Key="BrushCatSubscription" Color="#748079" />
     <SolidColorBrush x:Key="BrushCatOther" Color="#64748B" />
 
+    <SolidColorBrush x:Key="BrushSidebar" Color="#EDEFE8" />
     <!-- ============ 字体 ============ -->
     <FontFamily x:Key="FontApp">Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI</FontFamily>
     <FontFamily x:Key="FontAppDisplay">Segoe UI Variable Display, Segoe UI Semibold, Microsoft YaHei UI</FontFamily>
     <sys:Double x:Key="FontSizeCaption">11</sys:Double>
-    <sys:Double x:Key="FontSizeBody">13</sys:Double>
+    <sys:Double x:Key="FontSizeBody">13.5</sys:Double>
     <sys:Double x:Key="FontSizeRow">14</sys:Double>
-    <sys:Double x:Key="FontSizeTitle">18</sys:Double>
+    <sys:Double x:Key="FontSizeTitle">22</sys:Double>
 
     <!-- ============ 圆角 ============ -->
     <CornerRadius x:Key="RadiusSmall">4</CornerRadius>
-    <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
-    <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
+    <CornerRadius x:Key="RadiusMedium">10</CornerRadius>
+    <CornerRadius x:Key="RadiusLarge">16</CornerRadius>
     <CornerRadius x:Key="RadiusPill">999</CornerRadius>
 
     <!-- ============ 基础文本 ============ -->
@@ -83,6 +84,10 @@
                                           RecognizesAccessKey="True" />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource BrushPrimary}" />
+                            <Setter TargetName="Bg" Property="BorderThickness" Value="2" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="Opacity" Value="0.9" />
                         </Trigger>
@@ -99,6 +104,7 @@
     </Style>
 
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource AppButtonBase}">
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Background" Value="{StaticResource BrushPrimary}" />
         <Setter Property="Foreground" Value="White" />
         <Setter Property="FontWeight" Value="SemiBold" />
@@ -122,6 +128,10 @@
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource BrushPrimary}" />
+                            <Setter TargetName="Bg" Property="BorderThickness" Value="2" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushRowHover}" />
                         </Trigger>
@@ -139,6 +149,8 @@
 
     <!-- ============ 圆角输入框 ============ -->
     <Style x:Key="RoundedTextBox" TargetType="TextBox">
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="MinHeight" Value="38" />
         <Setter Property="FontFamily" Value="{StaticResource FontApp}" />
         <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
@@ -154,12 +166,16 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="{StaticResource RadiusMedium}">
-                        <ScrollViewer x:Name="PART_ContentHost" Margin="10,0,6,0"
+                        <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
                                       VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource BrushPrimary}" />
+                            <Setter TargetName="Bg" Property="BorderThickness" Value="2" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="BorderBrush" Value="#C7D2E3" />
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="#BDCABD" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="White" />
@@ -182,7 +198,7 @@
                 <ControlTemplate TargetType="CheckBox">
                     <StackPanel Orientation="Horizontal" Background="Transparent">
                         <Border x:Name="Box" Width="18" Height="18" CornerRadius="5"
-                                Background="White" BorderBrush="#C7D2E3" BorderThickness="1"
+                                Background="{StaticResource BrushSurface}" BorderBrush="#BDCABD" BorderThickness="1"
                                 VerticalAlignment="Center">
                             <Path x:Name="Check" Data="M3,8 L7,11.5 L13,4.5" Stroke="White" StrokeThickness="2"
                                   StrokeStartLineCap="Round" StrokeEndLineCap="Round"
@@ -197,6 +213,10 @@
                             <Setter TargetName="Box" Property="Background" Value="{StaticResource BrushPrimary}" />
                             <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource BrushPrimary}" />
                             <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource BrushPrimary}" />
+                            <Setter TargetName="Box" Property="BorderThickness" Value="2" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource BrushPrimary}" />
@@ -213,7 +233,7 @@
         <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
         <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
         <Setter Property="Cursor" Value="Hand" />
-        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Focusable" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
@@ -222,6 +242,10 @@
                         <ContentPresenter x:Name="Text" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource BrushPrimary}" />
+                            <Setter TargetName="Bg" Property="BorderThickness" Value="2" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushRowHover}" />
                         </Trigger>
@@ -241,29 +265,18 @@
         <Setter Property="FontFamily" Value="{StaticResource FontApp}" />
         <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
         <Setter Property="Padding" Value="0" />
-        <Setter Property="Margin" Value="6,0,6,2" />
+        <Setter Property="Margin" Value="7,2" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="Bg" Background="Transparent" CornerRadius="{StaticResource RadiusMedium}">
-                        <ContentPresenter />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushRowHover}" />
-                        </Trigger>
-                        <!-- S19：未读行淡蓝底色（置于选中触发器之前，选中态仍优先） -->
-                        <DataTrigger Binding="{Binding IsRead}" Value="False">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushUnreadBg}" />
-                        </DataTrigger>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushRowSelected}" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem">
+            <Border x:Name="Bg" Background="Transparent" CornerRadius="10" BorderBrush="Transparent" BorderThickness="1">
+                <ContentPresenter />
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushRowHover}" /></Trigger>
+                <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushRowSelected}" /><Setter TargetName="Bg" Property="BorderBrush" Value="#C8DBCE" /></Trigger>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource BrushPrimary}" /></Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value></Setter>
     </Style>
 
     <Style x:Key="CategoryListItem" TargetType="ListBoxItem">
@@ -279,6 +292,10 @@
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource BrushPrimary}" />
+                            <Setter TargetName="Bg" Property="BorderThickness" Value="2" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bg" Property="Background" Value="{StaticResource BrushRowHover}" />
                         </Trigger>

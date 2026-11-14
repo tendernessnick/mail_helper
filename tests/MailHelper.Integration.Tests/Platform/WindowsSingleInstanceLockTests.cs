@@ -11,6 +11,17 @@ namespace MailHelper.Integration.Tests;
 /// 既不与 UiSmoke（拉起真实 App 抢全局互斥）互为死锁对手，也不受用户本机运行中的安装版干扰。</summary>
 public class WindowsSingleInstanceLockTests
 {
+    [Fact]
+    public void IsolatedNames_SeparateDevelopmentFromInstalledAndOtherDataDirectories()
+    {
+        var first = WindowsSingleInstanceLock.GetIsolatedNames(Path.Combine(Path.GetTempPath(), "mh-design-a"));
+        var second = WindowsSingleInstanceLock.GetIsolatedNames(Path.Combine(Path.GetTempPath(), "mh-design-b"));
+        first.Should().NotBe(second);
+        first.MutexName.Should().NotBe(WindowsSingleInstanceLock.MutexName);
+        first.PipeName.Should().NotBe(WindowsSingleInstanceLock.PipeName);
+        var same = WindowsSingleInstanceLock.GetIsolatedNames(Path.Combine(Path.GetTempPath(), "mh-design-a"));
+        same.Should().Be(first);
+    }
     private static (string MutexName, string PipeName) UniqueNames() =>
         ($"Local\\mh-test-{Guid.NewGuid():N}", $"mh-test-pipe-{Guid.NewGuid():N}");
 

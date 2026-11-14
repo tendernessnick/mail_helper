@@ -66,6 +66,20 @@ public sealed class MainViewModelTests : IDisposable
         }
     }
 
+    [Theory]
+    [InlineData(false, "#FFFFFF", "#202B2B")]
+    [InlineData(true, "#202D26", "#EEF3EB")]
+    public async Task Reader_UsesSelectedPaperTheme_AndEscapesPreview(bool dark, string paper, string ink)
+    {
+        _vm.ReaderUsesDarkColors = dark;
+        var row = MailItemViewModel.From(Message(1) with { BodyPreview = "<script>unsafe</script> & text" }, DateTime.UtcNow);
+        var html = await _vm.BuildReaderHtmlAsync(row, CancellationToken.None);
+        html.Should().Contain(paper).And.Contain(ink).And.Contain("&lt;script&gt;unsafe&lt;/script&gt; &amp; text");
+        html.Should().NotContain("<script>");
+        row.FromAddress.Should().Be("sender@hku.hk");
+        row.ReceivedFullText.Should().Contain("2026-");
+    }
+
     [Fact]
     public async Task LargeInbox_LoadsMore_PreservesSelection_AndUsesGlobalUnreadTotal()
     {

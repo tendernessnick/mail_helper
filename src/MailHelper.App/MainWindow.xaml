@@ -4,11 +4,10 @@
         xmlns:app="clr-namespace:MailHelper.App"
         xmlns:vm="clr-namespace:MailHelper.ViewModels;assembly=MailHelper.ViewModels"
         xmlns:wv="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
-        Title="MailHelper" Height="780" Width="1320" MinWidth="940" MinHeight="580"
-        WindowStartupLocation="CenterScreen"
-        Icon="pack://application:,,,/Assets/app.ico"
-        Background="{StaticResource BrushWindowBg}"
-        FontFamily="{StaticResource FontApp}">
+        Title="MailHelper" Height="820" Width="1360" MinWidth="980" MinHeight="620"
+        WindowStartupLocation="CenterScreen" Icon="pack://application:,,,/Assets/app.ico"
+        Background="{StaticResource BrushWindowBg}" FontFamily="{StaticResource FontApp}"
+        Foreground="{StaticResource BrushTextPrimary}" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
     <Window.Resources>
         <app:ImportanceToBrushConverter x:Key="ImportanceBrush" />
         <app:CategoryToBrushConverter x:Key="CategoryBrush" />
@@ -20,381 +19,157 @@
         <app:CountToUnreadNameConverter x:Key="UnreadName" />
         <app:InverseBoolConverter x:Key="InverseBool" />
         <app:InverseBoolToVisibilityConverter x:Key="InverseBoolVis" />
-
-        <!-- 邮件行（S13-C 重设计）：类别色头像 + 未读点 + 双行排版 + 时间右对齐 -->
+        <Geometry x:Key="Envelope">M1,3 L21,3 21,18 1,18 Z M1,4 L11,12 21,4</Geometry>
         <DataTemplate x:Key="MailItemTemplate" DataType="{x:Type vm:MailItemViewModel}">
-            <Border Padding="12,9,12,8">
+            <Grid Margin="13,12">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- 类别色头像：发件人首字母 -->
-                    <Border Width="36" Height="36" CornerRadius="10"
-                            Background="{Binding Category, Converter={StaticResource CategoryBrush}}"
-                            VerticalAlignment="Top">
-                        <TextBlock Text="{Binding Initial}" FontSize="15" FontWeight="SemiBold"
-                                   Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-
-                    <!-- 主体三行：发件人 / 主题 / 预览 -->
-                    <StackPanel Grid.Column="1" Margin="12,0,10,0" VerticalAlignment="Top">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="7" Height="7" Fill="{StaticResource BrushUnreadDot}"
-                                     VerticalAlignment="Center" Margin="0,1,6,0">
-                                <Ellipse.Visibility>
-                                    <Binding Path="IsRead" Converter="{StaticResource InverseBoolVis}" />
-                                </Ellipse.Visibility>
-                            </Ellipse>
-                            <TextBlock Text="{Binding FromDisplay}" FontSize="12" TextTrimming="CharacterEllipsis"
-                                       MaxWidth="360" VerticalAlignment="Center">
-                                <TextBlock.Style>
-                                    <Style TargetType="TextBlock" BasedOn="{StaticResource AppText}">
-                                        <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsRead}" Value="False">
-                                                <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
-                                                <Setter Property="FontWeight" Value="SemiBold" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
-                        <TextBlock Text="{Binding Subject}" FontSize="{StaticResource FontSizeRow}"
-                                   Margin="0,3,0,0" TextTrimming="CharacterEllipsis">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource AppText}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsRead}" Value="False">
-                                            <Setter Property="FontWeight" Value="SemiBold" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                            <Border Background="{Binding Importance, Converter={StaticResource ImportanceBrush}}"
-                                    CornerRadius="4" Padding="5,0" Margin="0,0,6,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding ImportanceText}" FontSize="10.5" Foreground="White"
-                                           FontWeight="SemiBold" Padding="0,1" />
-                            </Border>
-                            <TextBlock Text="📎" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"
-                                       Visibility="{Binding HasAttachments, Converter={StaticResource BoolToVis}}" />
-                            <TextBlock Text="{Binding Preview}" FontSize="12" TextTrimming="CharacterEllipsis"
-                                       VerticalAlignment="Center"
-                                       Foreground="{StaticResource BrushTextTertiary}" />
-                        </StackPanel>
-                    </StackPanel>
-
-                    <!-- 右缘：时间 -->
-                    <TextBlock Grid.Column="2" Text="{Binding ReceivedText}" FontSize="11"
-                               VerticalAlignment="Top" Margin="4,1,0,0"
-                               Foreground="{StaticResource BrushTextTertiary}" />
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <DockPanel Margin="0,0,8,0">
+                        <Ellipse Width="5" Height="5" Fill="{StaticResource BrushPrimary}" Margin="0,0,7,0" VerticalAlignment="Center" Visibility="{Binding IsRead, Converter={StaticResource InverseBoolVis}}"/>
+                        <TextBlock Text="{Binding FromDisplay}" FontSize="12" Foreground="{StaticResource BrushTextSecondary}" TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding ReceivedText}" FontSize="11" Foreground="{StaticResource BrushTextTertiary}"/>
                 </Grid>
-            </Border>
+                <TextBlock Grid.Row="1" Text="{Binding Subject}" FontSize="14" TextTrimming="CharacterEllipsis" Margin="0,6,0,0" ToolTip="{Binding Subject}">
+                    <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource AppText}"><Style.Triggers><DataTrigger Binding="{Binding IsRead}" Value="False"><Setter Property="FontWeight" Value="SemiBold"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                </TextBlock>
+                <TextBlock Grid.Row="2" Text="{Binding Preview}" FontSize="12" Foreground="{StaticResource BrushTextSecondary}" TextTrimming="CharacterEllipsis" Margin="0,5,0,0"/>
+                <DockPanel Grid.Row="3" Margin="0,9,0,0">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding ImportanceLabel}" FontSize="10.5" Foreground="{Binding Importance, Converter={StaticResource ImportanceBrush}}" Margin="8,0,0,0"/>
+                    <TextBlock Text="{Binding CategoryLabel}" FontSize="10.5" Foreground="{StaticResource BrushTextTertiary}" TextTrimming="CharacterEllipsis"/>
+                </DockPanel>
+            </Grid>
         </DataTemplate>
     </Window.Resources>
-
-    <Window.InputBindings>
-        <KeyBinding Modifiers="Control" Key="R" Command="{Binding SyncNowCommand}" />
-    </Window.InputBindings>
-
+    <Window.InputBindings><KeyBinding Modifiers="Control" Key="R" Command="{Binding SyncNowCommand}"/></Window.InputBindings>
     <Grid>
-        <!-- ============ Onboarding（S13-C 精化：居中卡片 + 主行动按钮） ============ -->
-        <Grid Visibility="{Binding IsOnboarding, Converter={StaticResource BoolToVis}}">
-            <Border HorizontalAlignment="Center" VerticalAlignment="Center" Width="460"
-                    Background="{StaticResource BrushSurface}" CornerRadius="{StaticResource RadiusLarge}"
-                    BorderBrush="{StaticResource BrushDivider}" BorderThickness="1" Padding="44,40">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="28" ShadowDepth="6" Opacity="0.12" Color="#1B2A4A" />
-                </Border.Effect>
-                <StackPanel>
-                    <Border Width="72" Height="72" CornerRadius="20" Background="{StaticResource BrushPrimary}"
-                            HorizontalAlignment="Center">
-                        <TextBlock Text="📮" FontSize="34" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <TextBlock Text="MailHelper 邮箱管家" FontSize="22" FontWeight="SemiBold"
-                               FontFamily="{StaticResource FontAppDisplay}" HorizontalAlignment="Center"
-                               Margin="0,18,0,0" />
-                    <TextBlock Text="让港校邮箱里的大事小事，各归其位"
-                               Foreground="{StaticResource BrushTextSecondary}" FontSize="13"
-                               HorizontalAlignment="Center" Margin="0,6,0,26" />
-                    <Button Content="连接学校邮箱" Style="{StaticResource PrimaryButton}" FontSize="15"
-                            Padding="18,10" HorizontalAlignment="Center"
-                            Command="{Binding ConnectCommand}" />
-                    <TextBlock Text="需要本机已安装并登录「经典版 Outlook」（Office 桌面版），MailHelper 经它同步学校邮箱"
-                               Foreground="{StaticResource BrushTextSecondary}" FontSize="11.5"
-                               HorizontalAlignment="Center" Margin="0,14,0,0" TextWrapping="Wrap" MaxWidth="330" />
-                    <CheckBox IsChecked="{Binding PrivacyAccepted}" Style="{StaticResource ModernCheck}"
-                              Margin="0,14,0,0" HorizontalAlignment="Center">
-                        <TextBlock Text="同意《隐私说明》：邮件数据仅保存在本机，分类完全在本地完成，不上传任何服务器"
-                                   TextWrapping="Wrap" MaxWidth="330" />
-                    </CheckBox>
-                    <TextBlock Text="{Binding SyncStatusText}" Foreground="{StaticResource BrushDanger}"
-                               Margin="0,16,0,0" HorizontalAlignment="Center" TextWrapping="Wrap" FontSize="12" />
-                </StackPanel>
-            </Border>
-        </Grid>
-
-        <!-- ============ 三栏主界面（05 §3.2） ============ -->
+        <!-- The product shell remains visible across inbox, schedule, rules and settings. -->
         <Grid Visibility="{Binding IsOnboarding, Converter={StaticResource InvBoolToVis}}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <!-- 导航与检索分两行：最小窗口下仍能完整操作。 -->
-            <Border Grid.Row="0" Background="{StaticResource BrushTopBar}"
-                    BorderBrush="{StaticResource BrushDivider}" BorderThickness="0,0,0,1"
-                    Padding="14,8">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock VerticalAlignment="Center" Margin="2,0,14,0">
-                            <Run Text="📮" FontSize="17" />
-                            <Run Text="MailHelper" FontSize="15" FontWeight="Bold"
-                                 FontFamily="{StaticResource FontAppDisplay}" Foreground="{StaticResource BrushTextPrimary}" />
-                        </TextBlock>
-                        <RadioButton Content="收件箱" GroupName="Nav" IsChecked="{Binding IsInboxView, Mode=OneWay}" Margin="0,0,2,0"
-                                     Padding="14,6" Style="{StaticResource NavTab}"
-                                     AutomationProperties.AutomationId="nav-inbox"
-                                     Command="{Binding ShowInboxCommand}" />
-                        <RadioButton Content="日程" GroupName="Nav" IsChecked="{Binding IsScheduleView, Mode=OneWay}" Margin="0,0,2,0"
-                                     Padding="14,6" Style="{StaticResource NavTab}"
-                                     AutomationProperties.AutomationId="nav-schedule"
-                                     Command="{Binding ShowScheduleCommand}" />
-                        <RadioButton Content="规则" GroupName="Nav" IsChecked="{Binding IsRulesView, Mode=OneWay}" Margin="0,0,2,0"
-                                     Padding="14,6" Style="{StaticResource NavTab}"
-                                     AutomationProperties.AutomationId="nav-rules"
-                                     Command="{Binding ShowRulesCommand}" />
-                        <RadioButton Content="设置" GroupName="Nav" IsChecked="{Binding IsSettingsView, Mode=OneWay}"
-                                     Padding="14,6" Style="{StaticResource NavTab}"
-                                     AutomationProperties.AutomationId="nav-settings"
-                                     Command="{Binding ShowSettingsCommand}" />
+            <Grid.ColumnDefinitions><ColumnDefinition x:Name="LeftColumn" Width="208"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="{StaticResource BrushSidebar}" BorderBrush="{StaticResource BrushDivider}" BorderThickness="0,0,1,0">
+                <Grid Margin="14,26,14,16">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" Margin="8,0,0,28">
+                        <Border Width="32" Height="32" CornerRadius="10" Background="{StaticResource BrushPrimary}"><Path Data="{StaticResource Envelope}" Stroke="{StaticResource BrushSurface}" StrokeThickness="1.5" Width="19" Height="15" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                        <StackPanel Margin="10,0,0,0"><TextBlock Text="MailHelper" FontWeight="SemiBold" FontSize="17"/><TextBlock Text="你的邮件，有序安放" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" Margin="0,3,0,0"/></StackPanel>
                     </StackPanel>
-                    <TextBlock Grid.Column="1" Text="Ctrl+F 搜索 · Ctrl+R 同步 · Esc 清除搜索" FontSize="11"
-                               VerticalAlignment="Center" Foreground="{StaticResource BrushTextTertiary}" />
-                    <Grid Grid.Row="1" Margin="0,9,16,0" VerticalAlignment="Center">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 MinWidth="180" VerticalAlignment="Center" Style="{StaticResource RoundedTextBox}"
-                                 ToolTip="搜索主题、发件人、正文；支持 from:、cat:、p: 筛选"
-                                 AutomationProperties.Name="搜索框" AutomationProperties.AutomationId="search-box">
-                            <TextBox.InputBindings>
-                                <KeyBinding Key="Enter" Command="{Binding SearchCommand}" />
-                            </TextBox.InputBindings>
-                        </TextBox>
-                        <Button Grid.Column="1" Content="搜索" Style="{StaticResource GhostButton}"
-                                Command="{Binding SearchCommand}" Margin="6,0,0,0" />
-                        <Button Grid.Column="2" Content="清除" Style="{StaticResource GhostButton}"
-                                Command="{Binding ClearSearchCommand}" Margin="6,0,0,0"
-                                Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}}" />
-                    </Grid>
-                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,9,0,0">
-                        <CheckBox Content="按时间排序" IsChecked="{Binding SortByDate, Mode=TwoWay}"
-                                  Style="{StaticResource ModernCheck}" VerticalAlignment="Center"
-                                  Margin="0,0,14,0"
-                                  ToolTip="开启按日期排列，同日内重要度优先；关闭按重要度排列" />
-                        <CheckBox Content="仅未读" IsChecked="{Binding UnreadOnly}" Style="{StaticResource ModernCheck}"
-                                  Command="{Binding ToggleUnreadOnlyCommand}" VerticalAlignment="Center"
-                                  Margin="0,0,0,0" />
+                    <StackPanel Grid.Row="1" Margin="0,0,0,20">
+                        <TextBlock Text="工作空间" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" Margin="12,0,0,10"/>
+                        <RadioButton GroupName="Nav" IsChecked="{Binding IsInboxView, Mode=OneWay}" Style="{StaticResource NavTab}" Padding="14,10" Margin="0,2" HorizontalContentAlignment="Left" AutomationProperties.AutomationId="nav-inbox" Command="{Binding ShowInboxCommand}"><StackPanel Orientation="Horizontal"><Path Data="M2,3 L18,3 18,17 2,17 Z M2,12 L7,12 9,15 11,15 13,12 18,12" Stroke="{StaticResource BrushTextSecondary}" StrokeThickness="1.3" Width="16" Height="16" Stretch="Uniform" Margin="0,0,11,0" VerticalAlignment="Center"/><TextBlock Text="收件箱"/></StackPanel></RadioButton>
+                        <RadioButton GroupName="Nav" IsChecked="{Binding IsScheduleView, Mode=OneWay}" Style="{StaticResource NavTab}" Padding="14,10" Margin="0,2" HorizontalContentAlignment="Left" AutomationProperties.AutomationId="nav-schedule" Command="{Binding ShowScheduleCommand}"><StackPanel Orientation="Horizontal"><Path Data="M3,4 L17,4 17,18 3,18 Z M3,8 L17,8 M7,1 L7,6 M13,1 L13,6" Stroke="{StaticResource BrushTextSecondary}" StrokeThickness="1.3" Width="16" Height="16" Stretch="Uniform" Margin="0,0,11,0" VerticalAlignment="Center"/><TextBlock Text="日程"/></StackPanel></RadioButton>
+                        <RadioButton GroupName="Nav" IsChecked="{Binding IsRulesView, Mode=OneWay}" Style="{StaticResource NavTab}" Padding="14,10" Margin="0,2" HorizontalContentAlignment="Left" AutomationProperties.AutomationId="nav-rules" Command="{Binding ShowRulesCommand}"><StackPanel Orientation="Horizontal"><Path Data="M2,5 L18,5 M2,11 L18,11 M2,17 L18,17 M6,2 L6,8 M13,8 L13,14 M8,14 L8,20" Stroke="{StaticResource BrushTextSecondary}" StrokeThickness="1.3" Width="16" Height="16" Stretch="Uniform" Margin="0,0,11,0" VerticalAlignment="Center"/><TextBlock Text="规则"/></StackPanel></RadioButton>
+                        <RadioButton GroupName="Nav" IsChecked="{Binding IsSettingsView, Mode=OneWay}" Style="{StaticResource NavTab}" Padding="14,10" Margin="0,2" HorizontalContentAlignment="Left" AutomationProperties.AutomationId="nav-settings" Command="{Binding ShowSettingsCommand}"><StackPanel Orientation="Horizontal"><Path Data="M3,3 L17,3 17,17 3,17 Z M10,6 L10,14 M6,10 L14,10" Stroke="{StaticResource BrushTextSecondary}" StrokeThickness="1.3" Width="16" Height="16" Stretch="Uniform" Margin="0,0,11,0" VerticalAlignment="Center"/><TextBlock Text="设置"/></StackPanel></RadioButton>
                     </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- 收件箱（三栏） -->
-            <Grid Grid.Row="1" Visibility="{Binding IsInboxView, Converter={StaticResource BoolToVis}}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition x:Name="LeftColumn" Width="228" MinWidth="170" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition x:Name="MiddleColumn" Width="3*" MinWidth="280" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition x:Name="RightColumn" Width="2*" MinWidth="280" />
-                </Grid.ColumnDefinitions>
-
-                <!-- 左栏：类别导航（S13-C：图标块 + 徽章） -->
-                <Border Grid.Column="0" Background="{StaticResource BrushSurface}"
-                        BorderBrush="{StaticResource BrushDivider}" BorderThickness="0,0,1,0">
-                    <ListBox ItemsSource="{Binding Categories}"
-                             SelectedItem="{Binding SelectedCategory, Mode=TwoWay}"
-                             BorderThickness="0" Background="Transparent"
-                             ItemContainerStyle="{StaticResource CategoryListItem}"
-                             AutomationProperties.Name="类别导航"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             Margin="0,8">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="6,5" Height="30">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border Width="26" Height="26" CornerRadius="7" VerticalAlignment="Center"
-                                            Background="{Binding CategoryId, Converter={StaticResource CategoryBrush}}">
-                                        <ContentControl Content="{Binding Icon}" FontSize="13"
-                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                        Focusable="False" />
-                                    </Border>
-                                    <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="13" Margin="9,0,4,0"
-                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                    <Border Grid.Column="2" Style="{StaticResource CategoryBadge}" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Count, Converter={StaticResource CountBadge}}"
-                                                   FontSize="11" HorizontalAlignment="Center"
-                                                   Foreground="{StaticResource BrushTextSecondary}"
-                                                   AutomationProperties.AutomationId="unread-badge"
-                                                   AutomationProperties.Name="{Binding Count, Converter={StaticResource UnreadName}}" />
-                                    </Border>
+                    <Grid Grid.Row="2" Visibility="{Binding IsInboxView, Converter={StaticResource BoolToVis}}">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <TextBlock Text="邮件分类" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" Margin="12,0,0,9"/>
+                        <ListBox Grid.Row="1" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory, Mode=TwoWay}" BorderThickness="0" Background="Transparent" ItemContainerStyle="{StaticResource CategoryListItem}" AutomationProperties.Name="类别导航" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate><DataTemplate>
+                                <Grid Margin="9,8">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <Ellipse Width="6" Height="6" Fill="{Binding CategoryId, Converter={StaticResource CategoryBrush}}" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Label}" ToolTip="{Binding Label}" FontSize="12" Margin="9,0,5,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Count, Converter={StaticResource CountBadge}}" FontSize="11" VerticalAlignment="Center" Foreground="{StaticResource BrushTextSecondary}" AutomationProperties.AutomationId="unread-badge" AutomationProperties.Name="{Binding Count, Converter={StaticResource UnreadName}}"/>
                                 </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Border>
-
-                <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="Transparent" />
-
-                <!-- 中栏：邮件列表（虚拟化 + 圆角行） -->
-                <Grid Grid.Column="2" Background="{StaticResource BrushSurface}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0">
-                    <TextBlock Text="{Binding ListSummaryText}" Margin="12,8,12,6" FontSize="11"
-                               Foreground="{StaticResource BrushTextSecondary}" TextTrimming="CharacterEllipsis"
-                               AutomationProperties.AutomationId="list-summary" />
-                    <ProgressBar Height="2.5" IsIndeterminate="True" BorderThickness="0"
-                                 Foreground="{StaticResource BrushPrimary}"
-                                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+                            </DataTemplate></ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                    <StackPanel Grid.Row="3" Margin="5,14,5,0">
+                        <Button Content="立即同步" Command="{Binding SyncNowCommand}" Style="{StaticResource PrimaryButton}" Padding="12,10"/>
+                        <TextBlock Text="{Binding SyncStatusText}" FontSize="11" Foreground="{StaticResource BrushTextSecondary}" Margin="2,10,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="本地分类 · 隐私优先" FontSize="10" Foreground="{StaticResource BrushTextTertiary}" Margin="2,6,0,0"/>
                     </StackPanel>
-                    <ListBox Grid.Row="1" ItemsSource="{Binding Mails}" SelectedItem="{Binding SelectedMail, Mode=TwoWay}"
-                             ItemTemplate="{StaticResource MailItemTemplate}"
-                             ItemContainerStyle="{StaticResource MailListItem}"
-                             BorderThickness="0" Background="Transparent"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                             VirtualizingPanel.IsVirtualizing="True"
-                             VirtualizingPanel.VirtualizationMode="Recycling"
-                             AutomationProperties.Name="邮件列表" />
-                    <!-- 空态（05 §6） -->
-                    <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
-                                Visibility="{Binding Mails.Count, Converter={StaticResource CountToEmptyVis}}">
-                        <Border Width="64" Height="64" CornerRadius="18" Background="{StaticResource BrushPrimaryTint}"
-                                HorizontalAlignment="Center">
-                            <TextBlock Text="🗂" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <TextBlock Text="{Binding EmptyStateText}" Foreground="{StaticResource BrushTextSecondary}"
-                                   HorizontalAlignment="Center" Margin="18,12,18,0" FontSize="13"
-                                   TextWrapping="Wrap" TextAlignment="Center" MaxWidth="300" />
-                    </StackPanel>
-                    <Button Grid.Row="2" Content="继续加载" Command="{Binding LoadMoreCommand}"
-                            Style="{StaticResource GhostButton}" Margin="12,6" Padding="12,7"
-                            AutomationProperties.AutomationId="load-more"
-                            Visibility="{Binding HasMore, Converter={StaticResource BoolToVis}}" />
                 </Grid>
-
-                <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="Transparent" />
-
-                <!-- 右栏：阅读窗格（WebView2 沙箱，禁脚本） -->
-                <Grid Grid.Column="4" Background="{StaticResource BrushSurface}">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0" Margin="18,14,18,8" DataContext="{Binding SelectedMail}"
-                                Visibility="{Binding SelectedMail, Converter={StaticResource NullToCollapsed}}">
-                        <TextBlock FontSize="{StaticResource FontSizeTitle}" FontWeight="SemiBold"
-                                   FontFamily="{StaticResource FontAppDisplay}"
-                                   TextWrapping="Wrap" Text="{Binding Subject}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,2">
-                            <Border Width="26" Height="26" CornerRadius="8" VerticalAlignment="Center"
-                                    Background="{Binding Category, Converter={StaticResource CategoryBrush}}">
-                                <TextBlock Text="{Binding Initial}" FontSize="12" FontWeight="SemiBold"
-                                           Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <Border Background="{Binding Importance, Converter={StaticResource ImportanceBrush}}"
-                                    CornerRadius="4" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding ImportanceText}" FontSize="10.5" Foreground="White"
-                                           FontWeight="SemiBold" Padding="0,1" />
-                            </Border>
-                            <TextBlock Foreground="{StaticResource BrushTextSecondary}" FontSize="12"
-                                       Margin="10,0,0,0" VerticalAlignment="Center"
-                                       Text="{Binding FromDisplay, Mode=OneWay}" TextTrimming="CharacterEllipsis"
-                                       MaxWidth="420" />
-                        </StackPanel>
-                        <Separator Margin="0,12,0,0" Background="{StaticResource BrushDivider}" />
-                    </StackPanel>
-                    <wv:WebView2 x:Name="Reader" Grid.Row="1" DefaultBackgroundColor="White" />
-                    <!-- RISK-04 降级：WebView2 初始化失败时以提示替代白屏（完整纯文本模式随 S9 设置页） -->
-                    <TextBlock x:Name="ReaderFallback" Grid.Row="1" Visibility="Collapsed"
-                               Margin="18,12" TextWrapping="Wrap"
-                               Foreground="{StaticResource BrushTextTertiary}" />
-                    <Border Grid.Row="2" Background="{StaticResource BrushSurfaceAlt}"
-                            BorderBrush="{StaticResource BrushDivider}" BorderThickness="0,1,0,0"
-                            Padding="14,7">
-                        <DockPanel>
-                            <Button x:Name="ChangeCategoryButton" DockPanel.Dock="Left" Content="改为…"
-                                    Style="{StaticResource GhostButton}" Padding="12,4" Margin="0,0,10,0"
-                                    FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource BrushPrimary}"
-                                    Click="OnChangeCategoryClick"
-                                    Visibility="{Binding SelectedMail, Converter={StaticResource NullToCollapsed}}" />
-                            <TextBlock Text="改判立即生效并自动学习同发件人规则；外链在本窗格内不可跳转（安全设置）"
-                                       FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                                       Foreground="{StaticResource BrushTextTertiary}" />
-                        </DockPanel>
-                    </Border>
-                </Grid>
-            </Grid>
-
-            <!-- 规则管理（FR-10 / 05 §3.3）、设置（FR-03 / 05 §3.4）与日程（S18/CHG-015）：DI 页面经代码后置挂载 -->
-            <ContentControl Grid.Row="1" x:Name="ScheduleHost"
-                            Visibility="{Binding IsScheduleView, Converter={StaticResource BoolToVis}}" />
-            <ContentControl Grid.Row="1" x:Name="RulesHost"
-                            Visibility="{Binding IsRulesView, Converter={StaticResource BoolToVis}}" />
-            <ContentControl Grid.Row="1" x:Name="SettingsHost"
-                            Visibility="{Binding IsSettingsView, Converter={StaticResource BoolToVis}}" />
-
-            <!-- 状态栏（S13-C：状态灯 + 主行动按钮） -->
-            <Border Grid.Row="2" Background="{StaticResource BrushTopBar}"
-                    BorderBrush="{StaticResource BrushDivider}" BorderThickness="0,1,0,0"
-                    Padding="14,6">
-                <DockPanel>
-                    <Button Content="⟳ 立即同步" DockPanel.Dock="Right" Style="{StaticResource PrimaryButton}"
-                            Padding="14,5" FontSize="12" Command="{Binding SyncNowCommand}" />
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse Width="8" Height="8" VerticalAlignment="Center" Margin="0,0,7,0">
-                            <Ellipse.Style>
-                                <Style TargetType="Ellipse">
-                                    <Setter Property="Fill" Value="#2E9E5B" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsBusy}" Value="True">
-                                            <Setter Property="Fill" Value="{StaticResource BrushPrimary}" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Ellipse.Style>
-                        </Ellipse>
-                        <TextBlock Text="{Binding SyncStatusText}" VerticalAlignment="Center" FontSize="12"
-                                   Foreground="{StaticResource BrushTextSecondary}" />
-                    </StackPanel>
-                </DockPanel>
             </Border>
+            <Grid Grid.Column="1">
+                <Grid Visibility="{Binding IsInboxView, Converter={StaticResource BoolToVis}}" Margin="24,24,24,20">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <StackPanel Margin="0,0,0,18">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel><TextBlock Text="收件箱" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="把注意力，留给重要的事。" FontSize="12" Foreground="{StaticResource BrushTextSecondary}" Margin="0,6,0,0"/></StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding UnreadTotal}" FontSize="25" FontWeight="SemiBold" Foreground="{StaticResource BrushPrimary}"/>
+                                <TextBlock Text="封未读" FontSize="11" Foreground="{StaticResource BrushTextSecondary}" VerticalAlignment="Center" Margin="8,3,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,20,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <Grid>
+                                <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource RoundedTextBox}" Background="{StaticResource BrushSurface}" Padding="34,10,12,10" ToolTip="搜索主题、发件人或正文；支持 from:、cat:、p:" AutomationProperties.Name="搜索框" AutomationProperties.AutomationId="search-box"><TextBox.InputBindings><KeyBinding Key="Enter" Command="{Binding SearchCommand}"/></TextBox.InputBindings></TextBox>
+                                <Path Data="M5,5 A6,6 0 1 1 5,17 A6,6 0 1 1 5,5 M15,15 L21,21" Stroke="{StaticResource BrushTextTertiary}" StrokeThickness="1.5" Width="15" Height="15" Stretch="Uniform" HorizontalAlignment="Left" Margin="12,0,0,0" IsHitTestVisible="False"/>
+                                <TextBlock Text="搜索邮件…" Foreground="{StaticResource BrushTextTertiary}" VerticalAlignment="Center" Margin="35,0,0,0" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SearchText}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+                            </Grid>
+                            <Button Grid.Column="1" Content="搜索" Command="{Binding SearchCommand}" Style="{StaticResource PrimaryButton}" Margin="10,0,0,0" Padding="18,10"/>
+                            <Button Grid.Column="2" Content="清除" Command="{Binding ClearSearchCommand}" Style="{StaticResource GhostButton}" Margin="8,0,0,0" Visibility="{Binding IsSearchMode, Converter={StaticResource BoolToVis}}"/>
+                        </Grid>
+                    </StackPanel>
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions><ColumnDefinition x:Name="MiddleColumn" Width="350" MinWidth="280"/><ColumnDefinition Width="8"/><ColumnDefinition x:Name="RightColumn" Width="*" MinWidth="300"/></Grid.ColumnDefinitions>
+                        <Border Background="{StaticResource BrushSurface}" CornerRadius="16" BorderBrush="{StaticResource BrushDivider}" BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <StackPanel Margin="18,17,18,12">
+                                    <TextBlock Text="{Binding SelectedCategory.Label}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Text="{Binding ListSummaryText}" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" Margin="0,6,0,12" TextWrapping="Wrap"/>
+                                    <WrapPanel>
+                                        <CheckBox Content="仅未读" IsChecked="{Binding UnreadOnly}" Style="{StaticResource ModernCheck}" Command="{Binding ToggleUnreadOnlyCommand}" Margin="0,0,18,4"/>
+                                        <CheckBox Content="时间优先" IsChecked="{Binding SortByDate, Mode=TwoWay}" Style="{StaticResource ModernCheck}" ToolTip="按收件时间排列；关闭后按重要度排列" Margin="0,0,0,4"/>
+                                    </WrapPanel>
+                                    <ProgressBar Height="2" IsIndeterminate="True" Margin="0,9,0,0" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}"/>
+                                </StackPanel>
+                                <ListBox Grid.Row="1" ItemsSource="{Binding Mails}" SelectedItem="{Binding SelectedMail, Mode=TwoWay}" ItemTemplate="{StaticResource MailItemTemplate}" ItemContainerStyle="{StaticResource MailListItem}" BorderThickness="0" Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" AutomationProperties.Name="邮件列表"/>
+                                <StackPanel Grid.Row="1" VerticalAlignment="Center" Margin="24" Visibility="{Binding Mails.Count, Converter={StaticResource CountToEmptyVis}}"><TextBlock Text="{Binding EmptyStateText}" TextWrapping="Wrap" TextAlignment="Center" Foreground="{StaticResource BrushTextSecondary}"/></StackPanel>
+                                <Button Grid.Row="2" Content="继续加载" Command="{Binding LoadMoreCommand}" Style="{StaticResource GhostButton}" Margin="16,10" Padding="12,8" AutomationProperties.AutomationId="load-more" Visibility="{Binding HasMore, Converter={StaticResource BoolToVis}}"/>
+                            </Grid>
+                        </Border>
+                        <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent" ToolTip="拖动调整阅读空间"/>
+                        <Border Grid.Column="2" Background="{StaticResource BrushSurface}" CornerRadius="16" BorderBrush="{StaticResource BrushDivider}" BorderThickness="1" Padding="1">
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <ScrollViewer MaxHeight="210" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="{Binding SelectedMail, Converter={StaticResource NullToCollapsed}}">
+                                    <StackPanel Margin="26,25,26,10" DataContext="{Binding SelectedMail}">
+                                        <TextBlock Text="{Binding CategoryLabel}" Foreground="{StaticResource BrushPrimary}" FontSize="11" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Subject}" FontSize="23" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,15"/>
+                                        <TextBlock Text="{Binding FromDisplay}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding FromAddress}" FontSize="11" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                        <WrapPanel Margin="0,10,0,0"><TextBlock Text="{Binding ReceivedFullText}" Foreground="{StaticResource BrushTextTertiary}" FontSize="11" Margin="0,0,14,4"/><TextBlock Text="{Binding ImportanceLabel}" Foreground="{Binding Importance, Converter={StaticResource ImportanceBrush}}" FontSize="11"/></WrapPanel>
+                                        <Separator Background="{StaticResource BrushDivider}" Margin="0,12,0,0"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                                <wv:WebView2 x:Name="Reader" Grid.Row="1" DefaultBackgroundColor="White" Visibility="{Binding SelectedMail, Converter={StaticResource NullToCollapsed}}"/>
+                                <TextBlock x:Name="ReaderFallback" Grid.Row="1" Visibility="Collapsed" Margin="26" TextWrapping="Wrap" Foreground="{StaticResource BrushTextSecondary}"/>
+                                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="22" IsHitTestVisible="False"><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SelectedMail}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                                    <Path Data="{StaticResource Envelope}" Stroke="#9AADA0" StrokeThickness="1" Width="42" Height="30" Stretch="Fill" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="读一封，少一点纷扰" FontSize="18" FontWeight="SemiBold" TextAlignment="Center" Margin="0,24,0,10"/>
+                                    <TextBlock Text="选择左侧邮件，查看完整内容。" FontSize="12" Foreground="{StaticResource BrushTextSecondary}" TextAlignment="Center" TextWrapping="Wrap"/>
+                                </StackPanel>
+                                <Border Grid.Row="2" BorderBrush="{StaticResource BrushDivider}" BorderThickness="0,1,0,0" Padding="20,12" Visibility="{Binding SelectedMail, Converter={StaticResource NullToCollapsed}}">
+                                    <WrapPanel><Button x:Name="ChangeCategoryButton" Content="更改分类" Click="OnChangeCategoryClick" Style="{StaticResource GhostButton}" Padding="12,7" Margin="0,0,12,0"/><TextBlock Text="外链请在 Outlook 中打开" FontSize="10.5" Foreground="{StaticResource BrushTextSecondary}" VerticalAlignment="Center"/></WrapPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+                <ContentControl x:Name="ScheduleHost" Visibility="{Binding IsScheduleView, Converter={StaticResource BoolToVis}}"/>
+                <ContentControl x:Name="RulesHost" Visibility="{Binding IsRulesView, Converter={StaticResource BoolToVis}}"/>
+                <ContentControl x:Name="SettingsHost" Visibility="{Binding IsSettingsView, Converter={StaticResource BoolToVis}}"/>
+            </Grid>
+        </Grid>
+        <Grid Visibility="{Binding IsOnboarding, Converter={StaticResource BoolToVis}}" Background="{StaticResource BrushWindowBg}">
+            <Grid HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="820" Margin="40">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="1.2*"/></Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center" Margin="0,0,55,0"><TextBlock Text="MailHelper" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource BrushPrimary}"/><TextBlock Text="让每封邮件，&#10;各归其位。" FontSize="38" FontWeight="SemiBold" Margin="0,26,0,20" LineHeight="54"/><TextBlock Text="课程、机会与生活琐事。&#10;在一个安静的地方，有序安放。" Foreground="{StaticResource BrushTextSecondary}" FontSize="14" LineHeight="25"/><Border Height="3" Width="48" Background="{StaticResource BrushPrimary}" HorizontalAlignment="Left" Margin="0,28,0,0"/></StackPanel>
+                <Border Grid.Column="1" Background="{StaticResource BrushSurface}" BorderBrush="{StaticResource BrushDivider}" BorderThickness="1" CornerRadius="20" Padding="32">
+                    <StackPanel><TextBlock Text="连接你的学校邮箱" FontSize="22" FontWeight="SemiBold"/><TextBlock Text="从已经登录的 Outlook 开始。" FontSize="13" Foreground="{StaticResource BrushTextSecondary}" Margin="0,10,0,26"/>
+                    <TextBlock Text="请先安装并登录经典版 Outlook。邮件在本机分类，无需额外授权。" TextWrapping="Wrap" Foreground="{StaticResource BrushTextSecondary}" LineHeight="23" Margin="0,0,0,18"/>
+                    <CheckBox IsChecked="{Binding PrivacyAccepted}" Style="{StaticResource ModernCheck}" Margin="0,0,0,22"><TextBlock Text="我已了解隐私说明：邮件与分类数据仅保存在本机，不上传服务器。" TextWrapping="Wrap" MaxWidth="275" FontSize="12"/></CheckBox>
+                    <Button Content="连接学校邮箱" Style="{StaticResource PrimaryButton}" Padding="18,13" Command="{Binding ConnectCommand}"/>
+                    <TextBlock Text="{Binding SyncStatusText}" Foreground="{StaticResource BrushDanger}" TextWrapping="Wrap" FontSize="12" Margin="0,14,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </Window>

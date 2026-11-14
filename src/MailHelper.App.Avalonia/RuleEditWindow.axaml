@@ -1,44 +1,35 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="MailHelper.App.Avalonia.RuleEditWindow"
-        Title="规则编辑"
-        Width="420" SizeToContent="Height"
-        CanResize="False"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource BrushWindowBg}">
-  <!-- 规则编辑弹窗（FR-10 / 05 §2 RuleEdit；与 WPF RuleEditDialog 同逻辑） -->
-  <StackPanel Margin="20" Spacing="10">
-    <TextBlock Text="类型" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
-    <ComboBox x:Name="KindBox" HorizontalAlignment="Stretch">
-      <ComboBoxItem Content="发件人地址" />
-      <ComboBoxItem Content="发件人域名" />
-      <ComboBoxItem Content="主题正则" />
-      <ComboBoxItem Content="主题关键词" />
-    </ComboBox>
-
-    <TextBlock Text="模式" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
-    <TextBox x:Name="PatternBox" Watermark="如 moodle.hku.hk / tuition|payment due" />
-
-    <TextBlock Text="目标类别（可空=仅重要度线索）" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
-    <ComboBox x:Name="CategoryBox" HorizontalAlignment="Stretch" />
-
-    <TextBlock Text="重要度建议" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
-    <ComboBox x:Name="ImportanceBox" HorizontalAlignment="Stretch">
-      <ComboBoxItem Content="（无）" />
-      <ComboBoxItem Content="P3" />
-      <ComboBoxItem Content="P2" />
-      <ComboBoxItem Content="P1" />
-      <ComboBoxItem Content="P0" />
-    </ComboBox>
-
-    <TextBlock Text="权重（留空=类型默认）" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
-    <TextBox x:Name="WeightBox" Watermark="8" />
-
-    <CheckBox x:Name="EnabledBox" Content="启用" IsChecked="True" />
-
-    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,6,0,0">
-      <Button Content="取消" Click="OnCancelClick" />
-      <Button Classes="primaryAction" Content="保存" Click="OnSaveClick" />
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="MailHelper.App.Avalonia.RuleEditWindow"
+        Title="规则编辑" Width="500" Height="650" MinWidth="450" MinHeight="500" MaxHeight="760" CanResize="True"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource BrushWindowBg}">
+  <Window.Styles>
+    <Style Selector="TextBlock"><Setter Property="FontSize" Value="13" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" /></Style>
+    <Style Selector="TextBox"><Setter Property="MinHeight" Value="38" /><Setter Property="Margin" Value="0,6,0,18" /></Style>
+    <Style Selector="ComboBox"><Setter Property="MinHeight" Value="38" /><Setter Property="Margin" Value="0,6,0,18" /></Style>
+  </Window.Styles>
+  <Grid Margin="24" RowDefinitions="Auto,*,Auto">
+    <StackPanel Margin="0,0,0,20" Spacing="7">
+      <TextBlock Text="分类偏好" FontSize="11" Foreground="{DynamicResource BrushPrimary}" />
+      <TextBlock Text="设计一条分类规则" FontSize="24" FontWeight="SemiBold" />
+      <TextBlock Text="告诉 MailHelper，什么样的邮件应该去哪里。" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap" />
     </StackPanel>
-  </StackPanel>
+    <Border Grid.Row="1" Background="{DynamicResource BrushSurface}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="1" CornerRadius="12" Padding="18">
+      <ScrollViewer HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="0,0,4,0">
+        <TextBlock Text="匹配方式" FontWeight="SemiBold" />
+        <ComboBox x:Name="KindBox" HorizontalAlignment="Stretch"><ComboBoxItem Content="发件人地址" /><ComboBoxItem Content="发件人域名" /><ComboBoxItem Content="主题正则" /><ComboBoxItem Content="主题关键词" /></ComboBox>
+        <TextBlock Text="匹配内容" FontWeight="SemiBold" />
+        <TextBox x:Name="PatternBox" Watermark="如 moodle.hku.hk / tuition|payment due" />
+        <TextBlock Text="目标类别" FontWeight="SemiBold" />
+        <ComboBox x:Name="CategoryBox" HorizontalAlignment="Stretch" />
+        <TextBlock Text="重要度建议" FontWeight="SemiBold" />
+        <ComboBox x:Name="ImportanceBox" HorizontalAlignment="Stretch"><ComboBoxItem Content="（无）" /><ComboBoxItem Content="P3" /><ComboBoxItem Content="P2" /><ComboBoxItem Content="P1" /><ComboBoxItem Content="P0" /></ComboBox>
+        <TextBlock Text="规则权重 · 留空使用默认值" FontWeight="SemiBold" />
+        <TextBox x:Name="WeightBox" Watermark="8" />
+        <CheckBox x:Name="EnabledBox" Content="保存后启用这条规则" IsChecked="True" Margin="0,0,0,6" />
+      </StackPanel></ScrollViewer>
+    </Border>
+    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="0,20,0,0">
+      <Button Classes="navItem" Content="取消" Padding="20,10" Click="OnCancelClick" />
+      <Button Classes="primaryAction" Content="保存规则" Padding="20,10" Click="OnSaveClick" />
+    </StackPanel>
+  </Grid>
 </Window>

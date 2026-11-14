@@ -7,6 +7,8 @@ using FlaUI.Core.Capturing;
 using FlaUI.Core.Input;
 using FlaUI.UIA3;
 using Microsoft.Data.Sqlite;
+using MailHelper.Infrastructure.Storage;
+using MailHelper.Infrastructure.SystemIntegration;
 using System.Drawing;
 using Xunit;
 using Application = FlaUI.Core.Application;
@@ -19,14 +21,20 @@ namespace MailHelper.Integration.Tests;
 /// WPF 重渲染会使既有 UIA 元素引用失效（COM 0x80040201）——所有探测每轮重找并吞瞬态异常。</summary>
 public class UiSmokeTests
 {
-    [Fact]
-    public void DevFlow_SignIn_ListShows_ClickMarksRead_ScreenshotTaken()
+    [Theory]
+    [InlineData("light")]
+    [InlineData("dark")]
+    public async Task DevFlow_SignIn_ListShows_ClickMarksRead_ScreenshotTaken(string theme)
     {
         // 测试宿主声明 PerMonitorV2 DPI 感知：否则 FlaUI 拿到的是虚拟化矩形，
         // GDI 截图只覆盖高 DPI 物理窗口的左上角（截图像素与 UIA DIP 几何整体错位）
         SetProcessDpiAwarenessContext(new IntPtr(-4));
 
         var dataDir = Path.Combine(Path.GetTempPath(), "mh-ui-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dataDir);
+        var dbPath = Path.Combine(dataDir, "mailhelper.db");
+        MailDatabase.EnsureReady(dbPath);
+        await new SettingsRepository(dbPath).SetAsync("ui.theme", theme, CancellationToken.None);
         var repoRoot = FindRepoRoot();
         // TFM 输出目录可能带 Windows SDK 后缀（net8.0-windows / net8.0-windows10.0.x）：通配取最新构建
         var exePath = Directory.GetFiles(
@@ -199,10 +207,39 @@ public class UiSmokeTests
                 }
 
                 using var capture = Capture.Element(window);
-                capture.ToFile(Path.Combine(screensDir, "s6-inbox.png"));
+                capture.ToFile(Path.Combine(screensDir, theme == "dark" ? "design-inbox-dark.png" : "s6-inbox.png"));
                 return new object();
             }, TimeSpan.FromSeconds(10), "截图");
-            File.Exists(Path.Combine(screensDir, "s6-inbox.png")).Should().BeTrue();
+            File.Exists(Path.Combine(screensDir, theme == "dark" ? "design-inbox-dark.png" : "s6-inbox.png")).Should().BeTrue();
+
+            // 原生 WPF 最小窗验收：使用当前窗口的物理缩放比例，不假设测试机 DPI。
+            Retry<object?>(() =>
+            {
+                var window = FindWindow(automation, process);
+                if (window is null || !window.Patterns.Transform.IsSupported) return null;
+                var original = window.Properties.BoundingRectangle.Value;
+                var scale = original.Width / 1360d;
+                window.Patterns.Transform.Pattern.Resize(980 * scale, 620 * scale);
+                return new object();
+            }, TimeSpan.FromSeconds(10), "调整至最小工作台窗口");
+            Retry<object?>(() =>
+            {
+                var window = FindWindow(automation, process);
+                var search = window?.FindFirstDescendant(cf => cf.ByAutomationId("search-box"));
+                var list = FindListBox(mainWindows, automation);
+                if (window is null || search is null || list is null) return null;
+                var bounds = window.Properties.BoundingRectangle.Value;
+                var searchBounds = search.Properties.BoundingRectangle.Value;
+                var listBounds = list.Properties.BoundingRectangle.Value;
+                searchBounds.Width.Should().BeGreaterThan(150);
+                searchBounds.Left.Should().BeGreaterThanOrEqualTo(bounds.Left);
+                searchBounds.Right.Should().BeLessThanOrEqualTo(bounds.Right);
+                listBounds.Height.Should().BeGreaterThan(150);
+                listBounds.Right.Should().BeLessThanOrEqualTo(bounds.Right);
+                using var capture = Capture.Element(window);
+                capture.ToFile(Path.Combine(screensDir, $"design-inbox-min-{theme}.png"));
+                return new object();
+            }, TimeSpan.FromSeconds(10), "最小窗口搜索与列表可用");
 
             // 已读验证：左栏「收件箱（全部）」未读徽章计数应减少（UC-04 点击标已读 → 未读数联动）
             var unreadAfter = Retry<int?>(() =>
@@ -318,7 +355,7 @@ public class UiSmokeTests
 
             scheduleBadge.Should().Be("2 项待完成", "日程页应显示种子 Canvas DDL 的 2 条待完成（DataContext 接线验证）");
 
-            var scheduleShot = Path.Combine(screensDir, "s18-schedule.png");
+            var scheduleShot = Path.Combine(screensDir, theme == "dark" ? "design-schedule-dark.png" : "s18-schedule.png");
             Retry<object?>(() =>
             {
                 var window = FindWindow(automation, process);
@@ -355,7 +392,7 @@ public class UiSmokeTests
             process.Refresh();
             process.HasExited.Should().BeFalse("关窗后进程应驻留托盘（FR-14 AC3）");
 
-            using (var client = new NamedPipeClientStream(".", "MailHelper-SingleInstance-Pipe", PipeDirection.Out))
+            using (var client = new NamedPipeClientStream(".", WindowsSingleInstanceLock.GetIsolatedNames(dataDir).PipeName, PipeDirection.Out))
             {
                 client.Connect(2000); // EX-TC-07：二次启动路径同款管道
                 var payload = System.Text.Encoding.UTF8.GetBytes("SHOW");

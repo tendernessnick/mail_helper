@@ -619,3 +619,10 @@ WPF RadioButton 命令（本地首次通过有偶然性）——改为 **Automat
 - 新增ViewModels测试工程，纳入sln/slnf；修复Windows上Mac自启契约测试误调用id命令。既有测试不删除不削弱。
 
 方案、验收、边界、回退统一见 `docs/improvements-20261114.md`。源码推送main仅产生既有beta流程；本轮不打正式v版本标签。
+
+
+## S21 —— 2026-11-14 桌面设计改版（CHG-018，开发基线 0.11.0）
+
+先备份并推送mailhelper-before-design-20261114（起点82caee5），离线bundle已verify。按用户要求完整重设计WPF/Avalonia工作台、日程、规则、设置和规则编辑，采用暖纸/松绿/墨色与持久侧栏；实装WPF主题启动应用、完整阅读元信息与纸张配色，修日程Refresh命令名失配和缺失规则编辑入口，补已支持设置，DEV单实例隔离保护现有运行安装。
+
+本地370项测试通过（368非UI+2真WPF浅深主题），含980×620/1280×800、长内容/分类/键盘焦点/设置滚动/实际WebView正文；Core行覆盖94.24%，平台边界通过，保留3个既有Avalonia构造器提示。方案、截图、验证边界与回退见docs/design-20261114.md；未读取真实邮箱、未替换G:/MailHelper安装。源码推送main走现有beta流程，未打stable标签。

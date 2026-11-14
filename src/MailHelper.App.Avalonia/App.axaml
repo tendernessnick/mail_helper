@@ -11,7 +11,12 @@
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
-    <FluentTheme />
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Light" Accent="#17786B" />
+        <ColorPaletteResources x:Key="Dark" Accent="#8BC9AF" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
     <StyleInclude Source="avares://MailHelper.App.Avalonia/Themes/ShellStyles.axaml" />
   </Application.Styles>
 </Application>

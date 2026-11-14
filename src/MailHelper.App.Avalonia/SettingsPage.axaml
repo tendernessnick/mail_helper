@@ -1,118 +1,104 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="MailHelper.App.Avalonia.SettingsPage">
-  <!-- 设置页（FR-03/04/06、05 §3.4 五分组；SettingsViewModel 共享，行为与 WPF 一致） -->
-  <Border Background="{DynamicResource BrushSurface}" CornerRadius="{StaticResource RadiusLarge}" Margin="12">
-    <ScrollViewer>
-      <StackPanel Margin="20" Spacing="14" MaxWidth="640" HorizontalAlignment="Left">
-
-        <!-- 账户 -->
-        <TextBlock Text="账户" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
-        <StackPanel Spacing="4">
-          <TextBlock Text="{Binding AccountEmail}" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}" />
-          <TextBlock Text="{Binding Channel}" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
-          <TextBlock Text="{Binding LastSync}" FontSize="12" Foreground="{DynamicResource BrushTextTertiary}" />
-        </StackPanel>
-        <Button Classes="navItem" Content="清除本地数据（退出并删除本机缓存）" Click="OnClearLocalData" />
-
-        <Border Background="{DynamicResource BrushDivider}" Height="1" />
-
-        <!-- 同步 -->
-        <TextBlock Text="同步" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <TextBlock Text="同步间隔（分钟，1–60）" FontSize="13" VerticalAlignment="Center"
-                     Foreground="{DynamicResource BrushTextSecondary}" />
-          <NumericUpDown Minimum="1" Maximum="60" Increment="1" Width="120"
-                         Value="{Binding IntervalMinutes, Mode=TwoWay}" />
-        </StackPanel>
-        <CheckBox Content="启动时立即同步" IsChecked="{Binding SyncOnStartup, Mode=TwoWay}" />
-
-        <Border Background="{DynamicResource BrushDivider}" Height="1" />
-
-        <!-- 通知 -->
-        <TextBlock Text="通知" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
-        <CheckBox Content="P0 紧急邮件逐封通知" IsChecked="{Binding NotifyP0, Mode=TwoWay}" />
-        <CheckBox Content="P1 重要邮件汇总通知" IsChecked="{Binding NotifyP1, Mode=TwoWay}" />
-
-        <Border Background="{DynamicResource BrushDivider}" Height="1" />
-
-        <!-- 日程与提醒（S18/CHG-015：Canvas DDL 识别；行为与 WPF 一致） -->
-        <TextBlock Text="日程与提醒" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
-        <CheckBox Content="自动识别 Canvas 作业 DDL 并记入日程" IsChecked="{Binding ScheduleEnabled, Mode=TwoWay}" />
-        <CheckBox Content="作业临近截止时弹窗提醒" IsChecked="{Binding ScheduleReminderEnabled, Mode=TwoWay}" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <TextBlock Text="提前提醒（小时，1–168）" FontSize="13" VerticalAlignment="Center"
-                     Foreground="{DynamicResource BrushTextSecondary}" />
-          <NumericUpDown Minimum="1" Maximum="168" Increment="1" Width="120"
-                         Value="{Binding ScheduleReminderHours, Mode=TwoWay}" />
-        </StackPanel>
-
-        <Border Background="{DynamicResource BrushDivider}" Height="1" />
-
-        <!-- 外观 -->
-        <TextBlock Text="外观" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <TextBlock Text="界面语言（重启生效）" FontSize="13" VerticalAlignment="Center"
-                     Foreground="{DynamicResource BrushTextSecondary}" />
-          <ComboBox x:Name="LanguageBox" Width="140" SelectionChanged="OnLanguageChanged">
-            <ComboBoxItem Content="跟随系统" Tag="auto" />
-            <ComboBoxItem Content="简体中文" Tag="zh-CN" />
-            <ComboBoxItem Content="English" Tag="en" />
-          </ComboBox>
-        </StackPanel>
-
-        <Border Background="{DynamicResource BrushDivider}" Height="1" />
-
-        <!-- 自定义类别（S14-C/CHG-012：行为与 WPF 一致） -->
-        <TextBlock Text="自定义类别" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
-        <ItemsControl x:Name="CustomCategoriesList" MaxHeight="160">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate>
-              <StackPanel Orientation="Horizontal" Spacing="8" Margin="2,3">
-                <TextBlock Text="{Binding Icon}" FontSize="14" />
-                <TextBlock Text="{Binding Label}" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}" />
-                <Button Classes="navItem" Content="删除" FontSize="11" Tag="{Binding Id}" Click="OnDeleteCategory" />
-              </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <TextBox x:Name="NewCategoryName" Width="160" Watermark="类别名称" />
-          <TextBox x:Name="NewCategoryIcon" Width="60" Watermark="图标" />
-          <Button Classes="primaryAction" Content="添加类别" Click="OnAddCategory" />
-        </StackPanel>
-
-        <Border Background="{DynamicResource BrushDivider}" Height="1" />
-
-        <!-- 高级 -->
-        <TextBlock Text="高级" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
-        <CheckBox x:Name="AutostartCheck" Content="开机自启动" Checked="OnAutostartChecked" Unchecked="OnAutostartUnchecked" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <TextBlock Text="正文缓存上限（MB）" FontSize="13" VerticalAlignment="Center"
-                     Foreground="{DynamicResource BrushTextSecondary}" />
-          <NumericUpDown Minimum="256" Maximum="8192" Increment="256" Width="140"
-                         Value="{Binding BodyLimitMb, Mode=TwoWay}" />
-        </StackPanel>
-
-        <Border Background="{DynamicResource BrushDivider}" Height="1" />
-
-        <!-- 关于/更新（S17；mac=引导下载 DMG，docs/10 §9） -->
-        <TextBlock Text="关于与更新" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
-        <StackPanel Orientation="Horizontal" Spacing="10">
-          <TextBlock Text="{Binding AppVersion, StringFormat=当前版本 v{0}}" FontSize="13" VerticalAlignment="Center"
-                     Foreground="{DynamicResource BrushTextSecondary}" />
-          <Button Classes="primaryAction" Content="检查更新"
-                  IsEnabled="{Binding CanCheckUpdate}"
-                  Command="{Binding CheckUpdateCommand}" />
-          <Button Classes="navItem" Content="重启并安装更新"
-                  IsVisible="{Binding UpdateReady}"
-                  Command="{Binding ApplyUpdateCommand}" />
-          <TextBlock Text="{Binding UpdateStatus}" FontSize="12" VerticalAlignment="Center"
-                     Foreground="{DynamicResource BrushTextSecondary}" />
-        </StackPanel>
-        <TextBlock Text="macOS 版更新为「下载 DMG 手动安装」；自动更新列后续（docs/10 §9）" FontSize="11"
-                   Foreground="{DynamicResource BrushTextTertiary}" />
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="MailHelper.App.Avalonia.SettingsPage">
+  <UserControl.Styles>
+    <Style Selector="TextBlock"><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" /><Setter Property="FontSize" Value="13" /></Style>
+    <Style Selector="TextBlock.sectionTitle"><Setter Property="FontSize" Value="16" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Margin" Value="0,0,0,16" /></Style>
+    <Style Selector="TextBlock.settingHint"><Setter Property="FontSize" Value="12" /><Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}" /><Setter Property="TextWrapping" Value="Wrap" /><Setter Property="LineHeight" Value="19" /></Style>
+    <Style Selector="Border.settingsCard"><Setter Property="Background" Value="{DynamicResource BrushSurface}" /><Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="12" /><Setter Property="Padding" Value="22" /><Setter Property="Margin" Value="0,0,0,14" /></Style>
+    <Style Selector="CheckBox"><Setter Property="MinHeight" Value="32" /></Style>
+    <Style Selector="ComboBox"><Setter Property="MinHeight" Value="36" /></Style>
+  </UserControl.Styles>
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="28,24" MaxWidth="880" HorizontalAlignment="Stretch">
+      <StackPanel Margin="0,0,0,24" Spacing="7">
+        <TextBlock Text="你的邮箱，你的节奏" FontSize="11" Foreground="{DynamicResource BrushPrimary}" />
+        <TextBlock Text="偏好设置" FontSize="28" FontWeight="SemiBold" />
+        <TextBlock Text="管理账户、同步与提醒。修改会自动保存。" Classes="settingHint" />
       </StackPanel>
-    </ScrollViewer>
-  </Border>
+      <Border Classes="settingsCard"><StackPanel>
+        <Grid ColumnDefinitions="*,Auto"><TextBlock Text="账户与连接" Classes="sectionTitle" /><TextBlock Grid.Column="1" Text="本机 Outlook" Foreground="{DynamicResource BrushPrimary}" FontSize="12" /></Grid>
+        <TextBlock Text="{Binding AccountEmail}" FontSize="20" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,14" />
+        <Grid ColumnDefinitions="*,*">
+          <StackPanel Spacing="4" Margin="0,0,20,0"><TextBlock Text="接入通道" Classes="settingHint" /><TextBlock Text="{Binding Channel}" TextWrapping="Wrap" /></StackPanel>
+          <StackPanel Grid.Column="1" Spacing="4"><TextBlock Text="上次同步" Classes="settingHint" /><TextBlock Text="{Binding LastSync}" TextWrapping="Wrap" /></StackPanel>
+        </Grid>
+      </StackPanel></Border>
+      <Border Classes="settingsCard"><StackPanel>
+        <TextBlock Text="同步" Classes="sectionTitle" />
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+          <StackPanel Spacing="4" Margin="0,0,20,0"><TextBlock Text="自动同步间隔" /><TextBlock Text="每 1–60 分钟检查一次新邮件" Classes="settingHint" /></StackPanel>
+          <NumericUpDown Grid.Column="1" Minimum="1" Maximum="60" Increment="1" Width="120" Value="{Binding IntervalMinutes, Mode=TwoWay}" VerticalAlignment="Center" />
+        </Grid>
+        <CheckBox Content="启动时立即同步" IsChecked="{Binding SyncOnStartup, Mode=TwoWay}" />
+      </StackPanel></Border>
+      <Border Classes="settingsCard"><StackPanel>
+        <TextBlock Text="通知与勿扰" Classes="sectionTitle" />
+        <CheckBox Content="P0 紧急邮件逐封通知" IsChecked="{Binding NotifyP0, Mode=TwoWay}" />
+        <CheckBox Content="P1 重要邮件通知（3 封及以上合并）" IsChecked="{Binding NotifyP1, Mode=TwoWay}" Margin="0,4,0,14" />
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="4" Margin="0,0,20,0"><TextBlock Text="勿扰时段" /><TextBlock Text="如 23:00-07:00，留空则始终允许通知" Classes="settingHint" /></StackPanel>
+          <TextBox Grid.Column="1" Width="150" Text="{Binding QuietHours, Mode=TwoWay}" Watermark="23:00-07:00" VerticalAlignment="Center" />
+        </Grid>
+      </StackPanel></Border>
+      <Border Classes="settingsCard"><StackPanel>
+        <TextBlock Text="日程与提醒" Classes="sectionTitle" />
+        <CheckBox Content="自动识别 Canvas 作业截止日期" IsChecked="{Binding ScheduleEnabled, Mode=TwoWay}" />
+        <CheckBox Content="临近截止时提醒我" IsChecked="{Binding ScheduleReminderEnabled, Mode=TwoWay}" Margin="0,4,0,14" />
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="4" Margin="0,0,20,0"><TextBlock Text="提前提醒" /><TextBlock Text="截止前 1–168 小时提醒，同一截止时间只提醒一次" Classes="settingHint" /></StackPanel>
+          <NumericUpDown Grid.Column="1" Minimum="1" Maximum="168" Increment="1" Width="120" Value="{Binding ScheduleReminderHours, Mode=TwoWay}" VerticalAlignment="Center" />
+        </Grid>
+      </StackPanel></Border>
+      <Border Classes="settingsCard"><StackPanel>
+        <TextBlock Text="语言" Classes="sectionTitle" />
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="4" Margin="0,0,20,0"><TextBlock Text="界面语言" /><TextBlock Text="重启后完全生效" Classes="settingHint" /></StackPanel>
+          <ComboBox x:Name="LanguageBox" Grid.Column="1" Width="150" SelectionChanged="OnLanguageChanged">
+            <ComboBoxItem Content="跟随系统" Tag="auto" /><ComboBoxItem Content="简体中文" Tag="zh-CN" /><ComboBoxItem Content="English" Tag="en" />
+          </ComboBox>
+        </Grid>
+      </StackPanel></Border>
+      <Border Classes="settingsCard"><StackPanel>
+        <TextBlock Text="自定义类别" Classes="sectionTitle" />
+        <TextBlock Text="为自己的学习与工作，留一个专属位置。" Classes="settingHint" Margin="0,0,0,14" />
+        <ItemsControl x:Name="CustomCategoriesList"><ItemsControl.ItemTemplate><DataTemplate>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock Text="{Binding Icon}" FontSize="14" /><TextBlock Text="{Binding Label}" VerticalAlignment="Center" /></StackPanel>
+            <Button Grid.Column="1" Classes="navItem" Content="删除" Padding="10,5" Tag="{Binding Id}" Click="OnDeleteCategory" />
+          </Grid>
+        </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+        <WrapPanel>
+          <StackPanel Margin="0,0,8,8" Spacing="5"><TextBlock Text="名称" Classes="settingHint" /><TextBox x:Name="NewCategoryName" Width="190" Watermark="类别名称" /></StackPanel>
+          <StackPanel Margin="0,0,8,8" Spacing="5"><TextBlock Text="图标" Classes="settingHint" /><TextBox x:Name="NewCategoryIcon" Width="56" Watermark="图标" /></StackPanel>
+          <StackPanel Margin="0,0,8,8" Spacing="5"><TextBlock Text="颜色" Classes="settingHint" /><ComboBox x:Name="NewCategoryColor" Width="100" SelectedIndex="0">
+            <ComboBoxItem Content="蓝" Tag="#3A7BD5" /><ComboBoxItem Content="绿" Tag="#0E9F6E" /><ComboBoxItem Content="紫" Tag="#7C5CDB" /><ComboBoxItem Content="橙" Tag="#D97706" /><ComboBoxItem Content="青" Tag="#0E7490" /><ComboBoxItem Content="粉" Tag="#C2417D" />
+          </ComboBox></StackPanel>
+          <Button Classes="primaryAction" Content="添加类别" Padding="14,9" VerticalAlignment="Bottom" Margin="0,0,0,8" Click="OnAddCategory" />
+        </WrapPanel>
+        <TextBlock Text="删除类别后，邮件会归入「其他」，关联规则也会删除。" Classes="settingHint" Margin="0,4,0,0" />
+      </StackPanel></Border>
+      <Border Classes="settingsCard"><StackPanel>
+        <TextBlock Text="启动与本机存储" Classes="sectionTitle" />
+        <CheckBox x:Name="AutostartCheck" Content="登录电脑后自动启动" Checked="OnAutostartChecked" Unchecked="OnAutostartUnchecked" />
+        <Grid ColumnDefinitions="*,Auto" Margin="0,14,0,14">
+          <StackPanel Spacing="4" Margin="0,0,20,0"><TextBlock Text="正文缓存上限" /><TextBlock Text="单位 MB，邮件正文只保存在本机" Classes="settingHint" /></StackPanel>
+          <NumericUpDown Grid.Column="1" Minimum="256" Maximum="8192" Increment="256" Width="140" Value="{Binding BodyLimitMb, Mode=TwoWay}" VerticalAlignment="Center" />
+        </Grid>
+        <CheckBox Content="启用诊断日志" IsChecked="{Binding Diagnostics, Mode=TwoWay}" />
+        <TextBlock Text="仅排错时启用；诊断日志可能包含发件人地址。" Classes="settingHint" Margin="26,3,0,0" />
+      </StackPanel></Border>
+      <Border Classes="settingsCard"><StackPanel>
+        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10"><TextBlock Text="关于 MailHelper" Classes="sectionTitle" /><TextBlock Grid.Column="1" Text="{Binding AppVersion, StringFormat=v{0}}" Foreground="{DynamicResource BrushPrimary}" /></Grid>
+        <WrapPanel>
+          <Button Classes="navItem" Content="检查更新" Padding="14,9" IsEnabled="{Binding CanCheckUpdate}" Command="{Binding CheckUpdateCommand}" Margin="0,0,8,8" />
+          <Button Classes="primaryAction" Content="重启并安装更新" Padding="14,9" IsVisible="{Binding UpdateReady}" Command="{Binding ApplyUpdateCommand}" Margin="0,0,0,8" />
+        </WrapPanel>
+        <TextBlock Text="{Binding UpdateStatus}" Classes="settingHint" Margin="0,2,0,8" />
+        <TextBlock Text="只接收正式版。macOS 下载 DMG 后手动安装；源码开发模式下不可用。" Classes="settingHint" />
+      </StackPanel></Border>
+      <Border Classes="settingsCard" Background="{DynamicResource BrushSurfaceAlt}"><Grid ColumnDefinitions="*,Auto">
+        <StackPanel Margin="0,0,20,0" Spacing="5"><TextBlock Text="清除本地数据" FontWeight="SemiBold" /><TextBlock Text="移除本机邮件缓存、规则和设置，随后退出应用。" Classes="settingHint" /></StackPanel>
+        <Button Grid.Column="1" Classes="navItem" Content="清除数据…" Padding="12,8" VerticalAlignment="Center" Foreground="{DynamicResource BrushDanger}" Click="OnClearLocalData" />
+      </Grid></Border>
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

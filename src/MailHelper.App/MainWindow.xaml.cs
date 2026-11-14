@@ -11,7 +11,7 @@ namespace MailHelper.App;
 
 public partial class MainWindow : Window
 {
-    private const string LayoutKey = "ui.column_widths";
+    private const string LayoutKey = "ui.workspace_split.v2";
     private readonly MainViewModel _viewModel;
     private readonly ISettingsStore _settings;
     private string? _pendingHtml; // CoreWebView2 完成初始化前排队的正文
@@ -30,6 +30,9 @@ public partial class MainWindow : Window
         _viewModel = viewModel;
         _settings = settings;
         DataContext = viewModel;
+        viewModel.ReaderUsesDarkColors = WorkspaceTheme.IsDark;
+        Reader.DefaultBackgroundColor = WorkspaceTheme.IsDark
+            ? System.Drawing.Color.FromArgb(32, 45, 38) : System.Drawing.Color.White;
         ScheduleHost.Content = schedulePage; // S18/CHG-015：日程页（DI 页面挂载，UserControl 带 ctor 注入）
         // S18 修复（用户晨验缺陷 D-73）：页面不设 DataContext 会继承窗体的 MainViewModel，
         // 分组/徽章绑定全部落空 → 日程页永远空态；显式指向 ScheduleViewModel（与 Avalonia 版同语义）
@@ -254,7 +257,8 @@ public partial class MainWindow : Window
             && left + middle + right is var total && total > 0)
         {
             // 按占比恢复为 Star 宽度：任何窗口尺寸下三栏同步伸缩（MinWidth 由列定义兜底）
-            LeftColumn.Width = new GridLength(left / total, GridUnitType.Star);
+            // 侧栏固定，只有列表和阅读区参与比例分配；旧三栏像素设置不套用于新工作台。
+            LeftColumn.Width = new GridLength(208);
             MiddleColumn.Width = new GridLength(middle / total, GridUnitType.Star);
             RightColumn.Width = new GridLength(right / total, GridUnitType.Star);
         }

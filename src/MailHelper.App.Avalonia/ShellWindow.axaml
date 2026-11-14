@@ -3,14 +3,10 @@
         xmlns:vm="clr-namespace:MailHelper.ViewModels;assembly=MailHelper.ViewModels"
         xmlns:app="clr-namespace:MailHelper.App.Avalonia"
         xmlns:reading="clr-namespace:MailHelper.Infrastructure.Reading;assembly=MailHelper.Infrastructure"
-        x:Class="MailHelper.App.Avalonia.ShellWindow"
-        x:Name="Shell"
-        Title="MailHelper"
-        Width="1280" Height="800"
-        MinWidth="980" MinHeight="620"
+        x:Class="MailHelper.App.Avalonia.ShellWindow" x:Name="Shell"
+        Title="MailHelper" Width="1280" Height="800" MinWidth="980" MinHeight="620"
         Background="{DynamicResource BrushWindowBg}"
         FontFamily="Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI, PingFang SC, Hiragino Sans GB, sans-serif">
-
   <Window.Resources>
     <app:ColorHexToBrushConverter x:Key="ColorHexToBrush" />
     <app:CountToVisibilityConverter x:Key="CountVisible" />
@@ -18,237 +14,271 @@
     <app:InverseBoolConverter x:Key="InverseBool" />
     <app:CategoryColorConverter x:Key="CategoryColorFallback" />
   </Window.Resources>
-
-  <!-- S19：未读行高亮（底色 + 主题加粗，Classes 随 IsRead 切换） -->
   <Window.Styles>
-    <Style Selector="Grid.unreadRow">
-      <Setter Property="Background" Value="{DynamicResource BrushUnreadBg}" />
-    </Style>
     <Style Selector="TextBlock.unreadSubject">
       <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
     </Style>
   </Window.Styles>
 
   <Panel>
-    <!-- ============ 三栏主界面（05 §3.2）============ -->
-    <Grid RowDefinitions="Auto,*,Auto" IsVisible="{Binding IsOnboarding, Converter={StaticResource InverseBool}}">
-      <!-- 顶栏 -->
-      <Border Grid.Row="0" Background="{DynamicResource BrushTopBar}"
-              BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,0,0,1" Padding="16,9">
-        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-            <TextBlock Text="📬" FontSize="18" VerticalAlignment="Center" />
-            <TextBlock Classes="windowTitle" Text="MailHelper" VerticalAlignment="Center" />
-            <StackPanel Orientation="Horizontal" Spacing="4" Margin="20,0,0,0" VerticalAlignment="Center">
-              <Button x:Name="NavInbox" Classes="navItem checked" Content="收件箱" Click="OnNavInbox" />
-              <Button x:Name="NavSchedule" Classes="navItem" Content="日程" Click="OnNavSchedule" />
-              <Button x:Name="NavRules" Classes="navItem" Content="规则" Click="OnNavRules" />
-              <Button x:Name="NavSettings" Classes="navItem" Content="设置" Click="OnNavSettings" />
+    <Grid ColumnDefinitions="206,*" IsVisible="{Binding IsOnboarding, Converter={StaticResource InverseBool}}">
+      <!-- 工作空间：固定的导航与分类，让邮件本身成为主角。 -->
+      <Border Background="{DynamicResource BrushSidebar}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,0,1,0">
+        <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="14,24,14,16">
+          <Grid ColumnDefinitions="36,*" Margin="8,0,0,26">
+            <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource BrushPrimary}" VerticalAlignment="Center">
+              <Path Data="M2,4 L22,4 L22,20 L2,20 Z M2,5 L12,13 L22,5" Width="19" Height="16" Stretch="Uniform"
+                    Stroke="{DynamicResource BrushOnPrimary}" StrokeThickness="1.6" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="9,0,0,0" Spacing="2">
+              <TextBlock Text="MailHelper" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
+              <TextBlock Text="本地邮件工作台" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" />
             </StackPanel>
-          </StackPanel>
-          <TextBlock Grid.Column="1" Classes="statusText" Text="Ctrl / ⌘ + F 搜索 · R 同步 · Esc 清除"
-                     VerticalAlignment="Center" />
-          <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,9,16,0" VerticalAlignment="Center">
-            <TextBox x:Name="SearchBox" MinWidth="180" Text="{Binding SearchText, Mode=TwoWay}"
-                     Watermark="搜索主题 / 发件人 / 正文…"
-                     ToolTip.Tip="支持 from:、cat:、p: 筛选，Enter 搜索，Esc 清除"
-                     AutomationProperties.Name="搜索框" />
-            <Button x:Name="SearchButton" Grid.Column="1" Classes="primaryAction" Content="搜索"
-                    Command="{Binding SearchCommand}" Margin="8,0,0,0" />
-            <Button x:Name="ClearSearchButton" Grid.Column="2" Classes="navItem" Content="清除"
-                    Command="{Binding ClearSearchCommand}" IsVisible="{Binding IsSearchMode}" Margin="6,0,0,0" />
           </Grid>
-          <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="14" Margin="0,9,0,0" VerticalAlignment="Center">
-            <CheckBox Content="按时间排序" IsChecked="{Binding SortByDate, Mode=TwoWay}"
-                      ToolTip.Tip="开启按日期排列，同日内重要度优先；关闭按重要度排列" />
-            <CheckBox Content="仅未读" IsChecked="{Binding UnreadOnly, Mode=TwoWay}"
-                      Command="{Binding ToggleUnreadOnlyCommand}" />
+          <StackPanel Grid.Row="1" Spacing="4">
+            <Button x:Name="NavInbox" Classes="sideNav checked" Click="OnNavInbox" AutomationProperties.Name="收件箱">
+              <Grid ColumnDefinitions="20,*,Auto">
+                <Path Data="M3,3 L21,3 L21,21 L3,21 Z M3,14 L8,14 L10,17 L14,17 L16,14 L21,14" Classes="navIcon" />
+                <TextBlock Grid.Column="1" Text="收件箱" Margin="12,0,0,0" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding UnreadTotal}" FontSize="11" VerticalAlignment="Center" Opacity="0.8" />
+              </Grid>
+            </Button>
+            <Button x:Name="NavSchedule" Classes="sideNav" Click="OnNavSchedule" AutomationProperties.Name="日程">
+              <Grid ColumnDefinitions="20,*"><Path Classes="navIcon" Data="M4,5 L20,5 L20,21 L4,21 Z M8,2 L8,8 M16,2 L16,8 M4,11 L20,11 M8,15 L11,15 M14,15 L17,15" />
+                <TextBlock Grid.Column="1" Text="日程" Margin="12,0,0,0" VerticalAlignment="Center" /></Grid>
+            </Button>
+            <Button x:Name="NavRules" Classes="sideNav" Click="OnNavRules" AutomationProperties.Name="规则">
+              <Grid ColumnDefinitions="20,*"><Path Classes="navIcon" Data="M4,6 L20,6 M4,12 L20,12 M4,18 L20,18 M8,3 L8,9 M16,9 L16,15 M10,15 L10,21" />
+                <TextBlock Grid.Column="1" Text="规则" Margin="12,0,0,0" VerticalAlignment="Center" /></Grid>
+            </Button>
+            <Button x:Name="NavSettings" Classes="sideNav" Click="OnNavSettings" AutomationProperties.Name="设置">
+              <Grid ColumnDefinitions="20,*"><Path Classes="navIcon" Data="M4,4 L20,4 L20,20 L4,20 Z M8,9 L16,9 M8,15 L16,15 M11,6 L11,12 M14,12 L14,18" />
+                <TextBlock Grid.Column="1" Text="设置" Margin="12,0,0,0" VerticalAlignment="Center" /></Grid>
+            </Button>
           </StackPanel>
-        </Grid>
-      </Border>
-
-      <!-- 三栏：220 / 1.5 / 1（右≈40%）；PageHost 承载收件箱/规则/设置切换（05 §2） -->
-      <ContentControl x:Name="PageHost" Grid.Row="1">
-      <Grid ColumnDefinitions="220,1.5*,*" Margin="12">
-        <!-- 左栏：类别导航（未读计数徽章 FR-12） -->
-        <Border Grid.Column="0" Classes="card" Margin="0,0,10,0">
-          <ListBox x:Name="CategoryNav" ItemsSource="{Binding Categories}"
-                   SelectedItem="{Binding SelectedCategory, Mode=TwoWay}"
-                   Background="Transparent" BorderThickness="0" Padding="0,6">
+          <StackPanel Grid.Row="2" Margin="10,20,10,9" Spacing="16" IsVisible="{Binding IsInboxView}">
+            <Border Height="1" Background="{DynamicResource BrushDivider}" />
+            <TextBlock Text="邮件分类" FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextTertiary}" />
+          </StackPanel>
+          <ListBox x:Name="CategoryNav" Grid.Row="3" ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory, Mode=TwoWay}"
+                   IsVisible="{Binding IsInboxView}" Background="Transparent" BorderThickness="0" Padding="0" AutomationProperties.Name="类别导航"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
               <DataTemplate DataType="{x:Type vm:CategoryItemViewModel}">
-                <StackPanel Orientation="Horizontal" Spacing="9">
-                  <Border Width="26" Height="26" CornerRadius="7"
-                          Background="{Binding ColorHex, Converter={StaticResource ColorHexToBrush}}">
-                    <TextBlock Text="{Binding Icon}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                  </Border>
-                  <TextBlock Text="{Binding Label}" FontSize="13"
-                             Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center" />
-                  <Border Background="{DynamicResource BrushBadgeBg}" CornerRadius="{StaticResource RadiusPill}"
-                          Padding="7,1" VerticalAlignment="Center" Margin="4,0,0,0"
-                          IsVisible="{Binding Count, Converter={StaticResource CountVisible}}">
-                    <TextBlock Text="{Binding Count}" FontSize="11"
-                               Foreground="{DynamicResource BrushTextSecondary}" />
-                  </Border>
-                </StackPanel>
+                <Grid ColumnDefinitions="8,*,Auto" MinHeight="26">
+                  <Ellipse Width="6" Height="6" Fill="{Binding ColorHex, Converter={StaticResource ColorHexToBrush}}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="12" Margin="10,0,4,0" TextTrimming="CharacterEllipsis"
+                             Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="{Binding Count}" FontSize="10.5" VerticalAlignment="Center" MinWidth="14" TextAlignment="Right"
+                             Foreground="{DynamicResource BrushTextTertiary}" IsVisible="{Binding Count, Converter={StaticResource CountVisible}}" />
+                </Grid>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>
-        </Border>
-
-        <!-- 中栏：邮件列表（ListBox 默认虚拟化栈面板，FR-12/NFR-02） -->
-        <Border Grid.Column="1" Classes="card" Margin="0,0,10,0">
-          <Grid RowDefinitions="Auto,*,Auto">
-            <StackPanel Grid.Row="0" Spacing="6" Margin="0,8,0,0">
-              <TextBlock x:Name="ListSummary" Classes="statusText" Text="{Binding ListSummaryText}"
-                         Margin="12,0" FontSize="11" TextTrimming="CharacterEllipsis" />
-              <ProgressBar Height="3" IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
-            </StackPanel>
-            <Panel Grid.Row="1">
-            <ListBox x:Name="MailList" ItemsSource="{Binding Mails}"
-                     SelectedItem="{Binding SelectedMail, Mode=TwoWay}"
-                     Background="Transparent" BorderThickness="0" Padding="0,4"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-              <ListBox.ItemTemplate>
-                <DataTemplate DataType="{x:Type vm:MailItemViewModel}">
-                  <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,8" VerticalAlignment="Center"
-                        Classes.unreadRow="{Binding IsRead, Converter={StaticResource InverseBool}}">
-                    <!-- 左缘重要度色条 + 类别色头像（05 §5.1/§5.2） -->
-                    <Border Grid.Column="0" Width="4" Height="44" CornerRadius="2"
-                            Background="{Binding ImportanceColor, Converter={StaticResource ColorHexToBrush}}"
-                            VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <Border Grid.Column="1" Width="36" Height="36" CornerRadius="10"
-                            Background="{Binding Category, Converter={StaticResource CategoryColorFallback}}"
-                            HorizontalAlignment="Left" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Initial}" FontSize="15" FontWeight="SemiBold" Foreground="White"
-                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                    <StackPanel Grid.Column="1" Margin="50,0,8,0" Spacing="1">
-                      <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                          <TextBlock Text="{Binding UnreadGlyph}" FontSize="8"
-                                     Foreground="{DynamicResource BrushUnreadDot}" VerticalAlignment="Center" />
-                          <TextBlock Text="{Binding FromDisplay}" FontSize="12"
-                                     Foreground="{DynamicResource BrushTextSecondary}" />
-                          <Border Background="{Binding ImportanceColor, Converter={StaticResource ColorHexToBrush}}"
-                                  CornerRadius="3" Padding="4,1" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding ImportanceLabel}" FontSize="10" FontWeight="SemiBold" Foreground="White" />
-                          </Border>
-                        </StackPanel>
-                        <TextBlock Grid.Column="1" Text="{Binding ReceivedText}" FontSize="11"
-                                   Foreground="{DynamicResource BrushTextTertiary}" />
-                      </Grid>
-                      <TextBlock Text="{Binding Subject}" FontSize="13" FontWeight="Normal"
-                                 Classes.unreadSubject="{Binding IsRead, Converter={StaticResource InverseBool}}"
-                                 Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Text="{Binding Preview}" FontSize="12" MaxLines="1" TextTrimming="CharacterEllipsis"
-                                 Foreground="{DynamicResource BrushTextTertiary}" />
-                    </StackPanel>
-                    <TextBlock Grid.Column="2" Text="📎" FontSize="12" Margin="6,0,0,0"
-                               IsVisible="{Binding HasAttachments}" VerticalAlignment="Center" />
-                  </Grid>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-            <!-- 空态（05 §6） -->
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6" Margin="18"
-                        IsVisible="{Binding Mails.Count, Converter={StaticResource CountEmpty}}">
-              <TextBlock Text="🗂" FontSize="34" HorizontalAlignment="Center" />
-              <TextBlock x:Name="ListEmptyState" Classes="placeholderText" Text="{Binding EmptyStateText}" MaxWidth="300" />
-            </StackPanel>
-            </Panel>
-            <Button x:Name="LoadMoreButton" Grid.Row="2" Content="继续加载" Classes="navItem"
-                    Command="{Binding LoadMoreCommand}" IsVisible="{Binding HasMore}"
-                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="12,6" />
-          </Grid>
-        </Border>
-
-        <!-- 右栏：阅读窗格（净化文本渲染，docs/10 §5.1） -->
-        <Border Grid.Column="2" Classes="card" Padding="22,18">
-          <Panel>
-            <StackPanel x:Name="ReaderEmptyState" Spacing="10"
-                        HorizontalAlignment="Center" VerticalAlignment="Center">
-              <TextBlock Text="✉️" FontSize="34" HorizontalAlignment="Center" />
-              <TextBlock x:Name="ReaderPlaceholderText" Classes="placeholderText" Text="选择一封邮件查看" />
-            </StackPanel>
-            <DockPanel IsVisible="{Binding SelectedMail, Converter={x:Static app:NotNullToBoolConverter.Instance}}">
-              <!-- 阅读头：标题 + 元信息 + 改判入口（UC-06 顺手原则） -->
-              <StackPanel DockPanel.Dock="Top" Spacing="8">
-                <TextBlock Text="{Binding SelectedMail.Subject}" FontSize="{StaticResource FontSizeTitle}"
-                           FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" />
-                <WrapPanel Orientation="Horizontal">
-                  <Border Background="{Binding SelectedMail.ImportanceColor, Converter={StaticResource ColorHexToBrush}}"
-                          CornerRadius="3" Padding="5,1" Margin="0,0,8,6">
-                    <TextBlock Text="{Binding SelectedMail.ImportanceLabel}" FontSize="11" Foreground="White" FontWeight="SemiBold" />
-                  </Border>
-                  <TextBlock Text="{Binding SelectedMail.FromDisplay}" FontSize="12"
-                             Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"
-                             Margin="0,0,8,6" MaxWidth="220" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Text="{Binding SelectedMail.ReceivedText}" FontSize="12"
-                             Foreground="{DynamicResource BrushTextTertiary}" VerticalAlignment="Center" Margin="0,0,8,6" />
-                  <TextBlock Text="📎 附件（只读）" FontSize="12" VerticalAlignment="Center"
-                             IsVisible="{Binding SelectedMail.HasAttachments}" Margin="0,0,8,6" />
-                  <Button x:Name="CorrectButton" Content="分类不对？改为…" Classes="navItem"
-                          VerticalAlignment="Center" Click="OnShowCorrectMenu" Margin="0,0,0,6" />
-                </WrapPanel>
-                <Border Background="{DynamicResource BrushDivider}" Height="1" />
-              </StackPanel>
-              <!-- 正文块（净化白名单渲染：无脚本/无远程图片；链接块可点击） -->
-              <ScrollViewer>
-                <ItemsControl x:Name="ReaderBlocksHost" Margin="0,12,8,12">
-                  <ItemsControl.DataTemplates>
-                    <DataTemplate DataType="{x:Type reading:SanitizedLinkBlock}">
-                      <Button Classes="readerLink" Content="{Binding Text}" Margin="0,0,0,9"
-                              Tag="{Binding Href}" Click="OnLinkClick" />
-                    </DataTemplate>
-                    <DataTemplate DataType="{x:Type reading:SanitizedTextBlock}">
-                      <TextBlock Classes="readerText" Text="{Binding Text}" Margin="0,0,0,9"
-                                 Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" />
-                    </DataTemplate>
-                  </ItemsControl.DataTemplates>
-                </ItemsControl>
-              </ScrollViewer>
-            </DockPanel>
-          </Panel>
-        </Border>
-      </Grid>
-
-      </ContentControl>
-
-      <!-- 状态栏 -->
-      <Border Grid.Row="2" Background="{DynamicResource BrushTopBar}"
-              BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,1,0,0" Padding="16,6">
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7">
-            <Ellipse Width="8" Height="8" Fill="{DynamicResource BrushUnreadDot}" VerticalAlignment="Center" />
-            <TextBlock Classes="statusText" Text="{Binding SyncStatusText}" VerticalAlignment="Center" />
+          <StackPanel Grid.Row="4" Margin="4,16,4,0" Spacing="12">
+            <Button Classes="primaryAction" Content="同步邮件" Command="{Binding SyncNowCommand}" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center" MinHeight="36" AutomationProperties.Name="立即同步" ToolTip.Tip="Ctrl / ⌘ + R 立即同步" />
+            <Grid ColumnDefinitions="6,*" Margin="5,0">
+              <Ellipse Width="5" Height="5" Fill="{DynamicResource BrushPrimary}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="statusText" Text="{Binding SyncStatusText}" Margin="8,0,0,0" TextTrimming="CharacterEllipsis"
+                         ToolTip.Tip="{Binding SyncStatusText}" FontSize="10.5" />
+            </Grid>
+            <TextBlock Text="邮件与分类只保存在本机" FontSize="10" Margin="5,0" Foreground="{DynamicResource BrushTextTertiary}" />
           </StackPanel>
-          <Button Grid.Column="2" Classes="primaryAction" Content="⟳ 立即同步"
-                  Command="{Binding SyncNowCommand}" />
         </Grid>
       </Border>
+
+      <ContentControl x:Name="PageHost" Grid.Column="1">
+        <Grid RowDefinitions="Auto,Auto,*" Margin="24,26,24,24">
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,20">
+            <StackPanel Spacing="5">
+              <TextBlock Text="收件箱" FontSize="28" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
+              <TextBlock Text="重要的事，清楚地放在眼前。" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" />
+            </StackPanel>
+            <Border Grid.Column="1" Background="{DynamicResource BrushPrimaryTint}" CornerRadius="10" Padding="14,9" VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="{Binding UnreadTotal}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}" />
+                <TextBlock Text="封未读" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" />
+              </StackPanel>
+            </Border>
+          </Grid>
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,18">
+            <TextBox x:Name="SearchBox" MinWidth="180" Text="{Binding SearchText, Mode=TwoWay}" Watermark="搜索主题、发件人或正文"
+                     ToolTip.Tip="Ctrl / ⌘ + F 聚焦；支持 from:、cat:、p: 筛选；Enter 搜索，Esc 清除" AutomationProperties.Name="搜索框" />
+            <Button x:Name="SearchButton" Grid.Column="1" Classes="primaryAction" Content="搜索" Command="{Binding SearchCommand}" Margin="8,0,0,0" />
+            <Button x:Name="ClearSearchButton" Grid.Column="2" Classes="navItem" Content="清除" Command="{Binding ClearSearchCommand}"
+                    IsVisible="{Binding IsSearchMode}" Margin="6,0,0,0" />
+          </Grid>
+          <Grid x:Name="InboxLayout" Grid.Row="2">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="0.9*" MinWidth="300" MaxWidth="410" />
+              <ColumnDefinition Width="12" />
+              <ColumnDefinition Width="1.1*" MinWidth="340" />
+            </Grid.ColumnDefinitions>
+            <!-- 清晰的收件队列：小标签标重要度，未读只增强文字与圆点。 -->
+            <Border x:Name="MailListPanel" Grid.Column="0" Classes="card">
+              <Grid RowDefinitions="Auto,*,Auto">
+                <StackPanel Spacing="12" Margin="16,16,16,0">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding SelectedCategory.Label}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1" Text="{Binding Mails.Count}" FontSize="11" Foreground="{DynamicResource BrushTextTertiary}" Margin="8,0,0,0" VerticalAlignment="Center" />
+                  </Grid>
+                  <StackPanel Orientation="Horizontal" Spacing="16">
+                    <CheckBox Content="按时间" IsChecked="{Binding SortByDate, Mode=TwoWay}" ToolTip.Tip="开启按收件时间排序；关闭按重要度优先" />
+                    <CheckBox Content="仅未读" IsChecked="{Binding UnreadOnly, Mode=TwoWay}" Command="{Binding ToggleUnreadOnlyCommand}" />
+                  </StackPanel>
+                  <TextBlock x:Name="ListSummary" Text="{Binding ListSummaryText}" FontSize="10.5" TextTrimming="CharacterEllipsis"
+                             Foreground="{DynamicResource BrushTextTertiary}" ToolTip.Tip="{Binding ListSummaryText}" />
+                  <Border Height="1" Background="{DynamicResource BrushDivider}" />
+                  <ProgressBar Height="2" IsIndeterminate="True" IsVisible="{Binding IsLoading}" />
+                </StackPanel>
+                <Panel Grid.Row="1">
+                  <ListBox x:Name="MailList" ItemsSource="{Binding Mails}" SelectedItem="{Binding SelectedMail, Mode=TwoWay}"
+                           Background="Transparent" BorderThickness="0" Padding="6" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                           AutomationProperties.Name="邮件列表">
+                    <ListBox.ItemTemplate>
+                      <DataTemplate DataType="{x:Type vm:MailItemViewModel}">
+                        <Grid ColumnDefinitions="30,*" Margin="10,13">
+                          <StackPanel Spacing="6" VerticalAlignment="Top">
+                            <Border Width="28" Height="28" CornerRadius="9" Background="{DynamicResource BrushAvatar}">
+                              <TextBlock Text="{Binding Initial}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Text="{Binding ImportanceText}" FontSize="9.5" HorizontalAlignment="Center"
+                                       Foreground="{Binding ImportanceColor, Converter={StaticResource ColorHexToBrush}}" ToolTip.Tip="{Binding ImportanceLabel}" />
+                          </StackPanel>
+                          <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="5">
+                            <Grid ColumnDefinitions="*,Auto">
+                              <Grid ColumnDefinitions="Auto,*">
+                                <Ellipse Width="5" Height="5" Fill="{DynamicResource BrushUnreadDot}" Margin="0,0,5,0" VerticalAlignment="Center"
+                                         IsVisible="{Binding IsRead, Converter={StaticResource InverseBool}}" />
+                                <TextBlock Grid.Column="1" Text="{Binding FromDisplay}" FontSize="11.5" Foreground="{DynamicResource BrushTextSecondary}"
+                                           TextTrimming="CharacterEllipsis" />
+                              </Grid>
+                              <TextBlock Grid.Column="1" Text="{Binding ReceivedText}" FontSize="10" Margin="8,0,0,0" Foreground="{DynamicResource BrushTextTertiary}" />
+                            </Grid>
+                            <TextBlock Text="{Binding Subject}" FontSize="13" Classes.unreadSubject="{Binding IsRead, Converter={StaticResource InverseBool}}"
+                                       Foreground="{DynamicResource BrushTextPrimary}" TextTrimming="CharacterEllipsis" />
+                            <Grid ColumnDefinitions="*,Auto">
+                              <TextBlock Text="{Binding Preview}" FontSize="11.5" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource BrushTextTertiary}" />
+                              <Path Grid.Column="1" Width="10" Height="12" Stretch="Uniform" Stroke="{DynamicResource BrushTextTertiary}" StrokeThickness="1.3"
+                                    Data="M7,4 L7,14 C7,18 1,18 1,14 L1,3 C1,-1 10,-1 10,3 L10,14 C10,21 -2,21 -2,14 L-2,5"
+                                    Margin="6,0,0,0" IsVisible="{Binding HasAttachments}" ToolTip.Tip="有附件" />
+                            </Grid>
+                          </StackPanel>
+                        </Grid>
+                      </DataTemplate>
+                    </ListBox.ItemTemplate>
+                  </ListBox>
+                  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Margin="22"
+                              IsVisible="{Binding Mails.Count, Converter={StaticResource CountEmpty}}">
+                    <Border Width="48" Height="48" CornerRadius="15" Background="{DynamicResource BrushPrimaryTint}" HorizontalAlignment="Center">
+                      <Path Data="M3,3 L21,3 L21,21 L3,21 Z M3,14 L8,14 L10,17 L14,17 L16,14 L21,14" Width="22" Height="22" Stretch="Uniform"
+                            Stroke="{DynamicResource BrushPrimary}" StrokeThickness="1.3" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <TextBlock x:Name="ListEmptyState" Classes="placeholderText" Text="{Binding EmptyStateText}" MaxWidth="230" />
+                  </StackPanel>
+                </Panel>
+                <Button x:Name="LoadMoreButton" Grid.Row="2" Content="继续加载" Classes="navItem" Command="{Binding LoadMoreCommand}"
+                        IsVisible="{Binding HasMore}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="12,8" />
+              </Grid>
+            </Border>
+            <!-- 阅读纸张：主标题、发件信息和正文各有自己的呼吸空间。 -->
+            <Border x:Name="ReaderPanel" Grid.Column="2" Classes="card" Padding="24,22">
+              <Panel>
+                <StackPanel x:Name="ReaderEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" MaxWidth="260">
+                  <Border Width="64" Height="64" CornerRadius="20" Background="{DynamicResource BrushPrimaryTint}" HorizontalAlignment="Center">
+                    <Path Data="M2,4 L22,4 L22,20 L2,20 Z M2,5 L12,13 L22,5" Width="28" Height="24" Stretch="Uniform"
+                          Stroke="{DynamicResource BrushPrimary}" StrokeThickness="1.2" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Border>
+                  <TextBlock Text="留一点空间，专注阅读" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{DynamicResource BrushTextPrimary}" />
+                  <TextBlock x:Name="ReaderPlaceholderText" Classes="placeholderText" Text="选择一封邮件查看" />
+                </StackPanel>
+                <Grid RowDefinitions="Auto,*" IsVisible="{Binding SelectedMail, Converter={x:Static app:NotNullToBoolConverter.Instance}}">
+                  <StackPanel Spacing="14">
+                    <TextBlock Text="邮件阅读" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextTertiary}" />
+                    <TextBlock Text="{Binding SelectedMail.Subject}" FontSize="21" LineHeight="29" FontWeight="SemiBold"
+                               Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding SelectedMail.Subject}" />
+                    <Grid ColumnDefinitions="32,*">
+                      <Border Width="30" Height="30" CornerRadius="10" Background="{DynamicResource BrushAvatar}" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding SelectedMail.Initial}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="3">
+                        <TextBlock Text="{Binding SelectedMail.FromDisplay}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource BrushTextPrimary}" ToolTip.Tip="{Binding SelectedMail.FromAddress}" />
+                        <TextBlock Text="{Binding SelectedMail.FromAddress}" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}"
+                                   TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding SelectedMail.FromAddress}" />
+                        <TextBlock Text="{Binding SelectedMail.ReceivedFullText}" FontSize="10.5" Foreground="{DynamicResource BrushTextTertiary}" />
+                      </StackPanel>
+                    </Grid>
+                    <WrapPanel>
+                      <Border Background="{DynamicResource BrushSurfaceAlt}" CornerRadius="5" Padding="7,4" Margin="0,0,6,6">
+                        <TextBlock Text="{Binding SelectedMail.ImportanceLabel}" FontSize="10.5" Foreground="{Binding SelectedMail.ImportanceColor, Converter={StaticResource ColorHexToBrush}}" />
+                      </Border>
+                      <Border Background="{DynamicResource BrushSurfaceAlt}" CornerRadius="5" Padding="7,4" Margin="0,0,6,6">
+                        <TextBlock Text="{Binding SelectedMail.CategoryLabel}" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" />
+                      </Border>
+                      <TextBlock Text="包含附件" FontSize="10.5" IsVisible="{Binding SelectedMail.HasAttachments}" VerticalAlignment="Center" Margin="0,0,6,6"
+                                 Foreground="{DynamicResource BrushTextTertiary}" />
+                      <Button x:Name="CorrectButton" Content="调整分类" Classes="navItem compactAction" Click="OnShowCorrectMenu" Margin="0,0,0,6" MinHeight="32" />
+                    </WrapPanel>
+                    <Border Height="1" Background="{DynamicResource BrushDivider}" />
+                  </StackPanel>
+                  <ScrollViewer x:Name="ReaderBodyScroll" Grid.Row="1" Margin="0,16,0,0" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl x:Name="ReaderBlocksHost" Margin="0,0,2,16">
+                      <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="{x:Type reading:SanitizedLinkBlock}">
+                          <Button Classes="readerLink" Content="{Binding Text}" Margin="0,0,0,14" Tag="{Binding Href}" Click="OnLinkClick" />
+                        </DataTemplate>
+                        <DataTemplate DataType="{x:Type reading:SanitizedTextBlock}">
+                          <TextBlock Classes="readerText" Text="{Binding Text}" Margin="0,0,0,14" TextWrapping="Wrap" />
+                        </DataTemplate>
+                      </ItemsControl.DataTemplates>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </Grid>
+              </Panel>
+            </Border>
+          </Grid>
+        </Grid>
+      </ContentControl>
     </Grid>
 
-    <!-- ============ Onboarding（05 §3.1：隐私勾选 → 连接；D-44 单窗双态）============ -->
-    <Panel IsVisible="{Binding IsOnboarding}">
-      <Border Classes="card" Width="460" Padding="32" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <StackPanel Spacing="14">
-          <TextBlock Text="📬" FontSize="40" HorizontalAlignment="Center" />
-          <TextBlock Text="MailHelper 邮箱管家" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center"
-                     Foreground="{DynamicResource BrushTextPrimary}" />
-          <TextBlock Text="让港校邮箱里的大事小事，各归其位" FontSize="13" HorizontalAlignment="Center"
-                     Foreground="{DynamicResource BrushTextSecondary}" />
-          <TextBlock Text="① 连接你的学校邮箱（需本机 Outlook 已登录）" FontSize="13"
-                     Foreground="{DynamicResource BrushTextSecondary}" Margin="0,8,0,0" />
-          <Button x:Name="ConnectButton" Classes="primaryAction" Content="连接学校邮箱"
-                  HorizontalAlignment="Center" Command="{Binding ConnectCommand}" />
-          <CheckBox x:Name="PrivacyCheck" HorizontalAlignment="Center"
-                    Content="同意《隐私说明》：邮件数据仅保存在本机，分类完全在本地完成"
-                    IsChecked="{Binding PrivacyAccepted, Mode=TwoWay}" />
-          <TextBlock Classes="statusText" Text="{Binding SyncStatusText}" HorizontalAlignment="Center" />
+    <!-- 首次进入：清楚说明连接方式与本地数据边界。 -->
+    <Grid ColumnDefinitions="*,*" IsVisible="{Binding IsOnboarding}" Margin="52">
+      <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="28,0,54,0" Spacing="22">
+        <Border Width="54" Height="54" CornerRadius="17" Background="{DynamicResource BrushPrimary}" HorizontalAlignment="Left">
+          <Path Data="M2,4 L22,4 L22,20 L2,20 Z M2,5 L12,13 L22,5" Width="28" Height="23" Stretch="Uniform" Stroke="{DynamicResource BrushOnPrimary}"
+                StrokeThickness="1.4" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <TextBlock Text="MailHelper" FontSize="21" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
+        <TextBlock Text="邮件各归其位，&#10;留心真正重要的事。" FontSize="32" LineHeight="44" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
+        <TextBlock Text="把课程、求职与校园通知整理成清晰的收件箱。&#10;分类和日程提醒，在你的电脑上完成。" FontSize="13" LineHeight="23"
+                   TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}" />
+      </StackPanel>
+      <Border Grid.Column="1" Classes="card" Padding="30" MaxWidth="440" VerticalAlignment="Center">
+        <StackPanel Spacing="18">
+          <TextBlock Text="连接你的学校邮箱" FontSize="21" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
+          <TextBlock Text="请先在本机经典版 Outlook 中登录学校邮箱，MailHelper 会使用已有登录状态同步邮件。" FontSize="12" LineHeight="21"
+                     TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}" />
+          <Border Background="{DynamicResource BrushSurfaceAlt}" CornerRadius="9" Padding="14">
+            <StackPanel Spacing="8">
+              <TextBlock Text="01   打开经典版 Outlook" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" />
+              <TextBlock Text="02   确认学校邮箱可以正常收信" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" />
+              <TextBlock Text="03   连接并等待首次整理完成" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" />
+            </StackPanel>
+          </Border>
+          <CheckBox x:Name="PrivacyCheck" IsChecked="{Binding PrivacyAccepted, Mode=TwoWay}">
+            <TextBlock Text="同意《隐私说明》：邮件数据仅保存在本机，分类完全在本地完成" FontSize="11.5" TextWrapping="Wrap" MaxWidth="270" />
+          </CheckBox>
+          <Button x:Name="ConnectButton" Classes="primaryAction" Content="连接学校邮箱" Command="{Binding ConnectCommand}" HorizontalAlignment="Stretch"
+                  HorizontalContentAlignment="Center" MinHeight="42" />
+          <TextBlock Classes="statusText" Text="{Binding SyncStatusText}" TextWrapping="Wrap" FontSize="11" />
         </StackPanel>
       </Border>
-    </Panel>
+    </Grid>
   </Panel>
 </Window>

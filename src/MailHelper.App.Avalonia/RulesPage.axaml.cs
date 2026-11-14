@@ -37,8 +37,30 @@ public partial class RulesPage : UserControl
         await EditAsync(draft);
     }
 
+    private void OnFilterChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is RulesViewModel vm && RuleFilter.SelectedItem is ComboBoxItem { Tag: string tag })
+        {
+            vm.Filter = tag;
+        }
+    }
+
+    private async void OnDeleteRule(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { DataContext: RuleRowViewModel { IsBuiltin: false } row })
+        {
+            ViewModel.SelectedRow = row;
+            await ViewModel.DeleteCommand.ExecuteAsync(null);
+        }
+    }
+
     private async void OnEditRule(object? sender, RoutedEventArgs e)
     {
+        if (sender is Button { DataContext: RuleRowViewModel clicked })
+        {
+            ViewModel.SelectedRow = clicked;
+        }
+
         if (ViewModel.SelectedRow is not { } row || row.IsBuiltin)
         {
             return; // 内置规则可禁用不可编辑（05 §3.3）

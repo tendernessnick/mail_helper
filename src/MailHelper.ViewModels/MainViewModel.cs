@@ -22,6 +22,12 @@ public partial class MailItemViewModel : ObservableObject
 
     public required string FromDisplay { get; init; }
 
+    public string FromAddress { get; init; } = string.Empty;
+
+    public string ReceivedFullText { get; init; } = string.Empty;
+
+    public string CategoryLabel => CategoryCatalog.LabelOf(Category);
+
     public required string Preview { get; init; }
 
     public required string ReceivedText { get; init; }
@@ -73,6 +79,8 @@ public partial class MailItemViewModel : ObservableObject
         Id = message.Id,
         Subject = string.IsNullOrWhiteSpace(message.Subject) ? "(无主题)" : message.Subject,
         FromDisplay = string.IsNullOrWhiteSpace(message.FromName) ? message.FromAddress ?? "?" : message.FromName,
+        FromAddress = message.FromAddress ?? string.Empty,
+        ReceivedFullText = message.ReceivedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm"),
         Preview = message.BodyPreview ?? string.Empty,
         ReceivedText = FormatReceived(message.ReceivedAtUtc, nowUtc),
         Category = message.Category,
@@ -89,7 +97,7 @@ public partial class MailItemViewModel : ObservableObject
         var today = nowUtc.ToLocalTime().Date;
         return local.Date == today ? local.ToString("HH:mm")
             : local.Date == today.AddDays(-1) ? "昨天"
-            : local.Date == today.AddDays(-7) ? "本周"
+            : local.Year != today.Year ? local.ToString("yyyy-MM-dd")
             : local.ToString("MM-dd");
     }
 }
@@ -765,7 +773,8 @@ public partial class MainViewModel : ObservableObject
     }
 
     private static bool SameContent(MailItemViewModel a, MailItemViewModel b) =>
-        a.Subject == b.Subject && a.FromDisplay == b.FromDisplay && a.Preview == b.Preview &&
+        a.Subject == b.Subject && a.FromDisplay == b.FromDisplay && a.FromAddress == b.FromAddress &&
+        a.ReceivedFullText == b.ReceivedFullText && a.Preview == b.Preview &&
         a.ReceivedText == b.ReceivedText && a.Category == b.Category && a.Importance == b.Importance &&
         a.Confidence == b.Confidence && a.HtmlPath == b.HtmlPath && a.HasAttachments == b.HasAttachments;
 
@@ -809,7 +818,10 @@ public partial class MainViewModel : ObservableObject
 
     private static string LabelOf(string category) => CategoryCatalog.LabelOf(category);
 
-    /// <summary>阅读窗格内容：优先正文缓存 HTML，缺失时回退纯文本预览（04 §4.1 按需拉正文本期不做）。</summary>
+    /// <summary>WPF 阅读纸张配色由已应用的窗口主题提供；Avalonia 使用自己的原生文本阅读器。</summary>
+    public bool ReaderUsesDarkColors { get; set; }
+
+    /// <summary>优先读取缓存 HTML，缺失时安全编码纯文本预览。</summary>
     public async Task<string?> BuildReaderHtmlAsync(MailItemViewModel mail, CancellationToken ct)
     {
         if (mail.HtmlPath is { Length: > 0 } relative)
@@ -817,31 +829,29 @@ public partial class MainViewModel : ObservableObject
             var html = await _bodyCache.ReadAsync(relative, ct);
             if (html is not null)
             {
-                return InjectReaderChrome(html);
+                return InjectReaderChrome(html, ReaderUsesDarkColors);
             }
         }
 
         var text = System.Net.WebUtility.HtmlEncode(mail.Preview);
         return InjectReaderChrome(
-            $"<html><body><pre style=\"white-space:pre-wrap;font-family:inherit\">{text}</pre></body></html>");
+            $"<html><body><pre style=\"white-space:pre-wrap;font-family:inherit;text-align:left;line-height:1.8\">{text}</pre></body></html>", ReaderUsesDarkColors);
     }
 
-    /// <summary>S14-B 阅读窗格版式：邮件 HTML（营销模板常为固定宽表格）居中呈现——
-    /// 页面浅灰底 + 正文白卡片对称留白，消除最大化后的右侧空白。构建期注入（WebView2 禁脚本）。</summary>
-    private static string InjectReaderChrome(string html)
+    /// <summary>阅读纸张统一配色与外侧留白，不对邮件每个直接子元素重复增加卡片和内边距。</summary>
+    private static string InjectReaderChrome(string html, bool dark)
     {
-        // S14 修正：WebView2 在复合 DPI 下 CSS 视口与控件宽可能不一致——不依赖视口值：
-        // body 满宽（灰底）+ 直接子元素限宽居中（白卡片），overflow-x 裁剪，任何视口下都无横向溢出
-        const string style = "<style>" +
-            "html{background:#EEF2F7 !important;overflow-x:hidden !important;}" +
-            "body{width:100% !important;margin:0 !important;padding:0 !important;" +
-            "background:#EEF2F7 !important;min-height:100vh !important;" +
-            "overflow-x:hidden !important;" +
+        // 保留作者的表格/行内排版；只约束总体宽度与图片，长纯文本允许断行。
+        var paper = dark ? "#202D26" : "#FFFFFF";
+        var ink = dark ? "#EEF3EB" : "#202B2B";
+        var style = "<style>" +
+            $"html{{background:{paper} !important;overflow-x:hidden !important;}}" +
+            "body{width:100% !important;margin:0 !important;padding:14px 26px 32px !important;" +
+            $"background:{paper} !important;color:{ink};box-sizing:border-box;" +
+            "overflow-wrap:anywhere;overflow-x:hidden !important;font-size:15px;line-height:1.75;" +
             "font-family:Segoe UI,'Microsoft YaHei',sans-serif !important;}" +
-            "body>*{width:100% !important;max-width:100% !important;margin:0 !important;" +
-            "background:#fff !important;padding:22px 32px !important;" +
-            "box-shadow:0 0 14px rgba(27,42,74,.06) !important;box-sizing:border-box !important;}" +
-            "img,table{max-width:100% !important;height:auto !important;}" +
+            "body>*{max-width:100% !important;box-sizing:border-box;}" +
+            "img,table{max-width:100% !important;}img{height:auto !important;}" +
             "</style>";
         var headIndex = html.IndexOf("<head", StringComparison.OrdinalIgnoreCase);
         if (headIndex < 0)

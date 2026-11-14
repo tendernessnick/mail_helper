@@ -35,7 +35,16 @@ public partial class App : Application
 
         // 单实例（EX-TC-07）：二次启动唤起既有窗口后退出。
         // 抢占先于 BuildHost（等价迁移前顺序：第二实例不做任何 DB 初始化）
-        _instanceLock = new WindowsSingleInstanceLock();
+        var devDirectory = Environment.GetEnvironmentVariable("MAILHELPER_DATA_DIR");
+        if (Environment.GetEnvironmentVariable("MAILHELPER_DEV") == "1" && !string.IsNullOrWhiteSpace(devDirectory))
+        {
+            var names = WindowsSingleInstanceLock.GetIsolatedNames(devDirectory);
+            _instanceLock = new WindowsSingleInstanceLock(names.MutexName, names.PipeName);
+        }
+        else
+        {
+            _instanceLock = new WindowsSingleInstanceLock();
+        }
         if (!_instanceLock.TryAcquireFirst())
         {
             _instanceLock.NotifyRunningInstance();
@@ -45,6 +54,8 @@ public partial class App : Application
 
         _host = Bootstrapper.BuildHost(_instanceLock);
         _host.Start();
+        WorkspaceTheme.ApplyAsync(this, _host.Services.GetRequiredService<ISettingsStore>())
+            .GetAwaiter().GetResult();
         // S17：静默升级启动安装器后经此回调关闭应用，安装器完成覆盖安装并自动重启
         _host.Services.GetRequiredService<ViewModels.SettingsViewModel>()
             .ShutdownCallback = Shutdown;
