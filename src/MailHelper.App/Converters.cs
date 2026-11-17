@@ -10,13 +10,14 @@ namespace MailHelper.App;
 /// <summary>重要度色卡（05 章 §5.1：P0 #D13438 / P1 #F7630C / P2 #0078D4 / P3 #8A8886）。</summary>
 public sealed class ImportanceToBrushConverter : IValueConverter
 {
-    private static readonly Brush P0 = Freeze("#D13438");
-    private static readonly Brush P1 = Freeze("#F7630C");
-    private static readonly Brush P2 = Freeze("#0078D4");
-    private static readonly Brush P3 = Freeze("#8A8886");
+    private static readonly Brush P0 = Freeze("#AA333A");
+    private static readonly Brush P1 = Freeze("#945000");
+    private static readonly Brush P2 = Freeze("#235F78");
+    private static readonly Brush P3 = Freeze("#53645A");
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is Importance importance
+        Application.Current?.TryFindResource($"Brush{(value is Importance level ? level : Importance.P3)}Text") is Brush themed
+            ? themed : value is Importance importance
             ? importance switch
             {
                 Importance.P0 => P0,

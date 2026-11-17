@@ -51,7 +51,7 @@
                 <Grid Margin="14,26,14,16">
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <StackPanel Orientation="Horizontal" Margin="8,0,0,28">
-                        <Border Width="32" Height="32" CornerRadius="10" Background="{StaticResource BrushPrimary}"><Path Data="{StaticResource Envelope}" Stroke="{StaticResource BrushSurface}" StrokeThickness="1.5" Width="19" Height="15" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                        <Image Source="pack://application:,,,/Assets/brand-mark.png" Width="36" Height="36" Stretch="Uniform" AutomationProperties.Name="MailHelper 图标"/>
                         <StackPanel Margin="10,0,0,0"><TextBlock Text="MailHelper" FontWeight="SemiBold" FontSize="17"/><TextBlock Text="你的邮件，有序安放" FontSize="10" Foreground="{StaticResource BrushTextSecondary}" Margin="0,3,0,0"/></StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Row="1" Margin="0,0,0,20">

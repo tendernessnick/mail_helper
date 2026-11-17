@@ -829,37 +829,13 @@ public partial class MainViewModel : ObservableObject
             var html = await _bodyCache.ReadAsync(relative, ct);
             if (html is not null)
             {
-                return InjectReaderChrome(html, ReaderUsesDarkColors);
+                return MailHelper.Infrastructure.Reading.ReaderDocument.Build(html, ReaderUsesDarkColors);
             }
         }
 
         var text = System.Net.WebUtility.HtmlEncode(mail.Preview);
-        return InjectReaderChrome(
+        return MailHelper.Infrastructure.Reading.ReaderDocument.Build(
             $"<html><body><pre style=\"white-space:pre-wrap;font-family:inherit;text-align:left;line-height:1.8\">{text}</pre></body></html>", ReaderUsesDarkColors);
     }
 
-    /// <summary>阅读纸张统一配色与外侧留白，不对邮件每个直接子元素重复增加卡片和内边距。</summary>
-    private static string InjectReaderChrome(string html, bool dark)
-    {
-        // 保留作者的表格/行内排版；只约束总体宽度与图片，长纯文本允许断行。
-        var paper = dark ? "#202D26" : "#FFFFFF";
-        var ink = dark ? "#EEF3EB" : "#202B2B";
-        var style = "<style>" +
-            $"html{{background:{paper} !important;overflow-x:hidden !important;}}" +
-            "body{width:100% !important;margin:0 !important;padding:14px 26px 32px !important;" +
-            $"background:{paper} !important;color:{ink};box-sizing:border-box;" +
-            "overflow-wrap:anywhere;overflow-x:hidden !important;font-size:15px;line-height:1.75;" +
-            "font-family:Segoe UI,'Microsoft YaHei',sans-serif !important;}" +
-            "body>*{max-width:100% !important;box-sizing:border-box;}" +
-            "img,table{max-width:100% !important;}img{height:auto !important;}" +
-            "</style>";
-        var headIndex = html.IndexOf("<head", StringComparison.OrdinalIgnoreCase);
-        if (headIndex < 0)
-        {
-            return style + html; // 无 head 的片段：样式块前置（浏览器可渲染）
-        }
-
-        var closeIndex = html.IndexOf('>', headIndex);
-        return closeIndex < 0 ? style + html : html.Insert(closeIndex + 1, style);
-    }
 }

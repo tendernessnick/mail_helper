@@ -4,12 +4,27 @@
     <Setter Property="FontWeight" Value="SemiBold" /><Setter Property="FontSize" Value="18" />
     <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
   </Style>
+  <!-- Default surfaces apply to unnamed buttons as well as explicit action classes. -->
+  <Style Selector="Window"><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" /></Style>
   <Style Selector="Button">
     <Setter Property="MinHeight" Value="34" /><Setter Property="FontSize" Value="12" />
     <Setter Property="CornerRadius" Value="8" /><Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Padding" Value="12,8" /><Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource BrushSurfaceAlt}" />
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+  </Style>
+  <Style Selector="Button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushRowHover}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+  </Style>
+  <Style Selector="Button:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushRowSelected}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
   </Style>
   <Style Selector="Button:focus-visible">
     <Setter Property="BorderBrush" Value="{DynamicResource BrushPrimary}" /><Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Button:focus-visible /template/ ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushPrimary}" />
   </Style>
   <Style Selector="TextBox">
     <Setter Property="MinHeight" Value="38" /><Setter Property="FontSize" Value="12.5" />
@@ -17,10 +32,51 @@
     <Setter Property="Background" Value="{DynamicResource BrushSurface}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
     <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource BrushPrimary}" />
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="MinHeight" Value="38" /><Setter Property="FontSize" Value="12.5" /><Setter Property="Padding" Value="12,8" />
+    <Setter Property="CornerRadius" Value="8" /><Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource BrushSurface}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+  </Style>
+  <Style Selector="ComboBoxItem">
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" /><Setter Property="FontSize" Value="12.5" />
+  </Style>
+  <Style Selector="NumericUpDown">
+    <Setter Property="MinHeight" Value="38" /><Setter Property="FontSize" Value="12.5" /><Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource BrushSurface}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ RepeatButton">
+    <Setter Property="MinHeight" Value="16" /><Setter Property="Padding" Value="0" /><Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="{DynamicResource BrushSurfaceAlt}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ RepeatButton:pointerover">
+    <Setter Property="Background" Value="{DynamicResource BrushRowHover}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ RepeatButton:pressed">
+    <Setter Property="Background" Value="{DynamicResource BrushRowSelected}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
   </Style>
   <Style Selector="CheckBox">
     <Setter Property="FontSize" Value="11.5" /><Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}" />
     <Setter Property="MinHeight" Value="26" />
+  </Style>
+  <Style Selector="ToggleSwitch"><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" /></Style>
+  <Style Selector="ContextMenu">
+    <Setter Property="Background" Value="{DynamicResource BrushSurface}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="MenuFlyoutPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushSurface}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /><Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="MenuItem">
+    <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" /><Setter Property="Padding" Value="12,8" />
+  </Style>
+  <Style Selector="ToolTip">
+    <Setter Property="Background" Value="{DynamicResource BrushSurface}" /><Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" />
   </Style>
   <Style Selector="Path.navIcon">
     <Setter Property="Width" Value="17" /><Setter Property="Height" Value="17" />
@@ -109,4 +165,42 @@
     <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" /><Setter Property="FontSize" Value="13" />
     <Setter Property="HorizontalContentAlignment" Value="Left" />
   </Style>
+  <Style Selector="Button.primaryAction:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushPrimaryHover}" /><Setter Property="Foreground" Value="{DynamicResource BrushOnPrimary}" />
+  </Style>
+  <Style Selector="Button.primaryAction:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushPrimaryPressed}" /><Setter Property="Foreground" Value="{DynamicResource BrushOnPrimary}" />
+  </Style>
+  <Style Selector="Button.sideNav.checked:pointerover /template/ ContentPresenter, Button.sideNav.checked:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushPrimaryTint}" /><Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" />
+  </Style>
+  <Style Selector="Button.dangerAction"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
+  <Style Selector="Button.dangerAction:pointerover /template/ ContentPresenter, Button.dangerAction:pressed /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource BrushDanger}" />
+  </Style>
+  <Style Selector="Button.readerLink"><Setter Property="BorderThickness" Value="0" /></Style>
+  <Style Selector="Button.readerLink:pointerover /template/ ContentPresenter, Button.readerLink:pressed /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}" /><Setter Property="Background" Value="{DynamicResource BrushPrimaryTint}" />
+  </Style>
+  <Style Selector="Button:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource BrushDisabledText}" /><Setter Property="Background" Value="{DynamicResource BrushDisabledSurface}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Button:disabled /template/ ContentPresenter, Button.primaryAction:disabled /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource BrushDisabledText}" /><Setter Property="Background" Value="{DynamicResource BrushDisabledSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushDivider}" /><Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="TextBox:disabled, ComboBox:disabled, NumericUpDown:disabled, MenuItem:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource BrushDisabledText}" /><Setter Property="Background" Value="{DynamicResource BrushDisabledSurface}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="CheckBox:disabled, ToggleSwitch:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource BrushDisabledText}" /><Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="TextBlock.importanceText"><Setter Property="Foreground" Value="{DynamicResource BrushP3}" /></Style>
+  <Style Selector="TextBlock.importanceText.p0"><Setter Property="Foreground" Value="{DynamicResource BrushP0}" /></Style>
+  <Style Selector="TextBlock.importanceText.p1"><Setter Property="Foreground" Value="{DynamicResource BrushP1}" /></Style>
+  <Style Selector="TextBlock.importanceText.p2"><Setter Property="Foreground" Value="{DynamicResource BrushP2}" /></Style>
+  <Style Selector="TextBlock.relativeTime"><Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}" /></Style>
+  <Style Selector="TextBlock.relativeTime.overdue"><Setter Property="Foreground" Value="{DynamicResource BrushDanger}" /></Style>
 </Styles>

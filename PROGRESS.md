@@ -626,3 +626,10 @@ WPF RadioButton 命令（本地首次通过有偶然性）——改为 **Automat
 先备份并推送mailhelper-before-design-20261114（起点82caee5），离线bundle已verify。按用户要求完整重设计WPF/Avalonia工作台、日程、规则、设置和规则编辑，采用暖纸/松绿/墨色与持久侧栏；实装WPF主题启动应用、完整阅读元信息与纸张配色，修日程Refresh命令名失配和缺失规则编辑入口，补已支持设置，DEV单实例隔离保护现有运行安装。
 
 本地370项测试通过（368非UI+2真WPF浅深主题），含980×620/1280×800、长内容/分类/键盘焦点/设置滚动/实际WebView正文；Core行覆盖94.24%，平台边界通过，保留3个既有Avalonia构造器提示。方案、截图、验证边界与回退见docs/design-20261114.md；未读取真实邮箱、未替换G:/MailHelper安装。源码推送main走现有beta流程，未打stable标签。
+
+
+## S22 —— 2026-11-17 按钮与夜间可读性修复、新图标（CHG-019，0.11.1）
+
+起点774b99d；备份标签mailhelper-before-polish-20261117已推远端，离线bundle已verify。WPF通用模板集中到Controls.xaml、局部Combo继承修复，统一提示/菜单/滚动条；Avalonia原生控件全状态配色与主题重要度补齐。修复深色规则卡继承黑字；新增ReaderDocument仅规范显示副本的发送者配色，缓存不动。托盘设置旧占位改为有效入口。统一新SVG源导出九尺寸ICO与1024 PNG，并接窗口/侧栏/两端托盘/安装器及Mac Retina。
+
+本地389项测试通过（387非UI+2 WPF浅深冒烟），Core覆盖94.24%，平台边界与diff检查通过；图标重复生成哈希一致、九帧结构与小尺寸实看通过。源和完整验收见docs/polish-20261117.md、docs/assets/brand-icon.md。未改真实邮箱/安装，原有aktools_log.log保留不提交。main沿用beta打包，正式版标签未触发。

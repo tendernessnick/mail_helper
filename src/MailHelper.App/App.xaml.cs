@@ -83,7 +83,8 @@ public partial class App : Application
         Tray = new TrayIconController(
             showMainWindow: () => ((MainWindow)MainWindow).ShowFromTray(),
             syncNow: () => _ = viewModel.SyncNowCommand.ExecuteAsync(null),
-            quit: () => ((MainWindow)MainWindow).QuitFromTray());
+            quit: () => ((MainWindow)MainWindow).QuitFromTray(),
+            showSettings: () => { ((MainWindow)MainWindow).ShowFromTray(); viewModel.ShowSettingsCommand.Execute(null); });
         Tray.Initialize();
         viewModel.PropertyChanged += (_, args) =>
         {
@@ -142,7 +143,7 @@ public partial class App : Application
                 Directory.Delete(dataDir, recursive: true);
             }
 
-            MessageBox.Show("本地数据已清除。应用将退出，可随时重新启动并登录。", "MailHelper",
+            WorkspaceDialog.Show("本地数据已清除。应用将退出，可随时重新启动并登录。", "MailHelper",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)

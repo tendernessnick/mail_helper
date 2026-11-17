@@ -63,7 +63,7 @@
         <ItemsControl x:Name="CustomCategoriesList"><ItemsControl.ItemTemplate><DataTemplate>
           <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
             <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock Text="{Binding Icon}" FontSize="14" /><TextBlock Text="{Binding Label}" VerticalAlignment="Center" /></StackPanel>
-            <Button Grid.Column="1" Classes="navItem" Content="删除" Padding="10,5" Tag="{Binding Id}" Click="OnDeleteCategory" />
+            <Button Grid.Column="1" Classes="navItem dangerAction" Content="删除" Padding="10,5" Tag="{Binding Id}" Click="OnDeleteCategory" />
           </Grid>
         </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
         <WrapPanel>
@@ -97,7 +97,7 @@
       </StackPanel></Border>
       <Border Classes="settingsCard" Background="{DynamicResource BrushSurfaceAlt}"><Grid ColumnDefinitions="*,Auto">
         <StackPanel Margin="0,0,20,0" Spacing="5"><TextBlock Text="清除本地数据" FontWeight="SemiBold" /><TextBlock Text="移除本机邮件缓存、规则和设置，随后退出应用。" Classes="settingHint" /></StackPanel>
-        <Button Grid.Column="1" Classes="navItem" Content="清除数据…" Padding="12,8" VerticalAlignment="Center" Foreground="{DynamicResource BrushDanger}" Click="OnClearLocalData" />
+        <Button Grid.Column="1" Classes="navItem dangerAction" Content="清除数据…" Padding="12,8" VerticalAlignment="Center" Foreground="{DynamicResource BrushDanger}" Click="OnClearLocalData" />
       </Grid></Border>
     </StackPanel>
   </ScrollViewer>

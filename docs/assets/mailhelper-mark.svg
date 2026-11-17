@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="1024" height="1024">
+  <title>MailHelper</title>
+  <desc>A folded letter and a mint paper tab on a deep pine tile.</desc>
+  <defs>
+    <linearGradient id="pine" x1="0" y1="0" x2="0.8" y2="1">
+      <stop stop-color="#226F5D"/>
+      <stop offset="1" stop-color="#103F35"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="url(#pine)"/>
+  <path d="M108 55h72a12 12 0 0 1 12 12v45H96V67a12 12 0 0 1 12-12Z"
+        fill="#9DD9BE" transform="rotate(10 144 84)"/>
+  <rect x="48" y="84" width="160" height="112" rx="17" fill="#F6F2E7"/>
+  <path d="m57 94 63 48a13 13 0 0 0 16 0l63-48"
+        fill="none" stroke="#185446" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

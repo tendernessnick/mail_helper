@@ -6,6 +6,18 @@ using MailHelper.ViewModels;
 
 namespace MailHelper.App.Avalonia;
 
+/// <summary>仅用于选取主题语义类，颜色由随主题变化的资源提供。</summary>
+public sealed class ImportanceLevelConverter : IValueConverter
+{
+    public static readonly ImportanceLevelConverter Instance = new();
+
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        value is not null && string.Equals(value.ToString(), parameter as string, StringComparison.Ordinal);
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
 /// <summary>ColorHex（类别注册表/重要度卡）→ IBrush（转换失败回退中性灰）。</summary>
 public sealed class ColorHexToBrushConverter : IValueConverter
 {
@@ -83,20 +95,6 @@ public sealed class NotNullToBoolConverter : IValueConverter
 
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         value is not null;
-
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        throw new NotSupportedException();
-}
-
-/// <summary>逾期 bool → 强调红/中性文字画刷（S18 日程页 RelativeText；true=BrushDanger）。</summary>
-public sealed class OverdueBrushConverter : IValueConverter
-{
-    public static readonly OverdueBrushConverter Instance = new();
-
-    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        value is true
-            ? new SolidColorBrush(Color.Parse("#D13438"))
-            : new SolidColorBrush(Color.Parse("#8A8886"));
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
         throw new NotSupportedException();

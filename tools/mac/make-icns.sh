@@ -13,8 +13,7 @@ mkdir -p "$ICONSET"
 
 for spec in "16" "16@2x" "32" "32@2x" "128" "128@2x" "256" "256@2x" "512" "512@2x"; do
   base="${spec%@*}"
-  scale="${spec#*@}"
-  if [ "$scale" = "@2x" ]; then
+  if [[ "$spec" == *@2x ]]; then
     px=$((base * 2))
     name="icon_${base}x${base}@2x.png"
   else

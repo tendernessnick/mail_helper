@@ -16,7 +16,7 @@
         </Style>
         <Style TargetType="CheckBox" BasedOn="{StaticResource ModernCheck}"><Setter Property="MinHeight" Value="32" /></Style>
         <Style TargetType="TextBox" BasedOn="{StaticResource RoundedTextBox}"><Setter Property="MinHeight" Value="36" /></Style>
-        <Style TargetType="ComboBox"><Setter Property="MinHeight" Value="36" /><Setter Property="FontSize" Value="13" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource WorkspaceComboBox}"><Setter Property="MinHeight" Value="36" /><Setter Property="FontSize" Value="13" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style>
     </UserControl.Resources>
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="28,24" MaxWidth="880" HorizontalAlignment="Stretch">

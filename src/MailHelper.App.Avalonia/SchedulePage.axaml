@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:MailHelper.ViewModels;assembly=MailHelper.ViewModels"
              xmlns:app="clr-namespace:MailHelper.App.Avalonia" x:Class="MailHelper.App.Avalonia.SchedulePage">
-  <UserControl.Resources><app:InverseBoolConverter x:Key="InverseBool" /><app:OverdueBrushConverter x:Key="OverdueBrush" /></UserControl.Resources>
+  <UserControl.Resources><app:InverseBoolConverter x:Key="InverseBool" /></UserControl.Resources>
   <Grid Margin="28,24" MaxWidth="1120" RowDefinitions="Auto,*,Auto">
     <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,24">
       <StackPanel Spacing="7">
@@ -31,7 +31,7 @@
                     <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
                       <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,16,10" ToolTip.Tip="{Binding Title}" />
                       <Border Grid.Column="1" Background="{DynamicResource BrushPrimaryTint}" CornerRadius="6" Padding="9,5" VerticalAlignment="Top">
-                        <TextBlock Text="{Binding RelativeText}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding IsOverdue, Converter={StaticResource OverdueBrush}}" />
+                        <TextBlock Text="{Binding RelativeText}" FontSize="12" FontWeight="SemiBold" Classes="relativeTime" Classes.overdue="{Binding IsOverdue}" />
                       </Border>
                       <StackPanel Grid.Row="1" Spacing="5" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="{Binding CourseDisplay}" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap" />

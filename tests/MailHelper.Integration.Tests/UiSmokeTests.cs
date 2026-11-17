@@ -266,6 +266,10 @@ public class UiSmokeTests
             // WPF RadioButton 命令，真实鼠标点击与用户行为一致）+ 失败倾倒树/截图/应用日志。
             Retry<object?>(() =>
             {
+                var summary = Find(mainWindows, automation, w =>
+                    w.FindFirstDescendant(cf => cf.ByAutomationId("schedule-summary")));
+                if (summary is not null && !summary.Properties.IsOffscreen.Value)
+                    return new object();
                 var navTab = Find(mainWindows, automation, w =>
                     w.FindFirstDescendant(cf => cf.ByAutomationId("nav-schedule")));
                 if (navTab is null)
@@ -279,7 +283,7 @@ public class UiSmokeTests
                     (int)(bounds.X + bounds.Width / 2),
                     (int)(bounds.Y + bounds.Height / 2)));
                 Mouse.LeftClick();
-                return new object();
+                return null; // 下轮确认页面真正呈现，不能把一次坐标点击当作成功。
             }, TimeSpan.FromSeconds(10), "切日程页");
 
             // 切页兜底：点页面头「⟳ 刷新」强制 RefreshCommand（防 PropertyChanged 链路在 CI 差异）

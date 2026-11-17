@@ -16,7 +16,7 @@
                 <WrapPanel Margin="0,5,0,8" VerticalAlignment="Center">
                     <TextBlock Text="日程" FontSize="28" FontWeight="SemiBold" />
                     <Border Background="{DynamicResource BrushPrimaryTint}" CornerRadius="6" Padding="10,5" Margin="14,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding OpenCount, StringFormat={}{0} 项待完成}" FontSize="12" Foreground="{DynamicResource BrushPrimary}" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding OpenCount, StringFormat={}{0} 项待完成}" AutomationProperties.AutomationId="schedule-summary" FontSize="12" Foreground="{DynamicResource BrushPrimary}" FontWeight="SemiBold" />
                     </Border>
                 </WrapPanel>
                 <TextBlock Text="Canvas 作业截止日期自动汇集在这里。完成一项，就少一件挂心的事。" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap" />

@@ -40,7 +40,7 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="12,0,0,0">
               <ToggleSwitch IsChecked="{Binding Enabled, Mode=TwoWay}" OnContent="启用" OffContent="暂停" FontSize="12" VerticalAlignment="Center" />
               <Button Classes="navItem" Content="编辑" Padding="10,5" Click="OnEditRule" IsVisible="{Binding IsBuiltin, Converter={StaticResource InverseBool}}" />
-              <Button Classes="navItem" Content="删除" Padding="10,5" Click="OnDeleteRule" IsVisible="{Binding IsBuiltin, Converter={StaticResource InverseBool}}" />
+              <Button Classes="navItem dangerAction" Content="删除" Padding="10,5" Click="OnDeleteRule" IsVisible="{Binding IsBuiltin, Converter={StaticResource InverseBool}}" />
             </StackPanel>
           </Grid>
           <Border Grid.Row="1" Background="{DynamicResource BrushSurfaceAlt}" CornerRadius="6" Padding="10,7" Margin="0,11,0,10">

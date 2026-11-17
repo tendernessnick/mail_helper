@@ -11,21 +11,23 @@ using H.NotifyIcon.Core;
 namespace MailHelper.App.Notifications;
 
 /// <summary>托盘常驻（04 §4：H.NotifyIcon.Wpf；角标图标 DrawText 动态生成）。
-/// 菜单：打开主界面/立即同步/设置（S9 前禁用占位）/退出；关窗后进程驻留（FR-14 AC3，TC-019）。</summary>
+/// 菜单：打开主界面/立即同步/设置/退出；关窗后进程驻留（FR-14 AC3，TC-019）。</summary>
 public sealed class TrayIconController : IDisposable
 {
     private readonly Action _showMainWindow;
     private readonly Action _syncNow;
     private readonly Action _quit;
+    private readonly Action? _showSettings;
     private TaskbarIcon? _icon;
     private int _unread;
     private bool _minimizeHintShown;
 
-    public TrayIconController(Action showMainWindow, Action syncNow, Action quit)
+    public TrayIconController(Action showMainWindow, Action syncNow, Action quit, Action? showSettings = null)
     {
         _showMainWindow = showMainWindow;
         _syncNow = syncNow;
         _quit = quit;
+        _showSettings = showSettings;
     }
 
     /// <summary>角标未读数（MainViewModel.UnreadTotal 驱动；0 时无角标）。</summary>
@@ -61,7 +63,8 @@ public sealed class TrayIconController : IDisposable
         open.Click += (_, _) => _showMainWindow();
         var sync = new MenuItem { Header = "立即同步", InputGestureText = "Ctrl+R" };
         sync.Click += (_, _) => _syncNow();
-        var settings = new MenuItem { Header = "设置（随 S9 开放）", IsEnabled = false };
+        var settings = new MenuItem { Header = "设置", IsEnabled = _showSettings is not null };
+        settings.Click += (_, _) => _showSettings?.Invoke();
         var quit = new MenuItem { Header = "退出" };
         quit.Click += (_, _) => _quit();
 
@@ -92,11 +95,12 @@ public sealed class TrayIconController : IDisposable
             dc.DrawImage(BaseIcon, new Rect(0, 0, size, size));
             if (unread > 0)
             {
-                dc.DrawEllipse(Brushes.Firebrick, new Pen(Brushes.White, 1.5), new Point(25, 7), 8, 8);
-                var label = unread > 99 ? "99" : unread.ToString(CultureInfo.InvariantCulture);
+                dc.DrawEllipse(new SolidColorBrush(Color.FromRgb(0xB2, 0x3C, 0x46)), new Pen(Brushes.White, 0.75), new Point(24.5, 7.5), 6.5, 6.5);
+                var label = unread > 99 ? "99+" : unread.ToString(CultureInfo.InvariantCulture);
                 var badge = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-                    new Typeface("Segoe UI"), unread > 9 ? 9 : 11, Brushes.White, 1.25);
-                dc.DrawText(badge, new Point(25 - badge.Width / 2, 7 - badge.Height / 2));
+                    new Typeface(new FontFamily("Segoe UI"), FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal),
+                    unread > 99 ? 5.5 : unread > 9 ? 6.5 : 8, Brushes.White, 2);
+                dc.DrawText(badge, new Point(24.5 - badge.Width / 2, 7.5 - badge.Height / 2));
             }
         }
 
@@ -134,8 +138,8 @@ public sealed class TrayIconController : IDisposable
         writer.Write((short)0);       // reserved
         writer.Write((short)1);       // type = icon
         writer.Write((short)1);       // image count
-        writer.Write((byte)32);       // width（logical，实际 64px 由 PNG 自带尺寸决定）
-        writer.Write((byte)32);       // height
+        writer.Write((byte)64);       // PNG 的真实像素尺寸；托盘由系统缩放到目标 DPI
+        writer.Write((byte)64);       // height
         writer.Write((byte)0);        // palette
         writer.Write((byte)0);        // reserved
         writer.Write((short)1);       // color planes

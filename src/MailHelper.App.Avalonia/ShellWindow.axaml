@@ -4,6 +4,7 @@
         xmlns:app="clr-namespace:MailHelper.App.Avalonia"
         xmlns:reading="clr-namespace:MailHelper.Infrastructure.Reading;assembly=MailHelper.Infrastructure"
         x:Class="MailHelper.App.Avalonia.ShellWindow" x:Name="Shell"
+        Icon="/Assets/icon-source.png"
         Title="MailHelper" Width="1280" Height="800" MinWidth="980" MinHeight="620"
         Background="{DynamicResource BrushWindowBg}"
         FontFamily="Segoe UI Variable Text, Segoe UI, Microsoft YaHei UI, PingFang SC, Hiragino Sans GB, sans-serif">
@@ -26,10 +27,7 @@
       <Border Background="{DynamicResource BrushSidebar}" BorderBrush="{DynamicResource BrushDivider}" BorderThickness="0,0,1,0">
         <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="14,24,14,16">
           <Grid ColumnDefinitions="36,*" Margin="8,0,0,26">
-            <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource BrushPrimary}" VerticalAlignment="Center">
-              <Path Data="M2,4 L22,4 L22,20 L2,20 Z M2,5 L12,13 L22,5" Width="19" Height="16" Stretch="Uniform"
-                    Stroke="{DynamicResource BrushOnPrimary}" StrokeThickness="1.6" HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Border>
+            <Image Source="avares://MailHelper.App.Avalonia/Assets/icon-source.png" Width="36" Height="36" Stretch="Uniform" VerticalAlignment="Center" />
             <StackPanel Grid.Column="1" Margin="9,0,0,0" Spacing="2">
               <TextBlock Text="MailHelper" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
               <TextBlock Text="本地邮件工作台" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" />
@@ -146,7 +144,10 @@
                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <TextBlock Text="{Binding ImportanceText}" FontSize="9.5" HorizontalAlignment="Center"
-                                       Foreground="{Binding ImportanceColor, Converter={StaticResource ColorHexToBrush}}" ToolTip.Tip="{Binding ImportanceLabel}" />
+                                       Classes="importanceText"
+                                        Classes.p0="{Binding Importance, Converter={x:Static app:ImportanceLevelConverter.Instance}, ConverterParameter=P0}"
+                                        Classes.p1="{Binding Importance, Converter={x:Static app:ImportanceLevelConverter.Instance}, ConverterParameter=P1}"
+                                        Classes.p2="{Binding Importance, Converter={x:Static app:ImportanceLevelConverter.Instance}, ConverterParameter=P2}" ToolTip.Tip="{Binding ImportanceLabel}" />
                           </StackPanel>
                           <StackPanel Grid.Column="1" Margin="10,0,0,0" Spacing="5">
                             <Grid ColumnDefinitions="*,Auto">
@@ -216,7 +217,10 @@
                     </Grid>
                     <WrapPanel>
                       <Border Background="{DynamicResource BrushSurfaceAlt}" CornerRadius="5" Padding="7,4" Margin="0,0,6,6">
-                        <TextBlock Text="{Binding SelectedMail.ImportanceLabel}" FontSize="10.5" Foreground="{Binding SelectedMail.ImportanceColor, Converter={StaticResource ColorHexToBrush}}" />
+                        <TextBlock Text="{Binding SelectedMail.ImportanceLabel}" FontSize="10.5" Classes="importanceText"
+                                   Classes.p0="{Binding SelectedMail.Importance, Converter={x:Static app:ImportanceLevelConverter.Instance}, ConverterParameter=P0}"
+                                   Classes.p1="{Binding SelectedMail.Importance, Converter={x:Static app:ImportanceLevelConverter.Instance}, ConverterParameter=P1}"
+                                   Classes.p2="{Binding SelectedMail.Importance, Converter={x:Static app:ImportanceLevelConverter.Instance}, ConverterParameter=P2}" />
                       </Border>
                       <Border Background="{DynamicResource BrushSurfaceAlt}" CornerRadius="5" Padding="7,4" Margin="0,0,6,6">
                         <TextBlock Text="{Binding SelectedMail.CategoryLabel}" FontSize="10.5" Foreground="{DynamicResource BrushTextSecondary}" />
@@ -250,10 +254,7 @@
     <!-- 首次进入：清楚说明连接方式与本地数据边界。 -->
     <Grid ColumnDefinitions="*,*" IsVisible="{Binding IsOnboarding}" Margin="52">
       <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="28,0,54,0" Spacing="22">
-        <Border Width="54" Height="54" CornerRadius="17" Background="{DynamicResource BrushPrimary}" HorizontalAlignment="Left">
-          <Path Data="M2,4 L22,4 L22,20 L2,20 Z M2,5 L12,13 L22,5" Width="28" Height="23" Stretch="Uniform" Stroke="{DynamicResource BrushOnPrimary}"
-                StrokeThickness="1.4" HorizontalAlignment="Center" VerticalAlignment="Center" />
-        </Border>
+        <Image Source="avares://MailHelper.App.Avalonia/Assets/icon-source.png" Width="54" Height="54" Stretch="Uniform" HorizontalAlignment="Left" />
         <TextBlock Text="MailHelper" FontSize="21" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
         <TextBlock Text="邮件各归其位，&#10;留心真正重要的事。" FontSize="32" LineHeight="44" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" />
         <TextBlock Text="把课程、求职与校园通知整理成清晰的收件箱。&#10;分类和日程提醒，在你的电脑上完成。" FontSize="13" LineHeight="23"

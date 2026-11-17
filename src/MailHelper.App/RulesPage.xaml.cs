@@ -73,7 +73,7 @@ public partial class RulesPage : UserControl
         }
         catch (RuleValidationException ex)
         {
-            MessageBox.Show(ex.Message, "规则校验", MessageBoxButton.OK, MessageBoxImage.Warning);
+            WorkspaceDialog.Show(ex.Message, "规则校验", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }

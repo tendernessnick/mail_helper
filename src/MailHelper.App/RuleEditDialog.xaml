@@ -1,10 +1,10 @@
 <Window x:Class="MailHelper.App.RuleEditDialog" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="规则编辑" Width="500" Height="650" MinWidth="450" MinHeight="500" MaxHeight="760"
-        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" Background="{DynamicResource BrushWindowBg}" FontFamily="{StaticResource FontApp}">
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" Background="{DynamicResource BrushWindowBg}" Foreground="{DynamicResource BrushTextPrimary}" FontFamily="{StaticResource FontApp}">
     <Window.Resources>
         <Style TargetType="TextBlock" BasedOn="{StaticResource AppText}"><Setter Property="FontSize" Value="13" /></Style>
         <Style TargetType="TextBox" BasedOn="{StaticResource RoundedTextBox}"><Setter Property="MinHeight" Value="38" /><Setter Property="Margin" Value="0,6,0,18" /></Style>
-        <Style TargetType="ComboBox"><Setter Property="MinHeight" Value="38" /><Setter Property="Margin" Value="0,6,0,18" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style>
+        <Style TargetType="ComboBox" BasedOn="{StaticResource WorkspaceComboBox}"><Setter Property="MinHeight" Value="38" /><Setter Property="Margin" Value="0,6,0,18" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style>
     </Window.Resources>
     <Grid Margin="24">
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>

@@ -70,7 +70,7 @@ public partial class SettingsPage : UserControl
         }
         catch (InvalidOperationException ex)
         {
-            MessageBox.Show(ex.Message, "无法添加类别", MessageBoxButton.OK, MessageBoxImage.Warning);
+            WorkspaceDialog.Show(ex.Message, "无法添加类别", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -81,7 +81,7 @@ public partial class SettingsPage : UserControl
             return;
         }
 
-        var confirm = MessageBox.Show(
+        var confirm = WorkspaceDialog.Show(
             $"删除类别「{definition.Label}」？该类邮件将归入「其他」，相关规则一并删除。",
             "删除类别", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (confirm != MessageBoxResult.Yes)
@@ -130,7 +130,7 @@ public partial class SettingsPage : UserControl
 
     private void OnClearDataClick(object sender, RoutedEventArgs e)
     {
-        var confirm = MessageBox.Show(
+        var confirm = WorkspaceDialog.Show(
             "将删除本机全部邮件缓存、规则与设置（令牌同时清除），且不可恢复。继续吗？",
             "清除本地数据", MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (confirm == MessageBoxResult.Yes)

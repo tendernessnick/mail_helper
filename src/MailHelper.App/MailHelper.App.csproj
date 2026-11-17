@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\app.ico" /> <!-- S14-A：窗口标题栏/托盘底图（pack URI） -->
+    <Resource Include="Assets\brand-mark.png" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />

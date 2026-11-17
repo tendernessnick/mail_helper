@@ -6,6 +6,7 @@ using Avalonia.Media;
 using System.Globalization;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.Platform;
 using MailHelper.Core.Abstractions;
 using MailHelper.Core.Services;
 using MailHelper.Infrastructure.Storage;
@@ -157,31 +158,28 @@ public partial class App : Application
         };
     }
 
-    /// <summary>托盘图标合成（FR-14 角标；MS6 v1：程序化绘制零资产依赖，WPF 版语义等价）。</summary>
+    private static readonly Lazy<Bitmap> TrayBrandImage = new(() =>
+        new Bitmap(AssetLoader.Open(new Uri("avares://MailHelper.App.Avalonia/Assets/icon-source.png"))));
+
+    /// <summary>托盘以统一品牌资产为底图，未读角标只叠加在右上角，不重画另一套旧标志。</summary>
     private static WindowIcon ComposeBadgeIcon(int unread)
     {
         const double size = 64;
         var rtb = new RenderTargetBitmap(new PixelSize(128, 128), new Vector(192, 192));
         using (var ctx = rtb.CreateDrawingContext())
         {
-            var baseBrush = new SolidColorBrush(Color.Parse("#0F6CBD")).ToImmutable();
-            ctx.DrawRectangle(baseBrush, null, new RoundedRect(new Rect(2, 2, size - 4, size - 4), 14));
-
+            ctx.DrawImage(TrayBrandImage.Value, new Rect(0, 0, size, size));
             var white = new SolidColorBrush(Colors.White).ToImmutable();
-            var envelope = new Rect(12, 20, 40, 26);
-            ctx.DrawRectangle(null, new Pen(white, 3), envelope);
-            ctx.DrawLine(new Pen(white, 3), envelope.TopLeft, new Point(envelope.Center.X, envelope.Center.Y));
-            ctx.DrawLine(new Pen(white, 3), envelope.TopRight, new Point(envelope.Center.X, envelope.Center.Y));
-
             if (unread > 0)
             {
                 var label = unread > 99 ? "99+" : unread.ToString();
-                var dotBrush = new SolidColorBrush(Color.Parse("#D13438")).ToImmutable();
-                ctx.DrawEllipse(dotBrush, null, new Rect(36, 36, 26, 26));
+                var dotBrush = new SolidColorBrush(Color.Parse("#B23C46")).ToImmutable();
+                ctx.DrawEllipse(dotBrush, new Pen(white, 1.5), new Rect(36, 2, 26, 26));
                 var text = new FormattedText(
                     label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-                    Typeface.Default, 14, white);
-                ctx.DrawText(text, new Point(49 - text.Width / 2, 41));
+                    new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold),
+                    unread > 99 ? 11 : unread > 9 ? 13 : 16, white);
+                ctx.DrawText(text, new Point(49 - text.Width / 2, 15 - text.Height / 2));
             }
         }
 
